@@ -1,0 +1,175 @@
+<div class="cs_page custom-form-design centercontent cs_selected cs-flow-canvas" style="visibility: visible;" data-flow-canvas-init="1">
+  <div class="cs-doc" data-page="1" data-cs-starter-template="invoice">
+    <!-- Header Section - Yellow Navy -->
+    <div class="cs-row cs-page-header" id="row_header_d6" data-cs-page-region="header" style="padding: 0px; min-height: 100px; border: 0px; background: linear-gradient(90deg, #ffc400 0%, #ffb700 100%); display: flex; align-items: center;">
+      <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; padding: 20px;">
+        <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Company Header" id="block_header_d6" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+          <div class="edit_me resize" id="dynamic_header_d6" placeholder="" style="font-size: 28px; font-weight: bold; color: #1a3a5c; margin: 0;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <div style="width: 50px; height: 50px; background: #1a3a5c; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffc400; font-weight: bold; font-size: 24px;">S</div>
+              <div>
+                <div style="color: #1a3a5c; font-size: 24px; font-weight: bold;">SUMMIT</div>
+                <div style="color: #1a3a5c; font-size: 11px; font-weight: normal;">Marketing Solutions</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="body-main-content" style="flex: 1 1 0%; display: flex; flex-direction: column; gap: 0px; padding: 30px; background: #f9f9f9;">
+
+      <!-- Invoice Title -->
+      <div class="cs-row" id="row_title_d6" style="margin-bottom: 20px; min-height: 0px;">
+        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Title" id="block_title_d6" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+            <div class="edit_me resize" id="dynamic_title_d6" placeholder="" style="font-size: 32px; font-weight: bold; color: #1a3a5c; margin: 0;">INVOICE</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invoice Details -->
+      <div class="cs-row invoice-row invoice-row--intro" id="row_intro_d6" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
+        <!-- Invoice To -->
+        <div class="cs-col" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice To" id="block_invoice_to_d6" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: white; padding: 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div class="edit_me resize" id="dynamic_invoice_to_d6" placeholder="" style="font-size: 13px; color: #1a3a5c;">
+              <div style="font-weight: bold; color: #ffc400; margin-bottom: 8px; font-size: 12px; text-transform: uppercase;">Bill To:</div>
+              <div style="font-weight: bold; font-size: 15px;">{{customer_name}}</div>
+              <div>{{address_line1}}</div>
+              <div>{{address_line2}}</div>
+              <div>{{city}}, {{state}} {{zip_code}}</div>
+              <div style="margin-top: 8px;">{{customer_email}}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoice Meta -->
+        <div class="cs-col" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Meta" id="block_meta_d6" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: white; padding: 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 4px solid #ffc400;">
+            <div class="edit_me resize" id="dynamic_meta_d6" placeholder="" style="font-size: 13px; color: #1a3a5c; margin: 0;">
+              <div style="display: grid; grid-template-columns: 100px 1fr; gap: 10px;">
+                <div style="font-weight: bold;">Invoice #:</div>
+                <div>{{invoice_number}}</div>
+                <div style="font-weight: bold;">Date:</div>
+                <div>{{Invoice_Date}}</div>
+                <div style="font-weight: bold;">Due Date:</div>
+                <div>{{due_date}}</div>
+                <div style="font-weight: bold;">PO #:</div>
+                <div>{{po_number}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Items Table -->
+      <div class="cs-row invoice-row invoice-row--items" id="row_items_d6" style="margin-bottom: 30px; min-height: 0px;">
+        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Items Table" id="block_items_d6" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: white; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div class="edit_me fr-element fr-view resize" id="dynamic_items_d6" placeholder="" style="font-size: 12px; width: 100%; padding: 0px; margin: 0px; color: #1a3a5c; overflow: visible;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #1a3a5c; color: white;">
+                    <th style="padding: 12px; text-align: left; font-weight: bold; border: 0;">Service Description</th>
+                    <th style="padding: 12px; text-align: center; font-weight: bold; border: 0; width: 80px;">Qty</th>
+                    <th style="padding: 12px; text-align: right; font-weight: bold; border: 0; width: 100px;">Unit Price</th>
+                    <th style="padding: 12px; text-align: right; font-weight: bold; border: 0; width: 100px;">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Social Media Campaign</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">1</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$1,200.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$1,200.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Content Creation (12 pieces)</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">12</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$150.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$1,800.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Email Marketing Setup</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">1</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$500.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$500.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Analytics & Reporting</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">1</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$400.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$400.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Brand Strategy Consultation</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">2</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$300.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$600.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Monthly Management</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">3</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$800.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$2,400.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Section -->
+      <div class="cs-row invoice-row invoice-row--summary" id="row_summary_d6" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
+        <!-- Notes -->
+        <div class="cs-col" style="flex: 1 1 55%; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Notes" id="block_notes_d6" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: white; padding: 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div class="edit_me resize" id="dynamic_notes_d6" placeholder="" style="font-size: 12px; color: #1a3a5c;">
+              <div style="margin-bottom: 15px;">
+                <div style="font-weight: bold; color: #1a3a5c; margin-bottom: 8px;">Terms & Conditions:</div>
+                <div style="font-size: 11px; line-height: 1.6; color: #666;">
+                  Payment due within 30 days of invoice date. Early payment discounts available. All marketing materials remain confidential. Services are non-refundable upon completion.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Totals -->
+        <div class="cs-col" style="flex: 0 0 45%; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Totals" id="block_totals_d6" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: white; padding: 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-top: 4px solid #ffc400;">
+            <div class="edit_me resize" id="dynamic_totals_d6" placeholder="" style="font-size: 12px; color: #1a3a5c; margin: 0;">
+              <div style="display: grid; grid-template-columns: 110px 90px; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e0e0e0;">
+                <div style="text-align: right; font-weight: 500;">Subtotal:</div>
+                <div style="text-align: right;">$6,900.00</div>
+                <div style="text-align: right; font-weight: 500;">Tax:</div>
+                <div style="text-align: right;">$0.00</div>
+              </div>
+              <div style="display: grid; grid-template-columns: 110px 90px; gap: 10px; font-size: 14px;">
+                <div style="text-align: right; font-weight: bold; color: #1a3a5c;">TOTAL:</div>
+                <div style="text-align: right; font-weight: bold; color: #1a3a5c;">$6,900.00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="display: flex; gap: 30px; margin-top: 30px; padding-top: 20px; border-top: 2px solid #ffc400;">
+        <div style="flex: 1;">
+          <div style="font-weight: bold; color: #1a3a5c; margin-bottom: 8px; font-size: 12px;">Contact Info:</div>
+          <div style="font-size: 11px; color: #666;">hello@summitmarketing.com</div>
+          <div style="font-size: 11px; color: #666;">(555) 456-7890</div>
+        </div>
+        <div style="flex: 1; text-align: right;">
+          <div style="font-size: 10px; color: #999;">© 2024 SUMMIT Marketing. All rights reserved.</div>
+          <div style="font-size: 10px; color: #999;">www.summitmarketing.com</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

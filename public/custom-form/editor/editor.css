@@ -1,0 +1,1343 @@
+/* ============================================================
+   Block state machine: idle  →  selected  →  editing
+   ------------------------------------------------------------
+   - idle:     no chrome, block is just placed
+   - selected: blue outline + top badge (move handle + menu)
+   - editing:  blue outline + 8 resize handles + Froala active
+   ============================================================ */
+
+.cs_block_s {
+  cursor: pointer;
+  /* border: 1px solid transparent; */
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.cs_block_s:hover:not(.cs-selected):not(.cs-editing) {
+  border-color: #76767629;
+  /* box-shadow: 0 4px 16px rgba(92, 92, 255, 0.12);
+  transform: translateY(-1px); */
+}
+
+/* ---------- Selected state ---------- */
+.cs_block_s.cs-selected,
+.cs_block_s.cs-editing {
+  border-color: #248567;
+  box-shadow: 0 0 0 1px rgba(92, 92, 255, 0.2);
+  outline: none;
+}
+
+@keyframes slideUpBadge {
+  0% {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* The blue badge at the top-left of a selected/editing block */
+.cs-block-badge {
+  position: absolute;
+  top: -26px;
+  left: -1px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  background: #248567;
+  color: #ffffff;
+  font-family: Inter, "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px 6px 0 0;
+  user-select: none;
+  z-index: 10;
+  white-space: nowrap;
+  cursor: grab;
+  touch-action: none;
+  animation: slideUpBadge 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.cs-block-badge__handle {
+  cursor: grab;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.cs-block-badge__handle:active {
+  cursor: grabbing;
+}
+
+.cs-block-badge__label {
+  pointer-events: none;
+}
+
+.cs-block-badge__menu {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.cs-block-badge__menu:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* Action buttons (move up/down, duplicate, delete) on the right of the badge */
+.cs-block-badge__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+  padding-left: 6px;
+  border-left: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.cs-block-badge__btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 1;
+  transition: background 120ms ease;
+}
+
+.cs-block-badge__btn:hover {
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.cs-block-badge__btn--danger:hover {
+  background: #e5484d;
+}
+
+/* In editing mode the move handle + actions disappear (matches screenshot 2) */
+.cs_block_s.cs-editing .cs-block-badge__handle,
+.cs_block_s.cs-editing .cs-block-badge__actions,
+.cs_block_s.cs-editing .cs-block-badge__menu {
+  display: none;
+}
+
+/* While editing, suppress the hover border (cleaner UI) */
+.cs_block_s.cs-editing {
+  cursor: text;
+}
+
+@keyframes popResizeHandle {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ---------- Resize handles (editing state) ---------- */
+.cs-resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border: 1.5px solid #5c5cff;
+  border-radius: 50%;
+  /* Make them circular for a modern look */
+  z-index: 9000;
+  box-sizing: border-box;
+  pointer-events: auto;
+  box-shadow: 0 2px 4px rgba(92, 92, 255, 0.3);
+  animation: popResizeHandle 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
+}
+
+/* Add slight delay staggering to handles for an amazing unrolling effect */
+.cs-resize-handle[data-dir="nw"] {
+  animation-delay: 0.00s;
+}
+
+.cs-resize-handle[data-dir="n"] {
+  animation-delay: 0.02s;
+}
+
+.cs-resize-handle[data-dir="ne"] {
+  animation-delay: 0.04s;
+}
+
+.cs-resize-handle[data-dir="e"] {
+  animation-delay: 0.06s;
+}
+
+.cs-resize-handle[data-dir="se"] {
+  animation-delay: 0.08s;
+}
+
+.cs-resize-handle[data-dir="s"] {
+  animation-delay: 0.10s;
+}
+
+.cs-resize-handle[data-dir="sw"] {
+  animation-delay: 0.12s;
+}
+
+.cs-resize-handle[data-dir="w"] {
+  animation-delay: 0.14s;
+}
+
+/* Make sure the parent block doesn't clip the handles that sit on its edge */
+.cs_block_s.cs-editing,
+.cs_block_s.cs-selected {
+  overflow: visible !important;
+}
+
+.cs-resize-handle[data-dir="nw"] {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+
+.cs-resize-handle[data-dir="n"] {
+  top: -6px;
+  left: 50%;
+  cursor: ns-resize;
+  transform: translateX(-50%);
+}
+
+.cs-resize-handle[data-dir="ne"] {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+
+.cs-resize-handle[data-dir="e"] {
+  top: 50%;
+  right: -6px;
+  cursor: ew-resize;
+  transform: translateY(-50%);
+}
+
+.cs-resize-handle[data-dir="se"] {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+
+.cs-resize-handle[data-dir="s"] {
+  bottom: -6px;
+  left: 50%;
+  cursor: ns-resize;
+  transform: translateX(-50%);
+}
+
+.cs-resize-handle[data-dir="sw"] {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+.cs-resize-handle[data-dir="w"] {
+  top: 50%;
+  left: -6px;
+  cursor: ew-resize;
+  transform: translateY(-50%);
+}
+
+/* ---------- Editable content target ---------- */
+/* Force-override Froala's default min-height (200px) — otherwise the block
+   inflates on edit-init, the resize handles end up far from where the user
+   clicked, and bottom handles may even be clipped by the canvas overflow. */
+.cs_block_s.cs-editing .edit_me,
+.cs_block_s.cs-editing .fr-element,
+.cs_block_s.cs-editing .fr-view {
+  cursor: text;
+  outline: none;
+  min-height: 1em !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.cs_block_s.cs-editing .fr-wrapper,
+.cs_block_s.cs-editing .fr-box {
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+/* Froala wraps .edit_me in .fr-box; make sure the wrapper doesn't shrink */
+.cs_block_s .fr-box {
+  width: 100%;
+  display: block;
+}
+
+/* Keep the block tall enough for resize handles to be reachable */
+.cs_block_s.cs-editing {
+  min-height: 32px;
+  min-width: 60px;
+}
+
+/* Free-form blocks (flexible containers + their absolutely-positioned
+   in-section children) are meant to be sized freely, so they may shrink
+   below the default editing minimums. */
+.cs-flexible-content>.cs_block_s.cs-editing[data-cs-in-section="1"],
+.cs_block_s.cs-flexible-block.cs-editing {
+  min-width: 20px;
+  min-height: 20px;
+}
+
+.edit_me {
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #505b65;
+  line-height: 1.5;
+  width: 100%;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  text-align: left;
+}
+
+.edit_me:empty:before {
+  content: attr(placeholder);
+  color: #aaa;
+  font-family: sans-serif;
+  line-height: 1.1;
+}
+
+/* ---------- Froala tweaks ---------- */
+.fr-counter,
+.fr-word-count,
+.fr-word-counter,
+.fr-footer .fr-counter {
+  display: none !important;
+}
+
+/* Keep Froala's popup toolbar above the resize handles */
+.fr-popup,
+.fr-toolbar {
+  z-index: 9999 !important;
+}
+
+.cs_block_s p {
+  margin: 0;
+}
+
+.normal-table-width table {
+  width: 100%;
+}
+
+.section-container-content {
+  height: 100% !important;
+  /* background: #e5e7e7; */
+  outline: none;
+  min-height: 100px;
+}
+
+
+
+/* image block */
+
+
+@use './cs-mixin-style' as mixins;
+
+/* ==============================    image block css  ======================================= */
+.image-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  margin: auto;
+  aspect-ratio: 1;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: 100%;
+  clip-path: unset !important;
+}
+
+.image-container img {
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+/* ==============================    upload-image block css  ======================================= */
+.img-btn {
+  background-color: var(--upload-image-placeholder-bg);
+  border: 1px solid var(--upload-image-placeholder-border);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: fit-content;
+  max-height: 100%;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  cursor: default;
+}
+
+.icon-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center
+}
+
+.icon-layer {
+  padding: 0;
+  margin-bottom: 10px;
+  color: var(--upload-icon-text-bg);
+  cursor: pointer;
+  font-size: 14px;
+  width: 24px;
+  height: 24px;
+}
+
+.img-btn-txt {
+  width: 100%;
+  text-align: center;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--Text-colors-Secondary);
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.img-icon {
+  background: var(--upload-plus-text-bg);
+  border-radius: 6px;
+}
+
+.icon-layer,
+.img-btn-txt {
+  cursor: pointer !important;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto !important;
+}
+
+.cs_block_s img:not(.pricing-section-image-section) {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain;
+}
+
+.cs-image-block {
+  display: flex;
+  width: auto;
+  height: auto;
+}
+
+.EHP .cs-image-block,
+.EHP .cs-video-block {
+  position: relative;
+  width: max-content;
+}
+
+.ECP .cs-image-block,
+.ECP .cs-video-block {
+  position: relative;
+  width: 100%;
+}
+
+.cs-image-block.block-selected,
+.cs-video-block.block-selected {
+  .img-btn {
+    cursor: move;
+
+    .icon-layer,
+    .img-btn-txt {
+      cursor: pointer;
+    }
+  }
+}
+
+/* ==============================    image block shapes css  ======================================= */
+.image-container.square-image,
+.image-container.square-image img,
+.image-container.square-image .img-btn {
+  @include mixins.square-shape-mixin;
+}
+
+.image-container.rounded-square-image,
+.image-container.rounded-square-image img,
+.image-container.rounded-square-image .img-btn {
+  @include mixins.rounded-square-shape-mixin;
+}
+
+.image-container.circle-image,
+.image-container.circle-image img,
+.image-container.circle-image .img-btn {
+  @include mixins.circle-shape-mixin;
+}
+
+.image-container.diagonal-corners-image,
+.image-container.diagonal-corners-image img,
+.image-container.diagonal-corners-image .img-btn {
+  @include mixins.diagonal-corner-shape-mixin;
+}
+
+.image-container.star,
+.image-container.star img,
+.image-container.star .img-btn {
+  @include mixins.star-shape-mixin;
+}
+
+.image-container.polygon,
+.image-container.polygon img,
+.image-container.polygon .img-btn {
+  @include mixins.polygon-shape-mixin;
+}
+
+.image-container.rectangle-image,
+.image-container.rectangle-image img,
+.image-container.rectangle-image .img-btn {
+  @include mixins.rectangle-shape-mixin;
+}
+
+.image-container.rectangle-image {
+  aspect-ratio: unset;
+}
+
+.ECP .image-container.rectangle-image {
+  width: 100%;
+  height: auto;
+}
+
+.ListBlankHorizontal .circle-image.image-container .img-btn {
+  height: calc(100% - 10px);
+  width: auto;
+}
+
+.image-container.circle-image .img-btn {
+  min-width: unset;
+  min-height: unset;
+}
+
+.cs_margin .circle-image {
+  margin: auto;
+}
+
+/* ==============================    icon-block css  ======================================= */
+.cs-icon-block {
+  padding: 8px;
+  aspect-ratio: 1 / 1;
+  min-width: 42px;
+  width: auto;
+  max-width: 100%;
+  height: auto !important;
+  container-type: inline-size;
+  display: flex;
+  place-items: center;
+  align-items: center;
+  justify-content: center;
+
+  .icon-box {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+
+    i.icon-text {
+      font-size: 80cqw;
+      /* Adjust icon size based on container width (80cqw given bcz it will 80% of parent width, remainging will be around space) */
+      height: 100%;
+      width: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+  }
+}
+
+/* ==============================    content-page-image-block css  ======================================= */
+.cs_margin div.cs_block_s[data^="Image"],
+.cs_margin div.cs_block_s[data^="Video"] {
+  text-align: center;
+  user-select: none;
+}
+
+.cs_margin div.cs_block_s[data^="Image"] .cs-image-cover {
+  display: revert !important;
+}
+
+.cs_margin .drag-move-icon svg {
+  margin: 0;
+}
+
+.cs_content_block {
+  /* Default values */
+  --rotate: 0deg;
+  --zoom: 1;
+
+  /* The magic line: combine them automatically */
+  transform: rotate(var(--rotate)) scale(var(--zoom)) !important;
+  transform-origin: center center;
+}
+
+.fr-view table td,
+.fr-view table th {
+  padding: 4px;
+  width: 185px;
+  font-weight: 500;
+}
+
+.fr-view table td:empty,
+.fr-view table th:empty {
+  height: 33px;
+}
+
+/* ============================ Pen Shape block ============================ */
+/* Default height — a CSS rule (not inline) so normalizeForFlow's inline-style
+   strip on drop can't wipe it. A manual resize writes an inline height that
+   overrides this, so resizing (smaller or larger) still works. */
+.cs-pen-shape-block {
+  height: 200px;
+}
+
+.cs-pen-shape-block .cs-pen-shape {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.cs-pen-shape-block .cs-pen-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Clip the shape to the block so a dragged anchor/curve can never spill
+     outside the block's bounds. */
+  overflow: hidden;
+}
+
+/* While editing the shape, hide only the 4 CORNER resize handles — they sit
+   exactly on the corner anchors and make those anchors impossible to grab. The
+   4 SIDE handles (n/e/s/w) stay, so the box is still resizable from its edges
+   without deselecting. The toolbar "Resize box" (⤢) toggle adds .cs-pen-resizing
+   to bring ALL handles back (anchors hidden meanwhile) for full corner resize. */
+.cs-pen-shape-block.cs-editing .cs-resize-handle[data-dir="nw"],
+.cs-pen-shape-block.cs-editing .cs-resize-handle[data-dir="ne"],
+.cs-pen-shape-block.cs-editing .cs-resize-handle[data-dir="se"],
+.cs-pen-shape-block.cs-editing .cs-resize-handle[data-dir="sw"] {
+  display: none !important;
+}
+
+.cs-pen-shape-block.cs-editing.cs-pen-resizing .cs-resize-handle {
+  display: block !important;
+}
+
+.cs-pen-shape-block.cs-pen-resizing .cs-pen-overlay {
+  cursor: default;
+}
+
+/* Editing overlay — only present while the block is in edit mode. */
+.cs-pen-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.cs-pen-overlay-svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.cs-pen-anchor {
+  fill: #fff;
+  stroke: #5c5cff;
+  stroke-width: 1.5;
+}
+
+.cs-pen-anchor.is-sel {
+  fill: #5c5cff;
+}
+
+.cs-pen-anchor.is-first {
+  stroke: #16a34a;
+  stroke-width: 2;
+}
+
+/* Anchors of a NON-active sub-path — dimmed so the active clip-path stands out.
+   Clicking such a shape's fill selects it (then its anchors become solid). */
+.cs-pen-anchor.is-dim {
+  fill: rgba(255, 255, 255, 0.5);
+  stroke: rgba(92, 92, 255, 0.45);
+}
+
+.cs-pen-handle {
+  fill: #5c5cff;
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+.cs-pen-handle-line {
+  stroke: #5c5cff;
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.cs-pen-rubber {
+  stroke: #9aa0ff;
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+/* Floating pen toolbar */
+.cs-pen-toolbar {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  width: max-content;
+  max-width: none;
+  gap: 2px;
+  padding: 3px 6px;
+  background: #248567;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  z-index: 9100;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.cs-pen-toolbar select {
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: #248567;
+  color: #fff;
+  font-size: 11px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.cs-pen-fill-solid,
+.cs-pen-fill-gradient,
+.cs-pen-fill-image {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cs-pen-toolbar input[type="range"] {
+  width: 64px;
+}
+
+.cs-pen-toolbar button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #e5e7f0;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cs-pen-toolbar button:hover {
+  background: #353b4d;
+}
+
+.cs-pen-toolbar button.is-active {
+  background: #2e2f47;
+  color: #fff;
+}
+
+.cs-pen-sep {
+  width: 1px;
+  height: 20px;
+  background: #248567;
+  margin: 0 3px;
+}
+
+.cs-pen-swatch,
+.cs-pen-num {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #cbd0e0;
+  font-size: 10px;
+  padding: 0 2px;
+}
+
+.cs-pen-swatch input[type="color"] {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.cs-pen-num input {
+  width: 34px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: #353b4d;
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* Layers strip — one chip per shape, click to select. */
+.cs-pen-layers {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 180px;
+  overflow-x: auto;
+  padding: 2px;
+}
+
+.cs-pen-layer {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 0;
+}
+
+.cs-pen-layer.is-active {
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #248567;
+}
+
+/* Gradient colour stops live inline next to the +/- buttons. */
+.cs-pen-grad-stops {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ============================================================
+   PAGE BACKGROUND SHAPE DESIGNER (full-screen modal)
+   Reuses the pen tool (.cs-pen-*) on a page-sized stage.
+   ============================================================ */
+.cs-page-shape-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+}
+
+.cs-page-shape-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+.cs-page-shape-modal__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.cs-page-shape-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+  background: #111827;
+  color: #f9fafb;
+  flex: 0 0 auto;
+}
+
+.cs-page-shape-modal__title {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cs-page-shape-modal__dims {
+  font-size: 11px;
+  font-weight: 500;
+  color: #9ca3af;
+  background: #1f2937;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.cs-page-shape-modal__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cs-page-shape-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cs-page-shape-btn--ghost {
+  background: #374151;
+  color: #e5e7eb;
+}
+
+.cs-page-shape-btn--ghost:hover {
+  background: #4b5563;
+}
+
+.cs-page-shape-btn--primary {
+  background: #248567;
+  color: #fff;
+}
+
+.cs-page-shape-btn--primary:hover {
+  background: #1e6f57;
+}
+
+.cs-page-shape-modal__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+}
+
+/* Left layers panel (Photoshop-style). */
+.cs-page-shape-layers {
+  flex: 0 0 248px;
+  display: flex;
+  flex-direction: column;
+  background: #1b2030;
+  color: #e5e7f0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cs-page-shape-layers__title {
+  padding: 12px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8aa4e6;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.cs-page-shape-layers__list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 250px;
+}
+
+.cs-page-shape-layers__actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.cs-page-shape-layers__actions button {
+  flex: 1 1 0;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e5e7f0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cs-page-shape-layers__actions button:hover {
+  background: rgba(92, 92, 255, 0.22);
+  border-color: #5c5cff;
+}
+
+.cs-page-shape-layers__hint {
+  padding: 8px 12px;
+  font-size: 10px;
+  color: #6b7280;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* One layer row */
+.cs-pen-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cs-pen-layer-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.cs-pen-layer-row.is-active {
+  background: rgba(92, 92, 255, 0.18);
+  border-color: #5c5cff;
+}
+
+.cs-pen-layer-row.is-multi {
+  background: rgba(92, 92, 255, 0.12);
+  border-color: rgba(92, 92, 255, 0.5);
+}
+
+.cs-pen-layer-row.is-hidden {
+  opacity: 0.5;
+}
+
+.cs-pen-layer-row.is-locked .cs-pen-layer-row__name {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.cs-pen-layer-row.is-dragging {
+  opacity: 0.4;
+}
+
+.cs-pen-layer-row.is-drop {
+  border-color: #248567;
+  box-shadow: 0 -2px 0 #248567 inset;
+}
+
+.cs-pen-layer-row__eye,
+.cs-pen-layer-row__act {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: #cbd0e0;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  line-height: 1;
+  padding: 0;
+}
+
+.cs-pen-layer-row__eye:hover,
+.cs-pen-layer-row__act:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cs-pen-layer-row__act:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Keep rows compact: the action buttons (up/down/rename/dup/delete) only show
+   on hover or for the active layer, so the name has room otherwise. */
+.cs-pen-layer-row__act {
+  display: none;
+}
+
+.cs-pen-layer-row:hover .cs-pen-layer-row__act,
+.cs-pen-layer-row.is-active .cs-pen-layer-row__act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Checkerboard behind the thumbnail to show transparency, Photoshop-style. */
+.cs-pen-layer-row__thumb {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #cfd2dd 25%, transparent 25%),
+    linear-gradient(-45deg, #cfd2dd 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #cfd2dd 75%),
+    linear-gradient(-45deg, transparent 75%, #cfd2dd 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+}
+
+.cs-pen-layer-thumb__svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.cs-pen-layer-row__name {
+  flex: 1 1 auto;
+  font-size: 12px;
+  color: #e5e7f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cs-pen-layer-row__rename {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  padding: 2px 6px;
+  border: 1px solid #5c5cff;
+  border-radius: 4px;
+  background: #0f1320;
+  color: #fff;
+}
+
+/* When the side panel is active, hide the toolbar's duplicate copy of shape
+   management + the compact chip strip (they live in the panel now). */
+.cs-pen-toolbar.cs-pen-has-panel .cs-pen-layers,
+.cs-pen-toolbar.cs-pen-has-panel [data-pen="dup"],
+.cs-pen-toolbar.cs-pen-has-panel [data-pen="del-shape"],
+.cs-pen-toolbar.cs-pen-has-panel [data-pen="fwd"],
+.cs-pen-toolbar.cs-pen-has-panel [data-pen="back"],
+.cs-pen-toolbar.cs-pen-has-panel [data-pen^="preset-"] {
+  display: none;
+}
+
+/* Props container: inline inside the floating toolbar by default … */
+.cs-pen-props,
+.cs-pen-props__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cs-pen-props__label {
+  display: none;
+}
+
+/* … but a stacked, labelled section when relocated to the right panel. */
+.cs-pen-props.cs-pen-props--panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 12px;
+}
+
+.cs-pen-props--panel .cs-pen-props__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.cs-pen-props--panel .cs-pen-props__label {
+  display: block;
+  width: 100%;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8aa4e6;
+}
+
+.cs-pen-props--panel select {
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: #2a3042;
+  color: #fff;
+  font-size: 12px;
+  padding: 0 6px;
+  cursor: pointer;
+}
+
+.cs-pen-props--panel button {
+  min-width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e5e7f0;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.cs-pen-props--panel button:hover {
+  background: rgba(92, 92, 255, 0.22);
+  border-color: #5c5cff;
+}
+
+.cs-pen-props--panel input[type="range"] {
+  flex: 1 1 80px;
+}
+
+/* Hide the toolbar separator that preceded the props block in panel mode. */
+.cs-pen-toolbar.cs-pen-has-props-panel {}
+
+/* Right-side shapes panel (preset library). */
+.cs-page-shape-shapes {
+  flex: 0 0 188px;
+  display: flex;
+  flex-direction: column;
+  background: #1b2030;
+  color: #e5e7f0;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-y: auto;
+}
+
+.cs-page-shape-props {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.cs-page-shape-shapes__title {
+  padding: 12px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8aa4e6;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Width / height for dropping a sized shape. */
+.cs-page-shape-size {
+  display: flex;
+  gap: 8px;
+  padding: 12px 12px 0;
+}
+
+.cs-page-shape-size label {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #8aa4e6;
+  font-weight: 600;
+}
+
+.cs-page-shape-size input {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: #2a3042;
+  color: #fff;
+  font-size: 12px;
+  padding: 0 6px;
+}
+
+.cs-page-shape-shapes__grid {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cs-page-shape-shapes__grid button {
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e5e7f0;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cs-page-shape-shapes__grid button:hover {
+  background: rgba(92, 92, 255, 0.18);
+  border-color: #5c5cff;
+}
+
+/* Stage area centres the page-sized drawing block. */
+.cs-page-shape-stagewrap {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 24px;
+}
+
+/* The drawing stage holds a page-aspect pen-shape block. */
+.cs-page-shape-stage {
+  position: relative;
+  background: #ffffff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.cs-page-shape-block {
+  height: 100%;
+  position: relative;
+}
+
+/* Float the pen toolbar at the top of the modal instead of above the block
+   (the block fills the stage, so the default `bottom: 100%` would clip it). */
+.cs-page-shape-modal .cs-pen-toolbar {
+  position: fixed;
+  top: 56px;
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  flex-wrap: wrap;
+  max-width: 92vw;
+  justify-content: center;
+}

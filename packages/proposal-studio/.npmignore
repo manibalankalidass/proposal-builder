@@ -1,0 +1,7 @@
+# Source is bundled into dist/ — ship only the build output.
+src/
+scripts/
+examples/
+tsconfig.json
+*.tsbuildinfo
+.DS_Store

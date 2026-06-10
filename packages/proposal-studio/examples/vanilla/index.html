@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Proposal Studio — plain HTML</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; }
+      .bar { display: flex; gap: 8px; padding: 10px; background: #111; }
+      .bar button { padding: 6px 12px; }
+      proposal-studio { display: block; border: 1px solid #ddd; }
+    </style>
+  </head>
+  <body>
+    <div class="bar">
+      <button id="load">Load sample</button>
+      <button id="save">Get HTML → console</button>
+    </div>
+
+    <proposal-studio id="editor"></proposal-studio>
+
+    <!-- Option A: CDN (no build step). Use unpkg/jsdelivr once published:
+         <script src="https://unpkg.com/proposal-studio"></script>          -->
+    <!-- Option B (used here): the local global bundle from dist/.            -->
+    <script src="../../dist/proposal-studio.global.js"></script>
+    <script>
+      const editor = document.getElementById('editor');
+
+      editor.addEventListener('ready', () => console.log('editor ready'));
+      editor.addEventListener('change', (e) =>
+        console.log('changed, length =', e.detail.html.length)
+      );
+
+      document.getElementById('load').onclick = () =>
+        editor.loadTemplate('<div style="padding:24px"><h1>Hello 👋</h1><p>Edit me.</p></div>');
+
+      document.getElementById('save').onclick = () =>
+        console.log(editor.getHtml());
+    </script>
+  </body>
+</html>

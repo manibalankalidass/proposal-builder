@@ -1,0 +1,1626 @@
+:root {
+  color-scheme: light;
+  --page-bg: #f4f5fb;
+  --ink: #20233d;
+  --muted: #72769a;
+  --line: #e2e5f4;
+  --line-strong: #cfd4f6;
+  --accent: #5c5cff;
+  --accent-soft: #eef0ff;
+  --accent-ghost: rgba(92, 92, 255, 0.08);
+  --shadow: 0 18px 40px rgba(34, 36, 61, 0.08);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin-top: 15px;
+  padding: 0;
+  background: var(--page-bg);
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+body {
+  min-height: 100%;
+  /* The iframe is sized to the page in canvas.scss. The horizontal
+     axis must NEVER scroll inside the iframe (it produces an ugly
+     extra scrollbar under the canvas). Vertical scroll IS allowed so
+     long forms can be edited; the outer .canvas-stage handles the
+     bigger picture. */
+  overflow-x: hidden;
+}
+
+#place_everything {
+  min-height: 100%;
+  height: auto;
+}
+
+.page_container {
+  min-height: 100%;
+  height: auto;
+}
+
+.cs_paper {
+  min-height: 100%;
+  height: auto;
+  background: #f4f5fb;
+  padding: 24px 0;
+}
+
+.custom-form-design {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+/* .custom-form-design::before {
+  content: 'Drag a block here';
+  position: absolute;
+  inset: 16px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+  pointer-events: none;
+  opacity: 0.7;
+  transition: opacity 160ms ease, transform 160ms ease;
+} */
+
+.drop-surface--active {
+  background:
+    linear-gradient(180deg, rgba(92, 92, 255, 0.04), rgba(92, 92, 255, 0.02)),
+    #ffffff;
+}
+
+.custom-form-design.drop-surface--active::before {
+  color: var(--accent);
+  opacity: 1;
+  transform: scale(1.03);
+}
+
+.page-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(92, 92, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(92, 92, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+.page-empty-state {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: min(100% - 96px, 420px);
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+  padding: 28px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(244, 246, 255, 0.94));
+  box-shadow: var(--shadow);
+}
+
+.page-empty-state[hidden] {
+  display: none;
+}
+
+.page-empty-state__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-empty-state h1 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+
+.page-empty-state p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.section-binding-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+}
+
+.section-binding-modal[hidden] {
+  display: none !important;
+}
+
+.section-binding-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 24, 48, 0.62);
+  backdrop-filter: blur(8px);
+}
+
+.section-binding-card {
+  position: relative;
+  width: min(820px, calc(100% - 32px));
+  max-height: min(90vh, 680px);
+  overflow: hidden;
+  display: grid;
+  gap: 24px;
+  padding: 28px;
+  border-radius: 28px;
+  background: #192238;
+  color: #f0f2f9;
+  box-shadow: 0 28px 72px rgba(14, 20, 48, 0.38), 0 0 1px rgba(255, 255, 255, 0.12);
+  z-index: 1;
+}
+
+.section-binding-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-binding-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.section-binding-subtitle {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.section-binding-close {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 160ms, border-color 160ms;
+}
+
+.section-binding-close:hover {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.section-binding-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 20px;
+  min-height: 0;
+}
+
+.section-binding-list-card,
+.section-binding-config-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  padding: 18px;
+  overflow: hidden;
+  display: grid;
+  gap: 14px;
+}
+
+.section-binding-list-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #8aa4e6;
+  font-weight: 700;
+}
+
+.section-binding-badge {
+  display: inline-flex;
+  min-width: 48px;
+  justify-content: center;
+  background: rgba(138, 164, 230, 0.18);
+  color: #a0b2ff;
+  font-size: 14px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.section-binding-list {
+  display: grid;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+}
+
+.section-binding-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.section-binding-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.section-binding-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
+.section-binding-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.section-binding-array-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #f0f2f9;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.section-binding-array-item:hover {
+  border-color: rgba(92, 92, 255, 0.35);
+  background: rgba(92, 92, 255, 0.08);
+}
+
+.section-binding-array-item--selected {
+  border-color: #5c5cff;
+  background: rgba(92, 92, 255, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(92, 92, 255, 0.25);
+}
+
+.section-binding-array-item__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.section-binding-array-item__path {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  word-break: break-word;
+}
+
+.section-binding-array-item__count {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.58);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.section-binding-array-item__preview {
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 14px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.section-binding-empty {
+  grid-column: 1 / -1;
+  padding: 32px 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.section-binding-field-label {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+.section-binding-field {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f0f2f9;
+  font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.section-binding-field--readonly {
+  pointer-events: none;
+}
+
+.section-binding-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f0f2f9;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 160ms, background-color 160ms;
+}
+
+.section-binding-input:focus {
+  outline: none;
+  border-color: rgba(92, 92, 255, 0.40);
+  background: rgba(92, 92, 255, 0.08);
+}
+
+.section-binding-generated-code {
+  margin-top: 12px;
+}
+
+.section-binding-code-title {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.62);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+.section-binding-code {
+  margin: 0;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(92, 92, 255, 0.15);
+  color: #a0b2ff;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.section-binding-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.section-binding-skip,
+.section-binding-apply {
+  border: none;
+  min-height: 44px;
+  border-radius: 999px;
+  padding: 0 26px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.section-binding-skip {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.section-binding-skip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.section-binding-apply {
+  background: #5c5cff;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(92, 92, 255, 0.24);
+}
+
+.section-binding-apply:hover:not(:disabled) {
+  background: #6b6bff;
+  box-shadow: 0 12px 28px rgba(92, 92, 255, 0.32);
+}
+
+.section-binding-apply:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.canvas-block {
+  position: absolute;
+  /* min-width: 120px; */
+  max-width: calc(100% - 32px);
+  user-select: none;
+  cursor: grab;
+}
+
+.canvas-block:active {
+  cursor: grabbing;
+}
+
+.canvas-block--selected .canvas-block__inner {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 18px 40px rgba(34, 36, 61, 0.12);
+}
+
+.canvas-block__inner {
+  position: relative;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.canvas-block__tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.canvas-block__remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: #f5f6ff;
+  color: #5e6288;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.canvas-block__remove:hover {
+  background: #eceeff;
+}
+
+.canvas-block__content,
+.canvas-block__content * {
+  pointer-events: none;
+}
+
+.block-card {
+  display: grid;
+  gap: 14px;
+}
+
+.block-card h2,
+.block-card h3,
+.block-heading {
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+
+.block-card p,
+.block-paragraph,
+.block-caption,
+.block-list li,
+.block-table__row span,
+.block-input {
+  color: var(--muted);
+}
+
+.block-card--hero {
+  padding-top: 10px;
+}
+
+.block-card--hero h2 {
+  font-size: 14px;
+  line-height: 1.08;
+}
+
+.block-card--hero p {
+  margin: 0;
+  max-width: 520px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.block-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.block-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.block-pill--primary,
+.block-button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.block-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.block-column {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #fafbff);
+}
+
+.block-column strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.block-media {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.block-image {
+  height: 180px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(92, 92, 255, 0.1), rgba(92, 92, 255, 0.02)),
+    #f7f8ff;
+}
+
+.block-pricing {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.block-price-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.block-price-card strong {
+  display: block;
+  margin: 6px 0;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.block-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.block-footer__links {
+  display: flex;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.block-heading {
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.block-paragraph {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.block-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-ghost);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.block-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 140px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.block-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+}
+
+.block-spacer {
+  height: 72px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(92, 92, 255, 0.05), rgba(92, 92, 255, 0.01));
+}
+
+.block-container {
+  min-height: 180px;
+  padding: 20px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 22px;
+  background: #fbfbff;
+}
+
+.block-container strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.block-table {
+  display: grid;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.cs_block_s[data="Table"] {
+  overflow: hidden;
+}
+
+.block-table__row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 0.8fr;
+  gap: 10px;
+}
+
+.block-table__row span,
+.block-list li,
+.block-input {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+  font-size: 14px;
+}
+
+.block-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.block-shape {
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(92, 92, 255, 0.16), rgba(92, 92, 255, 0.05));
+  border: 1px solid rgba(92, 92, 255, 0.26);
+}
+
+.block-shape--rectangle {
+  width: 100%;
+  height: 160px;
+}
+
+.block-shape--circle {
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+}
+
+.block-icon-badge {
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+
+.cs_block_s {
+  overflow-wrap: break-word;
+  /* padding: 5px; */
+  margin: 0;
+  height: max-content;
+  width: 250px;
+  max-width: 100%;
+  position: relative;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  border: 1px solid #e1e1e1;
+}
+
+
+
+.edit_me:empty:before {
+  content: attr(placeholder);
+  /*if affected some place please unhide this below command*/
+  color: #AAA;
+  font-family: sans-serif;
+  line-height: 1.1;
+}
+
+.section-binding-info {
+  display: none;
+}
+
+/* ============================================================
+   FLOW CANVAS — row / column layout (Word-style)
+   Variables are populated by canvas-config.js — tune that file
+   to change page dimensions, paddings, colors, etc.
+   ============================================================ */
+
+.custom-form-design.cs-flow-canvas {
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  height: auto;
+  flex: 0 0 auto;
+}
+
+.cs_paper {
+  /* Multi-page container — holds one or more .cs-doc pages stacked
+     vertically. Each page is an A4 sheet (794 × 1123 px). */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+}
+
+.cs-doc {
+  width: var(--cs-page-width, 794px);
+  max-width: 100%;
+  min-height: var(--cs-page-min-height, 1123px);
+  margin: 0 auto;
+  /* padding: var(--cs-page-padding, 16px); */
+  background: var(--cs-page-bg, #ffffff);
+  background-image: var(--cs-page-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  box-sizing: border-box;
+  border: 1px solid #e1e1e1;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+/* Page background shape layer (.cs-page-shape-bg, injected by the Page Shape
+   designer): z-index:0 keeps it above the page background; page content is
+   lifted to z-index:1 so it always paints on top. This pure-z-index approach
+   (no negative z / isolation) renders consistently in wkhtmltopdf + puppeteer. */
+.cs-doc > .cs-page-shape-bg {
+  z-index: 0;
+}
+
+.cs-doc > .cs-row,
+.cs-doc > .body-main-content,
+.cs-doc > .cs-page-header,
+.cs-doc > .cs-page-footer {
+  position: relative;
+  z-index: 1;
+}
+
+/* A4 boundary indicator — a real DOM element injected by JS into any
+   .cs-doc whose content overflows past the configured A4 height. The
+   line spans the full doc width, with a centered pill label that has
+   a solid background so it's readable on top of the dashed line. */
+.cs-overflow-mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--cs-page-min-height, 1123px);
+  height: 0;
+  border-top: 1px dashed #f97316;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.cs-overflow-mark__label {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -50%);
+  padding: 3px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #c2410c;
+  background: #ffffff;
+  border: 1px solid #f97316;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Page number badge (top-right corner of each page) */
+.cs-doc::before {
+  /* content: "Page " attr(data-page); */
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(99, 102, 241, 0.55);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.cs-row {
+  display: flex;
+  gap: 0;
+  /* margin-bottom: var(--cs-row-margin-bottom, 8px); */
+  position: relative;
+  /* min-height: var(--cs-row-min-height, 40px); */
+  flex: 0 0 auto;
+  /* padding: 5px; */
+}
+
+/* ============================================================
+   WORD-STYLE PAGE HEADER / FOOTER
+   Header is the first row (top of page), footer is the last row
+   (bottom of page). `margin-top: auto` on the footer pushes it to
+   the bottom of the flex column — empty space sits between the
+   body and the footer.
+   ============================================================ */
+.cs-doc>.cs-page-header,
+.cs-doc>.cs-page-footer {
+  flex: 0 0 auto;
+  position: relative;
+  min-height: 70px;
+  /* padding: 10px; */
+  border: 1px dashed transparent;
+  /* border-radius: 4px; */
+  background: transparent;
+  color: rgba(31, 31, 31, 0.42);
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  cursor: pointer;
+}
+
+.cs-doc>.cs-page-header {
+  margin-top: 0;
+  margin-bottom: 0px;
+  border-bottom: 1px solid #e1e1e1;
+  align-items: center;
+}
+
+.cs-doc>.cs-page-footer {
+  margin-top: auto;
+  align-items: center;
+  /* push to bottom of the flex column */
+  margin-bottom: 0;
+  border-top: 1px solid #e1e1e1;
+}
+
+/* Placeholder hint shown when the region is empty (no nested blocks) */
+.cs-page-header>.cs-col:empty::before,
+.cs-page-footer>.cs-col:empty::before {
+  content: attr(data-cs-placeholder);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(99, 102, 241, 0.55);
+  pointer-events: none;
+}
+
+.cs-page-header>.cs-col:empty,
+.cs-page-footer>.cs-col:empty {
+  position: relative;
+}
+
+/* Mirror the placeholder text from the row to its inner col so the
+   :empty selector still has access to the attribute. */
+.cs-page-header>.cs-col,
+.cs-page-footer>.cs-col {
+  background: transparent;
+}
+
+/* Hover hint: faint blue suggests "click here" */
+.cs-doc>.cs-page-header:not(.is-active):hover,
+.cs-doc>.cs-page-footer:not(.is-active):hover {
+  background: rgba(99, 102, 241, 0.04);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* Active state — bright outline + corner label, drop-zone ready */
+.cs-doc>.cs-page-header.is-active,
+.cs-doc>.cs-page-footer.is-active {
+  color: inherit;
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.6);
+  cursor: auto;
+}
+
+.cs-doc>.cs-page-header.is-active::before,
+.cs-doc>.cs-page-footer.is-active::before {
+  content: attr(data-cs-region-label);
+  position: absolute;
+  top: -8px;
+  left: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4338ca;
+  background: #ffffff;
+  padding: 0 6px;
+  pointer-events: none;
+  line-height: 1;
+  z-index: 1;
+}
+
+/* When a region is active, dim the inactive areas */
+.cs-doc.editing-header>.cs-row:not(.cs-page-header):not(.cs-page-footer),
+.cs-doc.editing-footer>.cs-row:not(.cs-page-header):not(.cs-page-footer) {
+  opacity: 0.5;
+}
+
+.cs-doc.editing-header>.cs-page-footer,
+.cs-doc.editing-footer>.cs-page-header {
+  opacity: 0.5;
+}
+
+.cs-col {
+  flex: 1 1 0;
+  min-width: var(--cs-col-min-width, 60px);
+  /* min-height: var(--cs-col-min-height, 40px); */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* padding: var(--cs-col-padding, 4px); */
+}
+
+/* Show placeholder only when column is truly empty (no block content) */
+.cs-col:empty::before {
+  content: 'Drop block here';
+  display: block;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 12px;
+  /* border: 1px dashed var(--line); */
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* Hide placeholder if column has any block content */
+.cs-col:has(> .cs_block_s)::before,
+.cs-col:has(> .canvas-block)::before {
+  content: '';
+  display: none;
+}
+
+/* Column divider (resize handle between columns) — a 10px-wide draggable
+   strip with a visible 1px line in the middle. The whole strip is the hit
+   area so it's easy to grab. */
+.cs-col-divider {
+  flex: 0 0 10px;
+  background: transparent;
+  cursor: col-resize;
+  position: relative;
+  align-self: stretch;
+  transition: background 120ms ease;
+  z-index: 5;
+}
+
+.cs-col-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: transparent;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.cs-row:hover .cs-col-divider::before {
+  background: rgba(92, 92, 255, 0.25);
+}
+
+.cs-col-divider:hover,
+.cs-col-divider.cs-col-divider--active {
+  background: rgba(92, 92, 255, 0.12);
+}
+
+.cs-col-divider:hover::before,
+.cs-col-divider.cs-col-divider--active::before {
+  background: var(--accent);
+  width: 2px;
+}
+
+/* Premium Drop Indicators & Animations */
+@keyframes csDropPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(36, 133, 103, 0.6);
+    opacity: 0.85;
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(36, 133, 103, 0.1);
+    opacity: 1;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(36, 133, 103, 0.6);
+    opacity: 0.85;
+  }
+}
+
+@keyframes csBgPan {
+  to {
+    background-position: 200% center;
+  }
+}
+
+@keyframes scaleInDrop {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.cs-drop-indicator {
+  position: absolute;
+  background: #248567;
+  background-size: 200% auto;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 0 8px rgba(92, 92, 255, 0.5);
+  animation: csDropPulse 1.5s infinite ease-in-out, csBgPan 2s linear infinite;
+  /* Smoothly animate movement as the user drags across slots */
+  transition: top 0.15s cubic-bezier(0.2, 0, 0, 1), left 0.15s cubic-bezier(0.2, 0, 0, 1), width 0.15s cubic-bezier(0.2, 0, 0, 1), height 0.15s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.cs-drop-indicator--horizontal {
+  height: 2px !important;
+  margin-top: -1px;
+}
+
+.cs-drop-indicator--vertical {
+  width: 4px !important;
+  margin-left: -1px;
+}
+
+/* ============================================================
+   Inline hover insert (+) control
+   ============================================================ */
+.cs-inline-insert-line {
+  position: fixed;
+  height: 2px;
+  transform: translateY(-50%);
+  background: rgba(36, 133, 103, 0.18);
+  box-shadow: 0 0 0 1px rgba(36, 133, 103, 0.04);
+  pointer-events: none;
+  z-index: 9996;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.cs-inline-insert-line.is-visible {
+  opacity: 1;
+}
+
+/* New-column variant: vertical line on a block's left/right edge. */
+.cs-inline-insert-line--vertical {
+  height: auto;
+  width: 2px;
+  transform: translateX(-50%);
+}
+
+.cs-inline-insert-line.is-active {
+  background: rgba(36, 133, 103, 0.9);
+  box-shadow: 0 0 0 1px rgba(36, 133, 103, 0.08);
+}
+
+.cs-inline-insert {
+  position: fixed;
+  width: 25px;
+  height: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(0%, -50%);
+  border: 1px solid #dfe5df;
+  border-radius: 999px;
+  background: #f7fbf8;
+  color: #b7c1b8;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(20, 24, 60, 0.05);
+  z-index: 9997;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease, background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.cs-inline-insert span {
+  transform: translateY(-1px);
+  pointer-events: none;
+}
+
+/* New-column variant: centre the + on the vertical line's top point. */
+.cs-inline-insert--vertical {
+  transform: translate(-50%, -50%);
+}
+
+.cs-inline-insert.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cs-inline-insert:hover,
+.cs-inline-insert.is-open {
+  background: #248567;
+  border-color: #248567;
+  color: #ffffff;
+}
+
+
+.cs-inline-insert::after {
+  content: attr(title);
+  position: absolute;
+  left: 181%;
+  top: -26px;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: rgba(33, 33, 33, 0.92);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.cs-inline-insert:hover::after,
+.cs-inline-insert.is-open::after {
+  opacity: 1;
+}
+
+.cs-inline-insert-menu {
+  position: fixed;
+  width: 270px;
+  max-height: min(420px, calc(100vh - 24px));
+  overflow: auto;
+  padding: 8px 0;
+  border: 1px solid #e2e6f0;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(20, 24, 60, 0.16);
+  z-index: 9998;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.cs-inline-insert-menu.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.cs-inline-insert-menu__section+.cs-inline-insert-menu__section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eef1f6;
+}
+
+.cs-inline-insert-menu__title {
+  padding: 6px 14px 8px;
+  color: #7b8198;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cs-inline-insert-menu__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: #243047;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.cs-inline-insert-menu__item:hover {
+  background: #f3f8f6;
+  color: #248567;
+}
+
+.cs-inline-insert-menu__icon {
+  width: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b93a7;
+  font-size: 14px;
+  flex: 0 0 22px;
+}
+
+.cs-inline-insert-menu__item:hover .cs-inline-insert-menu__icon {
+  color: #248567;
+}
+
+.cs-inline-insert-menu__label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+
+.cs-inline-insert-menu{
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 12px 24px;
+
+  /* Invisible scrollbar */
+  &::-webkit-scrollbar {
+    width: 0;
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+
+  /* Firefox */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Add a premium pop animation when a new block is dropped on canvas */
+.custom-form-design>.cs_paper .cs_block_s,
+.cs-doc .cs_block_s {
+  animation: scaleInDrop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Top-level blocks inside flow canvas (direct children of cs-col) — strip
+   absolute positioning. In-section blocks keep absolute positioning.
+   Width is auto by default (block elements fill their column); inline width
+   set via resize wins because we don't !important it. */
+.cs-flow-canvas .cs-col>.cs_block_s,
+.cs-flow-canvas .cs-col>.canvas-block {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  max-width: none !important;
+  margin: 0 0 6px 0;
+  display: block;
+  box-sizing: border-box;
+  padding: 2px;
+}
+
+.cs-flow-canvas .cs-col>.cs_block_s:last-child,
+.cs-flow-canvas .cs-col>.canvas-block:last-child {
+  margin-bottom: 0;
+}
+
+/* Section content area is a nested row/col flow region — its height is
+   driven entirely by the rows it contains, so a table that grows from a
+   {% for %} loop naturally stretches the section box too. */
+.cs-flow-canvas .section-container-content {
+  position: relative;
+  /* min-height: var(--cs-section-min-height, 160px); */
+  /* background: var(--cs-section-bg, #e5e7e7); */
+  display: flex;
+  flex-direction: column;
+  /* padding: 8px; */
+  /* gap: 4px; */
+  /* outline: 1px solid #e1e1e1; */
+  height: auto !important;
+}
+
+/* The section's outer block wrapper must not lock to a fixed height —
+   the rendered output (and PDF) needs to grow with the {% for %} body. */
+.cs-flow-canvas .cs_block_s:has(> .section-container-content) {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+/* Rows inside a section behave like rows in the doc root. */
+.cs-flow-canvas .section-container-content>.cs-row {
+  flex: 0 0 auto;
+}
+
+/* Flexible block: free positioning canvas for child blocks */
+.cs-flow-canvas .cs-flexible-content {
+  position: relative;
+  display: block !important;
+  /* min-height: 80px;
+  padding: 8px; */
+  /* outline: 1px dashed #cfd4f6; */
+  /* background: #fafbfe; */
+}
+
+/* Blocks inside flexible use absolute positioning for free movement */
+.cs-flow-canvas .cs-flexible-content>.cs_block_s[data-cs-in-section="1"] {
+  position: absolute !important;
+  display: block !important;
+  margin: 0 !important;
+  top: 8px;
+  left: 8px;
+}
+
+/* Drop surface highlight while dragging from sidebar */
+.cs-flow-canvas.drop-surface--active .cs-col:empty::before {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ============================================================
+   BLOCK WIDTH NORMALIZATION (flow contexts only)
+   In a row/column flow canvas, blocks fill their column width.
+   In absolute canvas mode the user controls width via drag-resize,
+   so we don't force anything there.
+   ============================================================ */
+.cs-doc>.cs_block_s,
+.cs-doc>.canvas-block,
+.cs-col>.cs_block_s,
+.cs-col>.canvas-block {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+
+/* ============================================================
+   Block reorder — grip handle + dragging state
+   ============================================================ */
+.cs-block-grip {
+  position: absolute;
+  top: 50%;
+  left: -28px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #d8dbef;
+  border-radius: 4px;
+  color: #8a90b8;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 120ms ease, background 120ms ease, color 120ms ease, border-color 120ms ease;
+  user-select: none;
+  z-index: 30;
+  line-height: 1;
+  touch-action: none;
+  box-shadow: 0 1px 2px rgba(20, 24, 60, 0.05);
+}
+
+.cs-block-grip svg {
+  display: block;
+  pointer-events: none;
+}
+
+/* Show the grip when the block (or grip itself) is hovered */
+.cs-flow-canvas .cs-col>.cs_block_s:hover>.cs-block-grip,
+.cs-flow-canvas .cs-col>.canvas-block:hover>.cs-block-grip,
+.cs-block-grip:hover {
+  opacity: 1;
+}
+
+.cs-block-grip:hover {
+  background: #248567;
+  border-color: #248567;
+  color: #ffffff;
+}
+
+.cs-block-grip:active {
+  cursor: grabbing;
+  background: #5c5cff;
+  color: #ffffff;
+}
+
+/* The host block needs position:relative so the grip's absolute placement
+   anchors correctly. Top-level flow blocks already have position:relative
+   from the normalize step. */
+.cs-flow-canvas .cs-col>.cs_block_s,
+.cs-flow-canvas .cs-col>.canvas-block {
+  position: relative;
+}
+
+/* During drag, fade out block content but keep grip icon visible for better UX */
+.cs-flow-canvas .cs-block--dragging {
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Keep grip icon fully visible during drag */
+.cs-flow-canvas .cs-block--dragging .cs-block-grip {
+  opacity: 1;
+}
+
+/* Field panel UI lives in the parent Angular app — see app.scss. */
+
+
+
+.body-main-content {
+  /* padding: 16px; */
+}
+
+@media print {
+  .cs-doc {
+    height: var(--cs-page-min-height, 1123px) !important;
+  }
+
+  .cs-page-number {
+    display: none !important;
+  }
+
+  /* Disable all animations during PDF generation */
+  * {
+    animation: none !important;
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition: none !important;
+    transition-duration: 0s !important;
+  }
+
+  .cs-drop-indicator,
+  .cs_block_s,
+  .canvas-block {
+    animation: none !important;
+  }
+}
+
+/* Dimension indicator — shows block dimensions during resize */
+@keyframes cs-dimension-fade-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes cs-dimension-fade-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.95);
+  }
+}
+
+.cs-dimension-indicator {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+}
+
+.cs-dimension-indicator--visible {
+  animation: cs-dimension-fade-in 200ms ease forwards;
+}
+
+.cs-dimension-indicator--visible:not(.cs-dimension-indicator--hide) {
+  animation: cs-dimension-fade-in 200ms ease forwards;
+}
+
+.cs-dimension-indicator__text {
+  display: inline-block;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.9);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.3px;
+}

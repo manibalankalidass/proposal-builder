@@ -1,0 +1,16 @@
+/* Canvas width / height pick up from CSS vars on :root, set by app.ts
+   when the page-size dropdown changes. Defaults match A4 portrait.
+
+   IMPORTANT: the iframe holds a single page (cs_paper > cs-doc). We
+   size the iframe EXACTLY to the page size so its own document never
+   needs to scroll. The outer .canvas-stage in app.scss is the single
+   scroll area, so landscape pages produce one tidy horizontal
+   scrollbar instead of nested ones. */
+:host {
+  display: block;
+  width: var(--editor-canvas-width, 794px);
+  /* Don't let the host shrink below the page size — if we do, the
+     iframe stays wide while the host clips it, producing the extra
+     scrollbar artifact we saw. */
+}
+

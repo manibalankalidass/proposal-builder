@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Custom Form</title>
+  <link rel="stylesheet" href="./css/custom-form.css" />
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/froala-editor/4.3.1/css/froala_editor.pkgd.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="./editor/editor.css" />
+</head>
+
+<body>
+
+
+
+  <div id="place_everything" class="notranslate">
+    <div class="page_container">
+      <!--
+        Canvas mount point. The outer .cs_paper is host-owned (rendered
+        by this HTML). flow-canvas.js will inject .cs-doc pages directly
+        into this .cs_paper — it must NOT create a second one inside the
+        canvas.
+      -->
+      <div dnddropzone="" class="cs_paper">
+        <div class="cs_page custom-form-design centercontent cs_selected" style="visibility: visible;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/froala-editor/4.3.1/js/froala_editor.pkgd.min.js"></script>
+  <script src="./js/font-config.js"></script>
+  <script src="./editor/inline-editor.js"></script>
+  <script src="./editor/froala-style-handler.js"></script>
+  <script src="./js/block-creator.js"></script>
+  <script src="./js/canvas-config.js"></script>
+  <script src="./js/custom-form.js"></script>
+
+  <!-- Single source of truth for block types (must load before factory/menus) -->
+  <script src="./js/block-registry.js"></script>
+
+  <!-- Flow canvas feature modules (must load before flow-canvas.js entry point) -->
+  <script src="./js/flow/template-data.js"></script>
+  <script src="./js/flow/block-factory.js"></script>
+  <script src="./js/flow/pen-shape.js"></script>
+  <script src="./js/flow/row-col-builder.js"></script>
+  <script src="./js/flow/drop-zones.js"></script>
+  <script src="./js/flow/col-resize.js"></script>
+  <script src="./js/flow/section-canvas.js"></script>
+  <script src="./js/flow/cleanup-observer.js"></script>
+  <script src="./js/flow/block-reorder.js"></script>
+  <script src="./js/flow/field-panel.js"></script>
+  <script src="./js/flow/history-manager.js"></script>
+  <script src="./js/flow/inline-insert.js"></script>
+  <script src="./js/flow/copy-paste.js"></script>
+  <script src="./js/flow/page-shape-designer.js"></script>
+  <script src="./js/flow/collab.js"></script>
+  <script src="./js/flow-canvas.js"></script>
+
+  <script src="./js/common-twig-generator.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,174 @@
+<div class="cs_page custom-form-design centercontent cs_selected cs-flow-canvas" style="visibility: visible;" data-flow-canvas-init="1">
+  <div class="cs-doc" data-page="1" data-cs-starter-template="invoice">
+    <!-- Header Section - Black Gold -->
+    <div class="cs-row cs-page-header" id="row_header_d4" data-cs-page-region="header" style="padding: 0px; min-height: 100px; border: 0px; background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%); display: flex; align-items: center;">
+      <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; padding: 20px;">
+        <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Company Header" id="block_header_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+          <div class="edit_me resize" id="dynamic_header_d4" placeholder="" style="font-size: 28px; font-weight: bold; color: #d4af37; margin: 0;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <div style="width: 50px; height: 50px; background: #d4af37; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #1a1a1a; font-weight: bold; font-size: 22px;">P</div>
+              <div>
+                <div style="color: #d4af37; font-size: 24px; font-weight: bold;">PRESTIGE</div>
+                <div style="color: #999; font-size: 11px; font-weight: normal;">Executive Consulting</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="body-main-content" style="flex: 1 1 0%; display: flex; flex-direction: column; gap: 0px; padding: 30px;">
+
+      <!-- Invoice Title -->
+      <div class="cs-row" id="row_title_d4" style="margin-bottom: 20px; min-height: 0px;">
+        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Title" id="block_title_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+            <div class="edit_me resize" id="dynamic_title_d4" placeholder="" style="font-size: 32px; font-weight: bold; color: #1a1a1a; margin: 0;">PROFESSIONAL INVOICE</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invoice Details -->
+      <div class="cs-row invoice-row invoice-row--intro" id="row_intro_d4" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
+        <!-- Invoice To -->
+        <div class="cs-col" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice To" id="block_invoice_to_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+            <div class="edit_me resize" id="dynamic_invoice_to_d4" placeholder="" style="font-size: 13px; color: #1a1a1a;">
+              <div style="font-weight: bold; color: #d4af37; margin-bottom: 8px; font-size: 12px; text-transform: uppercase;">Billed To:</div>
+              <div style="font-weight: bold; font-size: 15px;">{{customer_name}}</div>
+              <div>{{address_line1}}</div>
+              <div>{{address_line2}}</div>
+              <div>{{city}}, {{state}} {{zip_code}}</div>
+              <div style="margin-top: 8px;">{{customer_email}}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoice Meta -->
+        <div class="cs-col" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Meta" id="block_meta_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: #f5f5f5; padding: 15px; border-left: 4px solid #d4af37; border-radius: 2px;">
+            <div class="edit_me resize" id="dynamic_meta_d4" placeholder="" style="font-size: 13px; color: #1a1a1a; margin: 0;">
+              <div style="display: grid; grid-template-columns: 100px 1fr; gap: 10px;">
+                <div style="font-weight: bold;">Invoice #:</div>
+                <div>{{invoice_number}}</div>
+                <div style="font-weight: bold;">Date:</div>
+                <div>{{Invoice_Date}}</div>
+                <div style="font-weight: bold;">Due Date:</div>
+                <div>{{due_date}}</div>
+                <div style="font-weight: bold;">PO #:</div>
+                <div>{{po_number}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Items Table -->
+      <div class="cs-row invoice-row invoice-row--items" id="row_items_d4" style="margin-bottom: 30px; min-height: 0px;">
+        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Items Table" id="block_items_d4" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+            <div class="edit_me fr-element fr-view resize" id="dynamic_items_d4" placeholder="" style="font-size: 12px; width: 100%; padding: 0px; margin: 0px; color: #1a1a1a; overflow: visible;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #1a1a1a; color: #d4af37;">
+                    <th style="padding: 12px; text-align: left; font-weight: bold; border: 0;">Service Description</th>
+                    <th style="padding: 12px; text-align: center; font-weight: bold; border: 0; width: 80px;">Hours</th>
+                    <th style="padding: 12px; text-align: right; font-weight: bold; border: 0; width: 100px;">Rate/Hr</th>
+                    <th style="padding: 12px; text-align: right; font-weight: bold; border: 0; width: 100px;">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Strategic Business Consulting</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">20</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$250.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$5,000.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Executive Leadership Coaching</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">15</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$300.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$4,500.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Organizational Development</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">10</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$275.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$2,750.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Change Management Planning</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">8</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$250.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$2,000.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Process Improvement Analysis</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">12</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$225.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$2,700.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Implementation & Follow-up</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">5</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$250.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$1,250.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Section -->
+      <div class="cs-row invoice-row invoice-row--summary" id="row_summary_d4" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
+        <!-- Notes -->
+        <div class="cs-col" style="flex: 1 1 60%; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Notes" id="block_notes_d4" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+            <div class="edit_me resize" id="dynamic_notes_d4" placeholder="" style="font-size: 12px; color: #1a1a1a;">
+              <div style="margin-bottom: 15px;">
+                <div style="font-weight: bold; color: #1a1a1a; margin-bottom: 8px; font-size: 13px;">Professional Terms:</div>
+                <div style="font-size: 11px; line-height: 1.6; color: #666;">
+                  This invoice represents professional consulting services rendered. Payment is due upon receipt. All work is confidential and proprietary to PRESTIGE Consulting. Detailed reports and recommendations are included in the attached documentation.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Totals -->
+        <div class="cs-col" style="flex: 0 0 40%; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Totals" id="block_totals_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: #f5f5f5; padding: 15px; border: 2px solid #d4af37; border-radius: 2px;">
+            <div class="edit_me resize" id="dynamic_totals_d4" placeholder="" style="font-size: 12px; color: #1a1a1a; margin: 0;">
+              <div style="display: grid; grid-template-columns: 110px 90px; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
+                <div style="text-align: right; font-weight: 500;">Subtotal:</div>
+                <div style="text-align: right;">$18,200.00</div>
+                <div style="text-align: right; font-weight: 500;">Tax:</div>
+                <div style="text-align: right;">$0.00</div>
+              </div>
+              <div style="display: grid; grid-template-columns: 110px 90px; gap: 10px; font-size: 14px;">
+                <div style="text-align: right; font-weight: bold; color: #d4af37;">TOTAL DUE:</div>
+                <div style="text-align: right; font-weight: bold; color: #d4af37;">$18,200.00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="cs-row" id="row_footer_d4" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #d4af37; min-height: 0px;">
+        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Footer" id="block_footer_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+            <div class="edit_me resize" id="dynamic_footer_d4" placeholder="" style="font-size: 10px; color: #999; text-align: center;">
+              <div>PRESTIGE Consulting | info@prestigeconsulting.com | 1-800-PRESTIGE | www.prestigeconsulting.com</div>
+              <div style="margin-top: 6px;">© 2024 PRESTIGE Inc. All rights reserved. Confidential & Proprietary.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

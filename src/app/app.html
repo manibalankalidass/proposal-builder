@@ -1,0 +1,1020 @@
+<div class="editor-shell">
+  <header class="topbar">
+    <div class="topbar__group topbar__group--brand">
+      <button class="brand-mark" aria-label="BrochureFlow home" type="button"></button>
+      <span class="brand-name">{{ brandName }}</span>
+    </div>
+
+    <div class="topbar__group topbar__group--history">
+      <button class="icon-button icon-button--plain" title="Undo" type="button" (click)="triggerHistoryAction('undo')">
+        ↩
+      </button>
+      <button class="icon-button icon-button--plain" title="Redo" type="button" (click)="triggerHistoryAction('redo')">
+        ↪
+      </button>
+    </div>
+
+    <!-- <div class="topbar__group topbar__group--tools">
+      @for (action of toolbarActions; track action.label) {
+      <button class="toolbar-action" type="button">
+        <span class="toolbar-action__icon">{{ action.icon }}</span>
+        <span>{{ action.label }}</span>
+      </button>
+      }
+    </div>
+
+    <div class="topbar__group topbar__group--canvas-tools">
+      @for (action of quickCanvasActions; track action) {
+      <button class="icon-button" type="button">{{ action }}</button>
+      }
+
+      <button class="zoom-pill" type="button">
+        <span>100%</span>
+        <span class="zoom-pill__chevron">⌄</span>
+      </button>
+    </div> -->
+
+    <div class="topbar__group topbar__group--page-size">
+      <label class="page-size-control">
+        <span class="page-size-control__label">Page</span>
+        <select class="page-size-control__select" [ngModel]="pdfSettings.pageSize"
+          (ngModelChange)="onPageSizeChange($event)">
+          @for (size of pageSizes; track size) {
+          <option [value]="size">{{ pageSizeLabels[size] }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <!-- <div class="topbar__group topbar__group--title">
+      <span>{{ documentTitle }}</span>
+    </div> -->
+
+    <div class="topbar__group topbar__group--utility">
+      <button *ngIf="pdfSettings.enableComments" class="utility-action utility-action--outline" type="button"
+        (click)="toggleComments()" title="Toggle comment mode, then click a block to comment">
+        <span class="utility-action__icon">💬</span>
+        <span>Comments</span>
+      </button>
+      <button class="utility-action utility-action--outline" type="button" (click)="openSaveAs()">
+        <span class="utility-action__icon">💾</span>
+        <span>Save as</span>
+      </button>
+      @for (action of utilityActions; track action.label) {
+      <button class="utility-action" [class.utility-action--primary]="action.variant === 'primary'"
+        [class.utility-action--outline]="action.variant === 'outline'" type="button"
+        (click)="handleUtilityAction(action.label)">
+        @if (action.icon) {
+        <span class="utility-action__icon">{{ action.icon }}</span>
+        }
+        <span>{{ action.label }}</span>
+      </button>
+      }
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar sidebar--left">
+      <div class="panel-tabs">
+        @for (tab of leftTabs; track tab) {
+        <button class="panel-tab" [class.panel-tab--active]="tab === activeLeftTab" type="button"
+          (click)="selectLeftTab(tab)">
+          {{ tab }}
+        </button>
+        }
+      </div>
+
+      <div class="sidebar__content">
+        @if (activeLeftTab === 'Components') {
+        @for (section of librarySections; track section.title) {
+        <section class="library-section">
+          <h2>{{ section.title }}</h2>
+
+          <div class="library-list">
+            @for (item of section.items; track item.label) {
+            <button class="library-item" [attr.data-block-type]="item.type" draggable="true" type="button"
+              (dragstart)="handleLibraryDragStart($event, item.label, item.icon, item.type)"
+              (dragend)="handleLibraryDragEnd()">
+              <span class="library-item__icon">{{ item.icon }}</span>
+              <span class="library-item__label">{{ item.label }}</span>
+            </button>
+            }
+          </div>
+        </section>
+        }
+
+        <section class="library-section" style="flex: 1; display: flex; flex-direction: column;">
+          <h2>All Icons</h2>
+          <app-icon-picker style="flex: 1;"></app-icon-picker>
+        </section>
+        } @else if (activeLeftTab === 'Templates') {
+        <div style="padding: 16px; color: #666;">
+          <div class="first-templates-design">
+            @for (item of predefineTemplates; track item.label) {
+            <button class="predefine-templates-item" [attr.data-block-type]="blockTypeFromLabel(item.label)"
+              draggable="true" type="button" (dragstart)="handleLibraryDragStart($event, item.templateId)"
+              (dragend)="handleLibraryDragEnd()">
+              <!-- <span class="library-item__icon"></span> -->
+              <img [src]="item.imageUrl" alt="{{ item.label }}"
+                style="width: 75%; height: auto; border-radius: 4px; margin-bottom: 8px;" />
+            </button>
+            }
+
+          </div>
+
+        </div>
+        } @else if (activeLeftTab === 'History') {
+        <div class="history-panel" style="padding: 12px;">
+          <div style="margin-bottom: 12px;">
+            <button type="button" (click)="createBackup()"
+              style="width: 100%; padding: 8px 12px; background: #248567; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer;">
+              💾 Create Backup Now
+            </button>
+          </div>
+
+          @if (backupList.length === 0) {
+          <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 13px;">
+            No backups yet. Auto-saves every 5 minutes.
+          </div>
+          } @else {
+          <div class="backup-list">
+            @for (backup of backupList; track backup.id) {
+            <button type="button" [class.backup-item--selected]="selectedBackupId === backup.id"
+              (click)="restoreBackup(backup.id)" class="backup-item"
+              style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; cursor: pointer; text-align: left; transition: all 0.2s;">
+              <div style="font-weight: 600; font-size: 12px; color: #1f2937; margin-bottom: 4px;">
+                {{ backup.label }}
+              </div>
+              <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px;">
+                {{ formatBackupTime(backup.timestamp) }}
+              </div>
+              <div
+                style="font-size: 11px; color: #6b7280; background: #f3f4f6; padding: 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                📸 {{ backup.thumbnail }}
+              </div>
+              <button type="button" (click)="deleteBackup(backup.id); $event.stopPropagation()"
+                style="width: 100%; margin-top: 6px; padding: 4px; font-size: 11px; color: #ef4444; background: #fee2e2; border: none; border-radius: 4px; cursor: pointer;">
+                🗑 Delete
+              </button>
+            </button>
+            }
+          </div>
+          }
+        </div>
+        }
+
+        @else if (activeLeftTab === 'Saved templates') {
+        <div class="history-panel" style="padding: 12px;">
+          <label class="import-btn">
+            ⤒ Import file
+            <input type="file" accept=".json,application/json" (change)="onImportFile($event)" style="display: none;" />
+          </label>
+          @if (savedTemplates.length === 0) {
+          <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 13px;">
+            No saved templates yet. Use “Save as” → <strong>Save as Template</strong>, or import a shared file above.
+          </div>
+          } @else {
+          <div class="backup-list">
+            @for (item of savedTemplates; track item.id) {
+            <button type="button" (click)="loadSavedItem(item.id)" class="backup-item"
+              style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; cursor: pointer; text-align: left;">
+              <div style="font-weight: 600; font-size: 12px; color: #1f2937; margin-bottom: 4px;">{{ item.name }}</div>
+              <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px;">{{ formatBackupTime(item.timestamp) }}
+              </div>
+              <div
+                style="font-size: 11px; color: #6b7280; background: #f3f4f6; padding: 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                📄 {{ item.thumbnail }}</div>
+              <div style="display: flex; gap: 6px; margin-top: 6px;">
+                <button type="button" (click)="exportSavedItem(item.id); $event.stopPropagation()"
+                  style="flex: 1; padding: 4px; font-size: 11px; color: #1d4ed8; background: #e0e7ff; border: none; border-radius: 4px; cursor: pointer;">⤓
+                  Export</button>
+                <button type="button" (click)="deleteSavedItem(item.id); $event.stopPropagation()"
+                  style="flex: 1; padding: 4px; font-size: 11px; color: #ef4444; background: #fee2e2; border: none; border-radius: 4px; cursor: pointer;">🗑
+                  Delete</button>
+              </div>
+            </button>
+            }
+          </div>
+          }
+        </div>
+        }
+
+        @else if (activeLeftTab === 'My Components') {
+        <div style="padding: 12px;">
+          <p style="font-size: 11px; color: #9ca3af; margin: 0 0 12px; line-height: 1.5;">
+            Select a block (or a section / container) on the canvas, then click
+            <strong>Save as Component</strong> in the Properties panel. Drag a saved component onto the
+            canvas, or click it to insert.
+          </p>
+          <label class="import-btn">
+            ⤒ Import file
+            <input type="file" accept=".json,application/json" (change)="onImportFile($event)" style="display: none;" />
+          </label>
+          @if (savedComponents.length === 0) {
+          <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 13px;">
+            No saved components yet.
+          </div>
+          } @else {
+          <div class="library-list">
+            @for (comp of savedComponents; track comp.id) {
+            <div class="library-item" draggable="true" (dragstart)="handleComponentDragStart($event, comp)"
+              (click)="insertComponent(comp.id)" title="Click to insert · drag onto canvas"
+              style="position: relative; cursor: grab; padding-right: 44px;">
+              <span class="library-item__icon">{{ comp.kind === 'group' ? '▦' : '◼' }}</span>
+              <span class="library-item__label" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                {{ comp.name }}
+              </span>
+              <button type="button" (click)="exportComponentItem(comp.id); $event.stopPropagation()" title="Export"
+                style="position: absolute; top: 4px; right: 24px; width: 18px; height: 18px; padding: 0; border: none; border-radius: 4px; background: #e0e7ff; color: #1d4ed8; font-size: 11px; cursor: pointer; line-height: 1;">⤓</button>
+              <button type="button" (click)="deleteComponent(comp.id); $event.stopPropagation()" title="Delete"
+                style="position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; padding: 0; border: none; border-radius: 4px; background: #fee2e2; color: #ef4444; font-size: 11px; cursor: pointer; line-height: 1;">×</button>
+            </div>
+            }
+          </div>
+          }
+        </div>
+        }
+      </div>
+    </aside>
+
+    <div class="canvas-stage">
+      <iframe class="canvas-frame__iframe" [src]="frameUrl"></iframe>
+    </div>
+
+    <aside class="sidebar sidebar--right">
+      <div class="panel-tabs panel-tabs--right">
+        @for (tab of rightTabs; track tab) {
+        <button class="panel-tab" [class.panel-tab--active]="tab === activeRightTab" type="button"
+          (click)="selectRightTab(tab)">
+          {{ tab }}
+        </button>
+        }
+      </div>
+
+      <div class="properties-panel" *ngIf="activeRightTab === 'Properties'">
+        <ng-container *ngIf="activeBlock; else emptySettings">
+          <div class="properties-header" style="padding: 16px;padding-bottom: 0px;">
+            <h3>{{ activeBlock.label || 'Block Settings' }}</h3>
+          </div>
+          <div class="properties-body" style="padding: 16px;">
+            <button type="button" (click)="saveAsComponent()"
+              style="width: 100%; padding: 10px 12px; margin-bottom: 16px; background: #248567; color: #fff; border: none; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer;">
+              💾 Save as Component
+            </button>
+            <button type="button"
+              *ngIf="activeBlock && (activeBlock.blockType === 'Section Container' || activeBlock.blockType === 'Table' || activeBlock.blockType === 'List Repeater')"
+              class="binding-config-btn"
+              style="width: 100%; padding: 10px 12px; margin-bottom: 16px; background: #5c5cff; color: #fff; border: none; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer;"
+              (click)="openBindingModalForBlock(activeBlock)">
+              ⚙ Configure Binding
+            </button>
+            <label
+              style="display: block; font-size: 11px; font-weight: 700; color: #1f2937; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+              DEFAULT SHOW CONDITION <span
+                style="color: #6b7280; font-weight: normal; text-transform: none;">(optional)</span>
+            </label>
+            <app-condition-editor [value]="activeBlock.twigIf || ''" [variables]="availableVariablePaths"
+              [priorityVariables]="conditionScopedPaths" placeholder="e.g. mainContent.visible"
+              (valueChange)="updateCondition($event)" />
+            <p style="font-size: 12px; color: #9ca3af; line-height: 1.4; margin: 0; margin-bottom: 16px;">
+              Start typing to see variables from JSON data.
+            </p>
+
+            <!-- Row / cell level conditions: shown when a table cell is clicked -->
+            <div *ngIf="activeTableTarget"
+              style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 16px; background: #fafafe;">
+              <label
+                style="display: block; font-size: 11px; font-weight: 700; color: #4338ca; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+                TABLE CONDITIONS
+              </label>
+
+              <label style="display: block; font-size: 11px; font-weight: 600; color: #1f2937; margin-bottom: 6px;">
+                ROW SHOW CONDITION <span style="color: #6b7280; font-weight: normal;">(whole &lt;tr&gt;)</span>
+              </label>
+              <app-condition-editor [value]="activeTableTarget.rowCondition || ''" [variables]="availableVariablePaths"
+                [priorityVariables]="conditionScopedPaths" placeholder="e.g. mainContent.jobDetails"
+                (valueChange)="updateRowCondition($event)" />
+
+              <label style="display: block; font-size: 11px; font-weight: 600; color: #1f2937; margin-bottom: 6px;">
+                CELL SHOW CONDITION <span style="color: #6b7280; font-weight: normal;">(this {{
+                  activeTableTarget.cellTag || 'cell' }})</span>
+              </label>
+              <app-condition-editor [value]="activeTableTarget.cellCondition || ''" [variables]="availableVariablePaths"
+                [priorityVariables]="conditionScopedPaths" placeholder="e.g. item.price > 0"
+                (valueChange)="updateCellCondition($event)" />
+              <p style="font-size: 11px; color: #9ca3af; line-height: 1.4; margin: 8px 0 0;">
+                Row false → entire &lt;tr&gt; removed. Cell false → entire &lt;td&gt; removed (shifts remaining columns
+                in that row).
+              </p>
+            </div>
+
+
+            <ng-container *ngIf="availableFields.length > 0">
+              <div class="available-fields">
+                <div class="available-fields__binding">
+                  <span class="available-fields__binding-label">Bound array:</span>
+                  <code class="available-fields__binding-path">{{ availableFieldsRepeatPath }}</code>
+                  @if (availableFieldsLoopDepth > 1) {
+                  <span class="available-fields__loops-badge">{{ availableFieldsLoopDepth }} nested loops</span>
+                  }
+                </div>
+                <div class="available-fields__header">
+                  <span class="available-fields__title">{{ availableFieldsAlias | uppercase }} FIELDS</span>
+                  <span class="available-fields__subtitle">click to copy</span>
+                </div>
+                <div class="available-fields__source">loop variable: <code>{{ availableFieldsAlias }}</code></div>
+                <div class="available-fields__list">
+                  @for (field of availableFields; track field.expr) {
+                  <button type="button" class="available-fields__chip"
+                    [class.available-fields__chip--array]="field.kind === 'array'"
+                    [class.available-fields__chip--object]="field.kind === 'object'"
+                    [class.available-fields__chip--value]="field.kind === 'value'"
+                    [title]="'Click to insert ' + field.expr" (click)="copyFieldExpr(field.expr)">
+                    {{ field.expr }}
+                  </button>
+                  }
+                </div>
+              </div>
+            </ng-container>
+          </div>
+        </ng-container>
+
+        <ng-template #emptySettings>
+          <div class="pdf-settings-panel">
+            <div class="pdf-settings-header">
+              <h3>PDF Page Settings</h3>
+              <p>Applied when you click <strong>Generate PDF (Puppeteer)</strong>. Select a block to edit block
+                properties instead.</p>
+            </div>
+
+
+            <div class="pdf-settings-row"
+              style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px;">
+              <label for="pdf-header-footer" style="margin-bottom: 0;">Enable header & footer</label>
+              <label class="switch-toggle"
+                style="position: relative; display: inline-block; width: 34px; height: 20px;">
+                <input type="checkbox" id="pdf-header-footer" [ngModel]="pdfSettings.enableHeaderFooter"
+                  (ngModelChange)="onHeaderFooterToggle($event)" style="opacity: 0; width: 0; height: 0;">
+                <span class="slider round" [style.background]="pdfSettings.enableHeaderFooter ? '#5c5cff' : '#e2e5f4'"
+                  style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; transition: .2s; border-radius: 20px;">
+                  <span
+                    style="position: absolute; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .2s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"
+                    [style.transform]="pdfSettings.enableHeaderFooter ? 'translateX(14px)' : 'translateX(0)'"></span>
+                </span>
+              </label>
+            </div>
+
+            <div class="pdf-settings-row"
+              style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px;">
+              <label for="pdf-inline-insert" style="margin-bottom: 0;">Enable inline + insert</label>
+              <label class="switch-toggle"
+                style="position: relative; display: inline-block; width: 34px; height: 20px;">
+                <input type="checkbox" id="pdf-inline-insert" [ngModel]="pdfSettings.enableInlineInsert"
+                  (ngModelChange)="onInlineInsertToggle($event)" style="opacity: 0; width: 0; height: 0;">
+                <span class="slider round" [style.background]="pdfSettings.enableInlineInsert ? '#5c5cff' : '#e2e5f4'"
+                  style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; transition: .2s; border-radius: 20px;">
+                  <span
+                    style="position: absolute; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .2s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"
+                    [style.transform]="pdfSettings.enableInlineInsert ? 'translateX(14px)' : 'translateX(0)'"></span>
+                </span>
+              </label>
+            </div>
+
+            <div class="pdf-settings-row"
+              style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px;">
+              <label for="pdf-comments" style="margin-bottom: 0;">Enable comments</label>
+              <label class="switch-toggle" style="position: relative; display: inline-block; width: 34px; height: 20px;">
+                <input type="checkbox" id="pdf-comments" [ngModel]="pdfSettings.enableComments"
+                  (ngModelChange)="onCommentsToggle($event)" style="opacity: 0; width: 0; height: 0;">
+                <span class="slider round" [style.background]="pdfSettings.enableComments ? '#5c5cff' : '#e2e5f4'"
+                  style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; transition: .2s; border-radius: 20px;">
+                  <span
+                    style="position: absolute; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .2s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"
+                    [style.transform]="pdfSettings.enableComments ? 'translateX(14px)' : 'translateX(0)'"></span>
+                </span>
+              </label>
+            </div>
+
+            <div class="pdf-settings-row"
+              style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px;">
+              <label for="pdf-presence" style="margin-bottom: 0;">Enable live cursors (presence)</label>
+              <label class="switch-toggle" style="position: relative; display: inline-block; width: 34px; height: 20px;">
+                <input type="checkbox" id="pdf-presence" [ngModel]="pdfSettings.enablePresence"
+                  (ngModelChange)="onPresenceToggle($event)" style="opacity: 0; width: 0; height: 0;">
+                <span class="slider round" [style.background]="pdfSettings.enablePresence ? '#5c5cff' : '#e2e5f4'"
+                  style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; transition: .2s; border-radius: 20px;">
+                  <span
+                    style="position: absolute; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .2s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"
+                    [style.transform]="pdfSettings.enablePresence ? 'translateX(14px)' : 'translateX(0)'"></span>
+                </span>
+              </label>
+            </div>
+
+            <div class="pdf-settings-row">
+              <label for="pdf-page-size">Page size</label>
+              <select id="pdf-page-size" [ngModel]="pdfSettings.pageSize" (ngModelChange)="onPageSizeChange($event)">
+                @for (size of pageSizes; track size) {
+                <option [value]="size">{{ pageSizeLabels[size] }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="pdf-settings-section">
+              <div class="pdf-settings-section__title">Margins (mm)</div>
+              <div class="pdf-settings-grid">
+                <div class="pdf-settings-field">
+                  <label for="pdf-margin-top">Top</label>
+                  <input id="pdf-margin-top" type="number" min="0" max="100" [(ngModel)]="pdfSettings.marginTop"
+                    (change)="onMarginChange()" />
+                </div>
+                <div class="pdf-settings-field">
+                  <label for="pdf-margin-right">Right</label>
+                  <input id="pdf-margin-right" type="number" min="0" max="100" [(ngModel)]="pdfSettings.marginRight"
+                    (change)="onMarginChange()" />
+                </div>
+                <div class="pdf-settings-field">
+                  <label for="pdf-margin-bottom">Bottom</label>
+                  <input id="pdf-margin-bottom" type="number" min="0" max="100" [(ngModel)]="pdfSettings.marginBottom"
+                    (change)="onMarginChange()" />
+                </div>
+                <div class="pdf-settings-field">
+                  <label for="pdf-margin-left">Left</label>
+                  <input id="pdf-margin-left" type="number" min="0" max="100" [(ngModel)]="pdfSettings.marginLeft"
+                    (change)="onMarginChange()" />
+                </div>
+              </div>
+            </div>
+
+            <div class="pdf-settings-presets">
+              <button type="button"
+                (click)="pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 0; onMarginChange()">Edge-to-edge
+                (0mm)</button>
+              <button type="button"
+                (click)="pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 10; onMarginChange()">Browser
+                default (10mm)</button>
+              <button type="button"
+                (click)="pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 20; onMarginChange()">Document
+                (20mm)</button>
+            </div>
+          </div>
+        </ng-template>
+      </div>
+
+      <div class="data-binding-panel" *ngIf="activeRightTab === 'Data Binding'">
+        <div class="data-binding__header">
+          <div class="data-binding__heading">
+            <h3>Data Binding</h3>
+            <p>Click any variable to insert it at the cursor position.</p>
+          </div>
+          <button class="data-binding__apply" type="button" (click)="applyDataBinding()">Apply</button>
+        </div>
+
+        <div class="data-binding__tabs" role="tablist">
+          <button type="button" role="tab" class="data-binding__tab"
+            [class.data-binding__tab--active]="dataBindingView === 'tree'" (click)="setDataBindingView('tree')">
+            <span class="data-binding__tab-icon">⌘</span> Variables
+          </button>
+          <button type="button" role="tab" class="data-binding__tab"
+            [class.data-binding__tab--active]="dataBindingView === 'json'" (click)="setDataBindingView('json')">
+            <span class="data-binding__tab-icon">&#123; &#125;</span> JSON
+          </button>
+        </div>
+
+        <div class="data-binding__search" *ngIf="dataBindingView === 'tree'">
+          <span class="data-binding__search-icon">⌕</span>
+          <input type="text" class="data-binding__search-input" placeholder="Search variables…"
+            [(ngModel)]="dataBindingSearch" />
+          <button type="button" class="data-binding__search-clear" *ngIf="dataBindingSearch"
+            (click)="clearDataBindingSearch()" aria-label="Clear search">×</button>
+        </div>
+
+        <div class="data-binding__toolbar" *ngIf="dataBindingView === 'tree'">
+          <button type="button" class="data-binding__tool-btn" (click)="expandAllBindingNodes()">Expand all</button>
+          <button type="button" class="data-binding__tool-btn" (click)="collapseAllBindingNodes()">Collapse all</button>
+        </div>
+
+        <div class="data-binding__toolbar data-binding__toolbar--json" *ngIf="dataBindingView === 'json'">
+          <span class="data-binding__toolbar-label">JSON Data Source</span>
+          <button type="button" class="data-binding__tool-btn" (click)="copyBindingJson()">
+            {{ dataBindingCopyFeedback === '__json__' ? '✓ Copied' : '⧉ Copy' }}
+          </button>
+        </div>
+
+        <!-- Tree view -->
+        <div class="data-binding__tree" *ngIf="dataBindingView === 'tree'">
+          @if (bindingTreeRows.length === 0) {
+          <div class="data-binding__empty">No matching variables.</div>
+          }
+          @for (row of bindingTreeRows; track row.path) {
+          <div class="data-binding__row" [class.data-binding__row--leaf]="!row.expandable"
+            [class.data-binding__row--match]="row.matched" [style.padding-left.px]="8 + row.depth * 14"
+            (click)="row.expandable ? toggleBindingNode(row.path) : insertVariable(row.path)">
+            <span class="data-binding__caret" *ngIf="row.expandable">{{ row.expanded ? '▾' : '▸' }}</span>
+            <span class="data-binding__caret data-binding__caret--spacer" *ngIf="!row.expandable"></span>
+
+            <span class="data-binding__badge" [class.data-binding__badge--object]="row.kind === 'object'"
+              [class.data-binding__badge--array]="row.kind === 'array'"
+              [class.data-binding__badge--string]="row.kind === 'string'"
+              [class.data-binding__badge--number]="row.kind === 'number'"
+              [class.data-binding__badge--boolean]="row.kind === 'boolean'"
+              [class.data-binding__badge--null]="row.kind === 'null'">
+              {{
+              row.kind === 'object' ? '{ }' :
+              row.kind === 'array' ? '[ ]' :
+              row.kind === 'string' ? 'A' :
+              row.kind === 'number' ? '#' :
+              row.kind === 'boolean' ? '◐' : '∅'
+              }}
+            </span>
+
+            <span class="data-binding__key">{{ row.key }}</span>
+
+            @if (row.expandable) {
+            <span class="data-binding__meta">{{ row.childCount }}</span>
+            } @else {
+            <span class="data-binding__sample" [title]="row.sample">{{ row.sample }}</span>
+            }
+
+            @if (!row.expandable) {
+            <button type="button" class="data-binding__copy"
+              [class.data-binding__copy--success]="dataBindingCopyFeedback === row.path"
+              (click)="copyBindingPath(row.path, $event)" [attr.aria-label]="'Copy ' + row.path">
+              {{ dataBindingCopyFeedback === row.path ? '✓' : '⧉' }}
+            </button>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- JSON view -->
+        <div class="data-binding__json-view" *ngIf="dataBindingView === 'json'">
+          <div class="data-binding__json-scroll">
+            @for (line of bindingJsonLines; let i = $index; track i) {
+            <div class="data-binding__json-line">
+              <span class="data-binding__json-ln">{{ i + 1 }}</span>
+              <span class="data-binding__json-code">
+                @for (tok of line; track $index) {
+                <span [class]="'tok tok--' + tok.kind">{{ tok.text }}</span>
+                }
+              </span>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="style-panel" *ngIf="activeRightTab === 'Style'">
+        <ng-container *ngIf="activeBlock; else pageSettings">
+          <div class="properties-body" style="padding: 16px;">
+            <div class="style-section" *ngIf="hasProp('layoutStyle') || hasProp('layoutColumns')">
+              <h4 class="style-section__title">LAYOUT & DESIGN</h4>
+
+              <div class="style-row" *ngIf="hasProp('layoutStyle') && blockStyleValues['layoutColumns'] === '2'">
+                <label>Divider Style</label>
+                <select [value]="blockStyleValues['layoutStyle'] || 'wave'"
+                  (change)="onStyleChange('layoutStyle', $any($event.target).value)"
+                  style="width: 100%; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px;">
+                  <option value="wave">Curved Wave</option>
+                  <option value="diagonal">Diagonal Line</option>
+                  <option value="organic">Organic Curve</option>
+                </select>
+              </div>
+              <div class="style-row" *ngIf="hasProp('sectionColor') && blockStyleValues['layoutColumns'] === '2'">
+                <label>Left Section Color</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="color" [value]="blockStyleValues['sectionColor'] || '#FFA500'"
+                    (change)="onStyleChange('sectionColor', $any($event.target).value)"
+                    style="width: 40px; height: 36px; padding: 2px; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer;" />
+                  <input type="text" [value]="blockStyleValues['sectionColor'] || '#FFA500'"
+                    (change)="onStyleChange('sectionColor', $any($event.target).value)" placeholder="#FFA500"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-family: monospace; font-size: 12px;" />
+                </div>
+              </div>
+            </div>
+
+            <div class="style-section" *ngIf="hasProp('textColor') || hasProp('fontSize') || hasProp('fontWeight')">
+              <h4 class="style-section__title">TYPOGRAPHY</h4>
+              <div class="style-row" *ngIf="hasProp('textColor')">
+                <label>Text Color</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="color" [value]="blockStyleValues['textColor'] || '#000000'"
+                    (change)="onStyleChange('color', $any($event.target).value)"
+                    style="width: 40px; height: 36px; padding: 2px; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer;" />
+                  <input type="text" [value]="blockStyleValues['textColor'] || '#000000'"
+                    (change)="onStyleChange('color', $any($event.target).value)" placeholder="#000000"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-family: monospace; font-size: 12px;" />
+                  <button type="button" (click)="onStyleChange('color', '')" title="Clear text color"
+                    style="padding: 6px 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 500;">✕</button>
+                </div>
+              </div>
+              <div class="style-row" *ngIf="hasProp('fontSize')">
+                <label>Font Size</label>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <input type="number"
+                    [value]="blockStyleValues['fontSize'] ? blockStyleValues['fontSize'].replace('px', '') : '14'"
+                    (change)="onStyleChange('fontSize', $any($event.target).value + 'px')" min="8" max="72"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px;" />
+                  <span style="font-size: 12px; color: #6b7280;">px</span>
+                </div>
+              </div>
+              <div class="style-row" *ngIf="hasProp('fontWeight')">
+                <label>Font Weight</label>
+                <select [value]="blockStyleValues['fontWeight'] || '400'"
+                  (change)="onStyleChange('fontWeight', $any($event.target).value)"
+                  style="width: 100%; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px;">
+                  <option value="400">Normal (400)</option>
+                  <option value="500">Medium (500)</option>
+                  <option value="600">SemiBold (600)</option>
+                  <option value="700">Bold (700)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="style-section" *ngIf="hasProp('backgroundColor')">
+              <h4 class="style-section__title">BACKGROUND</h4>
+              <div class="style-row">
+                <label>Background Color</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="color" [value]="blockStyleValues['backgroundColor'] || '#ffffff'"
+                    (change)="onStyleChange('backgroundColor', $any($event.target).value)"
+                    style="width: 40px; height: 36px; padding: 2px; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer;" />
+                  <input type="text" [value]="blockStyleValues['backgroundColor'] || '#ffffff'"
+                    (change)="onStyleChange('backgroundColor', $any($event.target).value)" placeholder="#ffffff"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-family: monospace; font-size: 12px;" />
+                  <button type="button" (click)="onStyleChange('backgroundColor', '')" title="Clear background color"
+                    style="padding: 6px 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 500;">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="style-section"
+              *ngIf="hasProp('borderStyle') || hasProp('borderColor') || hasProp('borderWidth') || hasProp('borderRadius')">
+              <h4 class="style-section__title">BORDER</h4>
+              <div class="style-row" *ngIf="hasProp('borderStyle')">
+                <label>Style</label>
+                <select [value]="blockStyleValues['borderStyle'] || 'none'"
+                  (change)="onStyleChange('borderStyle', $any($event.target).value)"
+                  style="width: 100%; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px;">
+                  <option value="none">None</option>
+                  <option value="solid">Solid</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="dotted">Dotted</option>
+                  <option value="double">Double</option>
+                </select>
+              </div>
+              <div class="style-row" *ngIf="hasProp('borderColor')">
+                <label>Color</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="color" [value]="blockStyleValues['borderColor'] || '#000000'"
+                    (change)="onStyleChange('borderColor', $any($event.target).value)"
+                    style="width: 40px; height: 36px; padding: 2px; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer;" />
+                  <input type="text" [value]="blockStyleValues['borderColor'] || '#000000'"
+                    (change)="onStyleChange('borderColor', $any($event.target).value)" placeholder="#000000"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-family: monospace; font-size: 12px;" />
+                  <button type="button" (click)="onStyleChange('borderColor', '')" title="Clear border color"
+                    style="padding: 6px 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 500;">✕</button>
+                </div>
+              </div>
+              <div class="style-row" *ngIf="hasProp('borderWidth')">
+                <label>Thickness</label>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <input type="number"
+                    [value]="blockStyleValues['borderWidth'] ? blockStyleValues['borderWidth'].replace('px', '') : '1'"
+                    (change)="onStyleChange('borderWidth', $any($event.target).value + 'px')" min="0" max="20"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px;" />
+                  <span style="font-size: 12px; color: #6b7280;">px</span>
+                </div>
+              </div>
+              <div class="style-row" *ngIf="hasProp('borderRadius')">
+                <label>Radius</label>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <input type="number"
+                    [value]="blockStyleValues['borderRadius'] ? blockStyleValues['borderRadius'].replace('px', '') : '0'"
+                    (change)="onStyleChange('borderRadius', $any($event.target).value + 'px')" min="0" max="150"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px;" />
+                  <span style="font-size: 12px; color: #6b7280;">px</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="style-section" *ngIf="hasProp('tableBorder')">
+              <h4 class="style-section__title">TABLE BORDER</h4>
+              <div class="style-row">
+                <label>Border Width (PX)</label>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <input type="number"
+                    [value]="blockStyleValues['tableBorder'] ? blockStyleValues['tableBorder'].replace('px', '') : '1'"
+                    (change)="onStyleChange('tableBorder', $any($event.target).value + 'px')" min="0" max="20"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px;" />
+                  <span style="font-size: 12px; color: #6b7280;">px</span>
+                </div>
+              </div>
+              <div class="style-row">
+                <label>Border Color</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="color" [value]="blockStyleValues['tableBorderColor'] || '#000000'"
+                    (change)="onStyleChange('tableBorderColor', $any($event.target).value)"
+                    style="width: 40px; height: 36px; padding: 2px; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer;" />
+                  <input type="text" [value]="blockStyleValues['tableBorderColor'] || '#000000'"
+                    (change)="onStyleChange('tableBorderColor', $any($event.target).value)" placeholder="#000000"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-family: monospace; font-size: 12px;" />
+                </div>
+              </div>
+            </div>
+
+            <div class="style-section" *ngIf="hasProp('paddingTop') || hasProp('marginTop')">
+              <h4 class="style-section__title">SPACING</h4>
+              <div class="style-row" *ngIf="hasProp('paddingTop')">
+                <label style="margin-bottom: 8px;">Padding (T / R / B / L)</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px;">
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="number"
+                      [value]="blockStyleValues['paddingTop'] ? blockStyleValues['paddingTop'].replace('px', '') : '0'"
+                      (change)="onStyleChange('paddingTop', $any($event.target).value + 'px')" min="0"
+                      style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;" />
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="number"
+                      [value]="blockStyleValues['paddingRight'] ? blockStyleValues['paddingRight'].replace('px', '') : '0'"
+                      (change)="onStyleChange('paddingRight', $any($event.target).value + 'px')" min="0"
+                      style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;" />
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="number"
+                      [value]="blockStyleValues['paddingBottom'] ? blockStyleValues['paddingBottom'].replace('px', '') : '0'"
+                      (change)="onStyleChange('paddingBottom', $any($event.target).value + 'px')" min="0"
+                      style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;" />
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="number"
+                      [value]="blockStyleValues['paddingLeft'] ? blockStyleValues['paddingLeft'].replace('px', '') : '0'"
+                      (change)="onStyleChange('paddingLeft', $any($event.target).value + 'px')" min="0"
+                      style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;" />
+                  </div>
+                </div>
+              </div>
+              <div class="style-row" *ngIf="hasProp('marginTop')">
+                <label style="margin-bottom: 8px;">Margin (T / R / B / L)</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px;">
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="number"
+                      [value]="blockStyleValues['marginTop'] ? blockStyleValues['marginTop'].replace('px', '') : '0'"
+                      (change)="onStyleChange('marginTop', $any($event.target).value + 'px')" min="0"
+                      style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;" />
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="number"
+                      [value]="blockStyleValues['marginRight'] ? blockStyleValues['marginRight'].replace('px', '') : '0'"
+                      (change)="onStyleChange('marginRight', $any($event.target).value + 'px')" min="0"
+                      style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;" />
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="number"
+                      [value]="blockStyleValues['marginBottom'] ? blockStyleValues['marginBottom'].replace('px', '') : '0'"
+                      (change)="onStyleChange('marginBottom', $any($event.target).value + 'px')" min="0"
+                      style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;" />
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="number"
+                      [value]="blockStyleValues['marginLeft'] ? blockStyleValues['marginLeft'].replace('px', '') : '0'"
+                      (change)="onStyleChange('marginLeft', $any($event.target).value + 'px')" min="0"
+                      style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="style-section" *ngIf="hasProp('width') || hasProp('height')">
+              <h4 class="style-section__title">SIZE</h4>
+              <div class="style-row" *ngIf="hasProp('width')">
+                <label>Width</label>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <input type="number"
+                    [value]="blockStyleValues['width'] ? blockStyleValues['width'].replace('px', '') : 'auto'"
+                    (change)="onStyleChange('width', $any($event.target).value + 'px')"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px;" />
+                  <span style="font-size: 12px; color: #6b7280;">px</span>
+                </div>
+              </div>
+              <div class="style-row" *ngIf="hasProp('height')">
+                <label>Height</label>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <input type="number"
+                    [value]="blockStyleValues['height'] ? blockStyleValues['height'].replace('px', '') : 'auto'"
+                    (change)="onStyleChange('height', $any($event.target).value + 'px')"
+                    style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px;" />
+                  <span style="font-size: 12px; color: #6b7280;">px</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="style-section" *ngIf="hasProp('opacity') || hasProp('boxShadow')">
+              <h4 class="style-section__title">EFFECTS</h4>
+              <div class="style-row" *ngIf="hasProp('opacity')">
+                <label>Opacity</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="range" min="0" max="100"
+                    [value]="blockStyleValues['opacity'] ? blockStyleValues['opacity'].replace('%', '') : '100'"
+                    (change)="onStyleChange('opacity', $any($event.target).value + '%')" style="flex: 1;" />
+                  <span style="font-size: 12px; color: #6b7280; min-width: 30px;">{{ blockStyleValues['opacity'] ||
+                    '100%' }}</span>
+                </div>
+              </div>
+              <div class="style-row" *ngIf="hasProp('boxShadow')">
+                <label>Box Shadow</label>
+                <select [value]="blockStyleValues['boxShadow'] || 'none'"
+                  (change)="onStyleChange('boxShadow', $any($event.target).value)"
+                  style="width: 100%; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px;">
+                  <option value="none">None</option>
+                  <option value="0 1px 3px rgba(0,0,0,0.12)">Small</option>
+                  <option value="0 4px 6px rgba(0,0,0,0.1)">Medium</option>
+                  <option value="0 10px 15px rgba(0,0,0,0.1)">Large</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #pageSettings>
+          <div class="properties-body" style="padding: 16px;">
+            <span
+              style="display: block; font-size: 11px; font-weight: 700; color: #1f2937; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Page
+              Background Image</span>
+
+            <!-- preview + remove when image is set -->
+            <div *ngIf="pdfSettings.pageBackgroundImage" style="margin-bottom: 10px; position: relative;">
+              <img [src]="pdfSettings.pageBackgroundImage"
+                style="width: 100%; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; display: block;" />
+              <button (click)="removePageBgImage()"
+                style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 4px; padding: 2px 7px; font-size: 12px; cursor: pointer;">✕</button>
+            </div>
+
+            <label
+              style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 12px; background: #f3f4f6; border: 1px dashed #d1d5db; border-radius: 6px; cursor: pointer; font-size: 13px; color: #374151; box-sizing: border-box;">
+              <i class="fa fa-upload" style="font-size: 14px;"></i>
+              {{ pdfSettings.pageBackgroundImage ? 'Replace Image' : 'Upload Image' }}
+              <input type="file" accept="image/*" (change)="onPageBgImageUpload($event)" style="display: none;" />
+            </label>
+
+            <p style="font-size: 11px; color: #9ca3af; margin: 8px 0 0; line-height: 1.4;">Applies to all pages. Covers
+              the full page area.</p>
+
+            <!-- Page background SHAPE (pen-tool designed, full-page) -->
+            <span
+              style="display: block; font-size: 11px; font-weight: 700; color: #1f2937; text-transform: uppercase; letter-spacing: 0.05em; margin: 22px 0 8px;">Page
+              Background Shape</span>
+
+            <button type="button" (click)="openPageShapeDesigner()"
+              style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 12px; background: #248567; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; color: #fff; box-sizing: border-box;">
+              <i class="fa fa-pen-nib" style="font-size: 13px;"></i>
+              Design Background Shape
+            </button>
+            <button type="button" (click)="removePageShape()"
+              style="display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 8px 12px; margin-top: 8px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; font-size: 12px; color: #ef4444; box-sizing: border-box;">
+              <i class="fa fa-trash-can" style="font-size: 12px;"></i>
+              Remove Shape
+            </button>
+
+            <p style="font-size: 11px; color: #9ca3af; margin: 8px 0 0; line-height: 1.4;">Draw a vector shape that sits
+              behind page content on every page.</p>
+          </div>
+        </ng-template>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="statusbar">
+    <span>No selection</span>
+    <span>Page 1 of 1</span>
+  </footer>
+
+  <!-- Binding modal (full-page) — opened when a repeater block is dropped -->
+  <div class="binding-modal" *ngIf="bindingModalOpen">
+    <div class="binding-modal__backdrop" (click)="skipBinding()"></div>
+    <div class="binding-modal__card">
+      <header class="binding-modal__header">
+        <div>
+          <div class="binding-modal__title">{{ bindingModalTitle() }}</div>
+          <div class="binding-modal__subtitle">Choose which JSON array this block should repeat over</div>
+        </div>
+        <button type="button" class="binding-modal__close" aria-label="Close" (click)="skipBinding()">×</button>
+      </header>
+
+      <div class="binding-modal__grid">
+        <!-- Left: array list -->
+        <div class="binding-modal__list-card">
+          <div class="binding-modal__list-title">
+            Detected arrays
+            <span class="binding-modal__badge">{{ bindingModalArrays.length }} found</span>
+          </div>
+          <div class="binding-modal__list">
+            @if (bindingModalArrays.length === 0) {
+            <div class="binding-modal__empty">
+              No arrays could be detected from the current JSON binding source.
+            </div>
+            } @else {
+            @if (bindingModalAncestorAlias) {
+            <div class="binding-modal__scope-hint">
+              Inside <code>{{ bindingModalAncestorAlias }}</code> scope — arrays prefixed with
+              <code>{{ bindingModalAncestorAlias }}.</code> repeat once per parent iteration.
+            </div>
+            }
+            @for (item of bindingModalArrays; track item.path) {
+            <button type="button" class="binding-modal__array-item"
+              [class.binding-modal__array-item--selected]="bindingModalSelectedPath === item.path"
+              [class.binding-modal__array-item--scoped]="item.scope === 'ancestor'"
+              [class.binding-modal__array-item--disabled]="isBindingPathDisabled(item.path)"
+              [style.padding-left.px]="12 + (item.depth || 0) * 18" [disabled]="isBindingPathDisabled(item.path)"
+              (click)="selectBindingArray(item.path)">
+              <div class="binding-modal__array-row">
+                <span class="binding-modal__array-path">
+                  @if ((item.depth || 0) > 0) {
+                  <span class="binding-modal__array-branch">↳</span>
+                  }
+                  {{ item.path }}
+                </span>
+                @if (isBindingPathDisabled(item.path)) {
+                <span class="binding-modal__array-bound-tag">Already bound</span>
+                } @else {
+                <span class="binding-modal__array-count">{{ item.count }} items</span>
+                }
+              </div>
+              <div class="binding-modal__array-preview">{{ item.preview }}</div>
+              @if (item.chain && item.chain.length > 1) {
+              <div class="binding-modal__array-chain">
+                {{ item.chain.length }} nested loops
+              </div>
+              }
+            </button>
+            }
+            }
+          </div>
+        </div>
+
+        <!-- Right: config + preview -->
+        <div class="binding-modal__config-card">
+          <div class="binding-modal__field-label">Selected array path</div>
+          <div class="binding-modal__field binding-modal__field--readonly">
+            {{ bindingModalSelectedPath || '← Select an array on the left' }}
+          </div>
+
+          <label class="binding-modal__field-label">Loop variable name (alias)</label>
+          <input type="text" class="binding-modal__input" [(ngModel)]="bindingModalAlias" />
+
+          <div class="binding-modal__generated">
+            <div class="binding-modal__code-title">Generated Twig</div>
+            <pre class="binding-modal__code">{{ bindingModalGeneratedCode() }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="binding-modal__footer">
+        <button type="button" class="binding-modal__skip" (click)="skipBinding()">
+          Skip — I’ll configure later
+        </button>
+        <button type="button" class="binding-modal__apply" [disabled]="!bindingModalSelectedPath"
+          (click)="applyBinding()">
+          Apply Binding
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save as Template -->
+  <div class="saveas-modal" *ngIf="saveAsOpen">
+    <div class="saveas-modal__backdrop" (click)="cancelSaveAs()"></div>
+    <div class="saveas-modal__card">
+      <div class="saveas-modal__title">Save as Template</div>
+      <p class="saveas-modal__subtitle">Name it, then save the current page as a reusable template.</p>
+
+      <label class="saveas-modal__label">Name</label>
+      <input type="text" class="saveas-modal__input" [(ngModel)]="saveAsName" placeholder="My template" />
+
+      <div class="saveas-modal__actions">
+        <button type="button" class="saveas-modal__btn saveas-modal__btn--ghost"
+          (click)="cancelSaveAs()">Cancel</button>
+        <button type="button" class="saveas-modal__btn saveas-modal__btn--primary"
+          (click)="confirmSaveAs()">Save as Template</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save as Component -->
+  <div class="saveas-modal" *ngIf="componentModalOpen">
+    <div class="saveas-modal__backdrop" (click)="cancelSaveComponent()"></div>
+    <div class="saveas-modal__card">
+      <div class="saveas-modal__title">Save as Component</div>
+      <p class="saveas-modal__subtitle">Name this reusable component. It'll appear in the “My Components” tab.</p>
+
+      <label class="saveas-modal__label">Name</label>
+      <input type="text" class="saveas-modal__input" [(ngModel)]="componentName" placeholder="My component" />
+
+      <div class="saveas-modal__actions">
+        <button type="button" class="saveas-modal__btn saveas-modal__btn--ghost"
+          (click)="cancelSaveComponent()">Cancel</button>
+        <button type="button" class="saveas-modal__btn saveas-modal__btn--primary" (click)="confirmSaveComponent()">Save
+          Component</button>
+      </div>
+    </div>
+  </div>
+</div>

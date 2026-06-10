@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1700" viewBox="0 0 1280 1700" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5c5cff"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/>
+    </marker>
+    <style>
+      .title { font-size: 30px; font-weight: 700; fill: #0f172a; }
+      .sub   { font-size: 15px; fill: #64748b; }
+      .h     { font-size: 19px; font-weight: 700; }
+      .t     { font-size: 14px; fill: #1e293b; }
+      .tw    { font-size: 13px; fill: #334155; }
+      .badge { font-size: 12px; font-weight: 700; fill: #fff; }
+      .lbl   { font-size: 13px; font-weight: 600; fill: #475569; }
+      .mono  { font-family: Consolas, monospace; font-size: 12.5px; fill: #0f172a; }
+      .step  { font-size: 14px; font-weight:700; fill:#fff; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="1700" fill="#f8fafc"/>
+  <text x="40" y="50" class="title">Custom Form Editor — Flow Diagram</text>
+  <text x="40" y="78" class="sub">Drag → Drop → Place → Twig → PDF.  (Tanglish documentation-oda padam — DOCUMENTATION.md paaru)</text>
+
+  <!-- ================= SECTION A: ARCHITECTURE ================= -->
+  <text x="40" y="120" class="h" fill="#0f172a">1. Architecture — 3 Parts</text>
+
+  <!-- Parent shell -->
+  <rect x="40" y="135" width="1200" height="245" rx="14" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+  <rect x="40" y="135" width="240" height="32" rx="14" fill="#6366f1"/>
+  <text x="58" y="157" class="badge">PART 1 — ANGULAR SHELL (parent)</text>
+  <text x="60" y="195" class="t">src/app/app.ts — Sidebar (blocks), Properties panel, Binding modal, Save / PDF buttons</text>
+
+  <!-- Iframe -->
+  <rect x="80" y="215" width="1120" height="145" rx="12" fill="#ecfeff" stroke="#06b6d4" stroke-width="2"/>
+  <rect x="80" y="215" width="250" height="30" rx="12" fill="#06b6d4"/>
+  <text x="96" y="236" class="badge">PART 2 — IFRAME (canvas)</text>
+  <text x="100" y="272" class="t">public/custom-form/custom-form.html + js/  — inga thaan drag/drop, edit, block placement</text>
+  <text x="100" y="298" class="tw">flow-canvas.js = ENTRY POINT  •  window.FlowCanvas (FC) = shared box  •  EditorManager = select/edit</text>
+  <text x="100" y="322" class="tw">block-factory • row-col-builder • drop-zones • history • copy-paste • inline-insert • cleanup • reorder</text>
+  <text x="100" y="346" class="tw">common-twig-generator.js → DOM-a Twig code-ah convert pannuthu</text>
+
+  <!-- comms -->
+  <text x="300" y="408" class="lbl" fill="#5c5cff">postMessage  (twig:updated, selection:changed, binding-modal:open, iframe:height ...)</text>
+  <line x1="300" y1="418" x2="980" y2="418" stroke="#5c5cff" stroke-width="2" marker-end="url(#arrowBlue)" marker-start="url(#arrowBlue)"/>
+  <text x="300" y="448" class="lbl" fill="#9333ea">window.__BROCHURE_FLOW_DRAG__ / __BROCHURE_FLOW_BINDING_DATA__  (drag + binding share)</text>
+
+  <!-- Backend -->
+  <rect x="40" y="465" width="1200" height="95" rx="14" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <rect x="40" y="465" width="300" height="32" rx="14" fill="#16a34a"/>
+  <text x="58" y="487" class="badge">PART 3 — BACKEND (Express)</text>
+  <text x="60" y="522" class="t">src/server.ts — /api/save-twig-puppeteer  →  PHP Twig render → HTML → Puppeteer → PDF</text>
+  <text x="60" y="546" class="tw">scripts/render_twig.php   •   scripts/generate_pdf_puppeteer.js   •   pdfunite (multi-page merge)</text>
+
+  <!-- ================= SECTION B: DRAG & DROP FLOW ================= -->
+  <text x="40" y="615" class="h" fill="#0f172a">2. Drag &amp; Drop — Full Journey (sidebar block → canvas)</text>
+
+  <!-- step boxes -->
+  <!-- s1 -->
+  <rect x="40" y="635" width="270" height="92" rx="10" fill="#6366f1"/>
+  <circle cx="62" cy="657" r="13" fill="#fff"/><text x="57" y="662" class="step" fill="#6366f1">1</text>
+  <text x="84" y="662" class="badge">SIDEBAR dragstart (app.ts)</text>
+  <text x="56" y="688" fill="#e0e7ff" font-size="12.5">payload = {blockType, label}</text>
+  <text x="56" y="708" fill="#e0e7ff" font-size="12.5">setData() + window global backup</text>
+  <line x1="310" y1="681" x2="360" y2="681" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- s2 -->
+  <rect x="362" y="635" width="270" height="92" rx="10" fill="#0ea5e9"/>
+  <circle cx="384" cy="657" r="13" fill="#fff"/><text x="379" y="662" class="step" fill="#0ea5e9">2</text>
+  <text x="406" y="662" class="badge">dragover (flow-canvas.js)</text>
+  <text x="378" y="688" fill="#e0f2fe" font-size="12.5">getDragPayload(event)</text>
+  <text x="378" y="708" fill="#e0f2fe" font-size="12.5">findActiveDoc(x,y) → entha page</text>
+  <line x1="632" y1="681" x2="682" y2="681" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- s3 -->
+  <rect x="684" y="635" width="270" height="92" rx="10" fill="#0ea5e9"/>
+  <circle cx="706" cy="657" r="13" fill="#fff"/><text x="701" y="662" class="step" fill="#0ea5e9">3</text>
+  <text x="728" y="662" class="badge">findDropTarget (drop-zones)</text>
+  <text x="700" y="688" fill="#e0f2fe" font-size="12.5">{ target, indicator }</text>
+  <text x="700" y="708" fill="#e0f2fe" font-size="12.5">showIndicator() → BLUE LINE</text>
+  <line x1="954" y1="681" x2="1004" y2="681" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- s4 -->
+  <rect x="1006" y="635" width="234" height="92" rx="10" fill="#0ea5e9"/>
+  <circle cx="1028" cy="657" r="13" fill="#fff"/><text x="1023" y="662" class="step" fill="#0ea5e9">4</text>
+  <text x="1050" y="662" class="badge">drop event</text>
+  <text x="1022" y="688" fill="#e0f2fe" font-size="12.5">insertPayloadAtTarget()</text>
+  <text x="1022" y="708" fill="#e0f2fe" font-size="12.5">de-dupe (200ms)</text>
+
+  <!-- down arrow from s4 -->
+  <line x1="1123" y1="727" x2="1123" y2="760" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- s5 createBlock -->
+  <rect x="1006" y="762" width="234" height="74" rx="10" fill="#14b8a6"/>
+  <text x="1022" y="788" class="badge">FC.createBlock(type)</text>
+  <text x="1022" y="810" fill="#ccfbf1" font-size="12.5">block-factory.js</text>
+  <text x="1022" y="828" fill="#ccfbf1" font-size="12.5">type → block element</text>
+  <line x1="1123" y1="836" x2="1123" y2="868" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- s6 placeBlock -->
+  <rect x="906" y="870" width="334" height="78" rx="10" fill="#14b8a6"/>
+  <text x="922" y="896" class="badge">FC.placeBlock(doc, block, target)</text>
+  <text x="922" y="918" fill="#ccfbf1" font-size="12.5">row-col-builder.js — DOM-la add</text>
+  <text x="922" y="936" fill="#ccfbf1" font-size="12.5">between-rows / col-edge / in-col / in-section</text>
+
+  <!-- reuse note -->
+  <rect x="40" y="762" width="840" height="186" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="60" y="790" class="lbl" fill="#0f172a">♻️ REUSE — keezha ellame ஒரே placeBlock / findDropTarget use pannuthu:</text>
+  <rect x="60" y="805" width="250" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="76" y="830" class="tw" font-weight="700">Sidebar drag-drop</text>
+  <text x="76" y="850" class="tw">flow-canvas.js</text>
+  <rect x="325" y="805" width="250" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="341" y="830" class="tw" font-weight="700">Inline insert ("+")</text>
+  <text x="341" y="850" class="tw">inline-insert.js</text>
+  <rect x="590" y="805" width="270" height="58" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="606" y="830" class="tw" font-weight="700">Copy/Paste + Reorder</text>
+  <text x="606" y="850" class="tw">copy-paste.js / block-reorder.js</text>
+  <text x="60" y="895" class="tw">→ ellame insertPayloadAtTarget()  +  FC.placeBlock()  +  FC.findDropTarget()</text>
+  <text x="60" y="920" class="tw">Adhanaala drop logic ஒரே இடத்துல. Puthu source-na இதையே call பண்ணு (புதுசா எழுதாதே).</text>
+
+  <!-- after drop observers -->
+  <rect x="40" y="965" width="1200" height="70" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+  <text x="60" y="992" class="lbl" fill="#92400e">⚙️ Drop aana udane MutationObserver-gal auto trigger:</text>
+  <text x="60" y="1018" class="tw">twig-generator → twig regenerate &amp; parent-kku send  •  history → snapshot save  •  cleanup → empty col/row neeku  •  reorder → grip add</text>
+
+  <!-- ================= SECTION C: DROP KINDS ================= -->
+  <text x="40" y="1085" class="h" fill="#0f172a">3. Drop Kinds — findDropTarget enna decide pannuthu</text>
+
+  <rect x="40" y="1100" width="290" height="120" rx="10" fill="#fff" stroke="#6366f1" stroke-width="2"/>
+  <text x="58" y="1126" class="lbl" fill="#4338ca">between-rows</text>
+  <text x="58" y="1150" class="tw">Mouse rows naduvula / edge</text>
+  <text x="58" y="1172" class="tw">→ புது ROW + col + block</text>
+  <rect x="58" y="1185" width="250" height="22" rx="4" fill="#e0e7ff"/>
+  <line x1="58" y1="1196" x2="308" y2="1196" stroke="#6366f1" stroke-width="2"/>
+
+  <rect x="345" y="1100" width="290" height="120" rx="10" fill="#fff" stroke="#06b6d4" stroke-width="2"/>
+  <text x="363" y="1126" class="lbl" fill="#0e7490">col-edge</text>
+  <text x="363" y="1150" class="tw">Mouse column edge (24px)</text>
+  <text x="363" y="1172" class="tw">→ row-la புது COLUMN (side-by-side)</text>
+  <rect x="500" y="1185" width="3" height="24" fill="#06b6d4"/>
+  <rect x="363" y="1185" width="125" height="24" rx="4" fill="#cffafe"/>
+  <rect x="512" y="1185" width="115" height="24" rx="4" fill="#cffafe"/>
+
+  <rect x="650" y="1100" width="290" height="120" rx="10" fill="#fff" stroke="#14b8a6" stroke-width="2"/>
+  <text x="668" y="1126" class="lbl" fill="#0f766e">in-col</text>
+  <text x="668" y="1150" class="tw">Mouse column nadula</text>
+  <text x="668" y="1172" class="tw">→ அந்த column-la blocks naduvula</text>
+  <rect x="668" y="1185" width="250" height="11" rx="3" fill="#ccfbf1"/>
+  <rect x="668" y="1199" width="250" height="11" rx="3" fill="#ccfbf1"/>
+
+  <rect x="955" y="1100" width="285" height="120" rx="10" fill="#fff" stroke="#9333ea" stroke-width="2"/>
+  <text x="973" y="1126" class="lbl" fill="#7e22ce">in-section</text>
+  <text x="973" y="1150" class="tw">Mouse section உள்ளே</text>
+  <text x="973" y="1172" class="tw">→ section = nested canvas</text>
+  <rect x="973" y="1185" width="250" height="24" rx="4" fill="#f3e8ff" stroke="#9333ea" stroke-dasharray="4"/>
+
+  <!-- ================= SECTION D: TWIG + PDF PIPELINE ================= -->
+  <text x="40" y="1285" class="h" fill="#0f172a">4. Save → Twig File + PDF (backend pipeline)</text>
+
+  <rect x="40" y="1305" width="200" height="80" rx="10" fill="#6366f1"/>
+  <text x="56" y="1332" class="badge">Save click (app.ts)</text>
+  <text x="56" y="1356" fill="#e0e7ff" font-size="12">twigCode + bindingData</text>
+  <text x="56" y="1374" fill="#e0e7ff" font-size="12">+ pdfSettings</text>
+  <line x1="240" y1="1345" x2="285" y2="1345" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <rect x="287" y="1305" width="215" height="80" rx="10" fill="#16a34a"/>
+  <text x="303" y="1332" class="badge">POST /api/save-twig-...</text>
+  <text x="303" y="1356" fill="#dcfce7" font-size="12">server.ts: folder create</text>
+  <text x="303" y="1374" fill="#dcfce7" font-size="12">.php + .json எழுது</text>
+  <line x1="502" y1="1345" x2="547" y2="1345" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <rect x="549" y="1305" width="215" height="80" rx="10" fill="#16a34a"/>
+  <text x="565" y="1332" class="badge">php render_twig.php</text>
+  <text x="565" y="1356" fill="#dcfce7" font-size="12">Twig template + data</text>
+  <text x="565" y="1374" fill="#dcfce7" font-size="12">→ generated.html</text>
+  <line x1="764" y1="1345" x2="809" y2="1345" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <rect x="811" y="1305" width="230" height="80" rx="10" fill="#16a34a"/>
+  <text x="827" y="1332" class="badge">node puppeteer</text>
+  <text x="827" y="1356" fill="#dcfce7" font-size="12">HTML → headless Chrome</text>
+  <text x="827" y="1374" fill="#dcfce7" font-size="12">header/footer fix, merge</text>
+  <line x1="1041" y1="1345" x2="1086" y2="1345" stroke="#16a34a" stroke-width="2" marker-end="url(#arrowGreen)"/>
+
+  <rect x="1088" y="1305" width="152" height="80" rx="10" fill="#0f172a"/>
+  <text x="1104" y="1332" class="badge">generated.pdf</text>
+  <text x="1104" y="1356" fill="#cbd5e1" font-size="12">+ .html .php</text>
+  <text x="1104" y="1374" fill="#cbd5e1" font-size="12">+ binding.json</text>
+
+  <!-- ================= SECTION E: DOC MODEL ================= -->
+  <text x="40" y="1450" class="h" fill="#0f172a">5. Document Model (DOM structure)</text>
+  <rect x="40" y="1465" width="600" height="210" rx="10" fill="#0f172a"/>
+  <text x="60" y="1495" class="mono" fill="#7dd3fc">.custom-form-design          </text><text x="430" y="1495" class="mono" fill="#94a3b8"># canvas (page wrapper)</text>
+  <text x="80" y="1518" class="mono" fill="#a5b4fc">└─ .cs-doc[data-page="1"]    </text><text x="430" y="1518" class="mono" fill="#94a3b8"># ORU A4 PAGE</text>
+  <text x="110" y="1541" class="mono" fill="#6ee7b7">├─ .cs-row                 </text><text x="430" y="1541" class="mono" fill="#94a3b8"># horizontal row</text>
+  <text x="140" y="1564" class="mono" fill="#fcd34d">│  ├─ .cs-col              </text><text x="430" y="1564" class="mono" fill="#94a3b8"># column (flex)</text>
+  <text x="170" y="1587" class="mono" fill="#fda4af">│  │   └─ .cs_block_s      </text><text x="430" y="1587" class="mono" fill="#94a3b8"># BLOCK (heading/text..)</text>
+  <text x="140" y="1610" class="mono" fill="#cbd5e1">│  ├─ .cs-col-divider      </text><text x="430" y="1610" class="mono" fill="#94a3b8"># resize handle</text>
+  <text x="140" y="1633" class="mono" fill="#fcd34d">│  └─ .cs-col              </text><text x="430" y="1633" class="mono" fill="#94a3b8"># innoru column</text>
+  <text x="110" y="1656" class="mono" fill="#6ee7b7">└─ .cs-row ...</text>
+
+  <!-- legend -->
+  <rect x="660" y="1465" width="580" height="210" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="680" y="1492" class="lbl" fill="#0f172a">Mukkiya attributes / classes</text>
+  <text x="680" y="1518" class="tw"><tspan font-family="Consolas,monospace" fill="#7e22ce">.edit_me</tspan> — editable text (Froala)</text>
+  <text x="680" y="1542" class="tw"><tspan font-family="Consolas,monospace" fill="#7e22ce">.section-container-content</tspan> — section = nested canvas</text>
+  <text x="680" y="1566" class="tw"><tspan font-family="Consolas,monospace" fill="#7e22ce">data-repeat-path / -alias / -chain</tspan> — {% for %} loop</text>
+  <text x="680" y="1590" class="tw"><tspan font-family="Consolas,monospace" fill="#7e22ce">data-twig-if</tspan> — {% if %} condition</text>
+  <text x="680" y="1614" class="tw"><tspan font-family="Consolas,monospace" fill="#7e22ce">[data-cs-chrome]</tspan> — editor-only (PDF/twig-la varaadhu)</text>
+  <text x="680" y="1638" class="tw"><tspan font-family="Consolas,monospace" fill="#5c5cff">.cs-drop-indicator</tspan> — drag time blue line</text>
+  <text x="680" y="1662" class="tw"><tspan font-family="Consolas,monospace" fill="#16a34a">.cs-block-grip</tspan> — reorder handle (⋮⋮)</text>
+</svg>

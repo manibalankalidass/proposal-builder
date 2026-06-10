@@ -1,0 +1,64 @@
+{
+  "name": "proposal-studio",
+  "version": "0.1.0",
+  "description": "Framework-agnostic visual form / proposal / brochure editor as a Web Component. Works in Angular (7–22+), React, Vue, Svelte and plain HTML.",
+  "type": "module",
+  "main": "./dist/proposal-studio.cjs.js",
+  "module": "./dist/proposal-studio.esm.js",
+  "unpkg": "./dist/proposal-studio.global.js",
+  "jsdelivr": "./dist/proposal-studio.global.js",
+  "types": "./dist/proposal-studio.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/proposal-studio.d.ts",
+      "import": "./dist/proposal-studio.esm.js",
+      "require": "./dist/proposal-studio.cjs.js",
+      "default": "./dist/proposal-studio.global.js"
+    },
+    "./element": "./dist/proposal-studio.esm.js",
+    "./dist/*": "./dist/*"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "./dist/proposal-studio.esm.js",
+    "./dist/proposal-studio.cjs.js",
+    "./dist/proposal-studio.global.js"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/smoke-test.mjs",
+    "prepack": "node scripts/build.mjs"
+  },
+  "keywords": [
+    "proposal-studio",
+    "form-builder",
+    "form-editor",
+    "proposal-editor",
+    "brochure-editor",
+    "drag-and-drop",
+    "editor",
+    "custom-form-editor",
+    "drag-and-drop-blocks",
+    "drag-and-drop-elements",
+    "web-component",
+    "custom-element",
+    "wysiwyg",
+    "angular",
+    "react",
+    "vue",
+    "framework-agnostic"
+  ],
+  "author": "Mani <manibalan15396@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manibalankalidass/proposal-builder.git"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.0"
+  }
+}

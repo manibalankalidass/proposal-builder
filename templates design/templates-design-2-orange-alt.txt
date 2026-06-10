@@ -1,0 +1,180 @@
+<div class="cs_page custom-form-design centercontent cs_selected cs-flow-canvas" style="visibility: visible;" data-flow-canvas-init="1">
+  <div class="cs-doc" data-page="1" data-cs-starter-template="invoice">
+    <!-- Header Split Section -->
+    <div class="cs-row cs-page-header" id="row_header_d2" data-cs-page-region="header" style="padding: 0px; min-height: 100px; border: 0px; display: flex;">
+      <!-- Dark Left Side -->
+      <div class="cs-col" style="flex: 0 0 40%; max-width: 100%; background: #1a1a1a; padding: 20px; display: flex; align-items: center;">
+        <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Company Info" id="block_header_left_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+          <div class="edit_me resize" id="dynamic_header_left_d2" placeholder="" style="font-size: 22px; font-weight: bold; color: #ffffff; margin: 0;">
+            <div style="color: #f97316; font-size: 26px; margin-bottom: 4px;">●●●</div>
+            <div>MODERN</div>
+            <div style="font-size: 12px; color: #f97316; font-weight: normal;">Creative Agency</div>
+          </div>
+        </div>
+      </div>
+      <!-- Orange Right Side -->
+      <div class="cs-col" style="flex: 0 0 60%; max-width: 100%; background: #f97316; padding: 20px; display: flex; align-items: center; justify-content: flex-end;">
+        <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Header Title" id="block_header_right_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+          <div class="edit_me resize" id="dynamic_header_right_d2" placeholder="" style="font-size: 32px; font-weight: bold; color: #ffffff; margin: 0; text-align: right;">INVOICE</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="body-main-content" style="flex: 1 1 0%; display: flex; flex-direction: column; gap: 0px; padding: 30px;">
+
+      <!-- Invoice Details -->
+      <div class="cs-row invoice-row invoice-row--intro" id="row_intro_d2" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
+        <!-- Invoice To -->
+        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Bill To" id="block_bill_to_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+            <div class="edit_me resize" id="dynamic_bill_to_d2" placeholder="" style="font-size: 13px; color: #333;">
+              <div style="font-weight: bold; color: #f97316; margin-bottom: 10px; font-size: 12px; text-transform: uppercase;">Invoice To:</div>
+              <div style="font-weight: bold; font-size: 16px; color: #1a1a1a; margin-bottom: 8px;">{{customer_name}}</div>
+              <div style="color: #666; font-size: 12px; line-height: 1.6;">{{address_line1}}</div>
+              <div style="color: #666; font-size: 12px;">{{address_line2}}</div>
+              <div style="color: #666; font-size: 12px;">{{city}}, {{state}} {{zip_code}}</div>
+              <div style="color: #666; font-size: 12px; margin-top: 8px;">{{customer_email}}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoice Meta -->
+        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Meta" id="block_meta_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: #f5f5f5; padding: 15px; border-radius: 4px;">
+            <div class="edit_me resize" id="dynamic_meta_d2" placeholder="" style="font-size: 13px; color: #333; margin: 0;">
+              <div style="display: grid; grid-template-columns: 100px 1fr; gap: 12px;">
+                <div style="font-weight: bold; color: #333;">Invoice #:</div>
+                <div>{{invoice_number}}</div>
+                <div style="font-weight: bold; color: #333;">Date:</div>
+                <div>{{Invoice_Date}}</div>
+                <div style="font-weight: bold; color: #333;">Due Date:</div>
+                <div>{{due_date}}</div>
+                <div style="font-weight: bold; color: #333;">PO #:</div>
+                <div>{{po_number}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Items Table -->
+      <div class="cs-row invoice-row invoice-row--items" id="row_items_d2" style="margin-bottom: 30px; min-height: 0px;">
+        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Items Table" id="block_items_d2" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+            <div class="edit_me fr-element fr-view resize" id="dynamic_items_d2" placeholder="" style="font-size: 12px; width: 100%; padding: 0px; margin: 0px; color: #333; overflow: visible;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #1a1a1a; color: white;">
+                    <th style="padding: 12px; text-align: left; font-weight: bold; border: 0;">Description</th>
+                    <th style="padding: 12px; text-align: center; font-weight: bold; border: 0; width: 80px;">Qty</th>
+                    <th style="padding: 12px; text-align: right; font-weight: bold; border: 0; width: 100px;">Rate</th>
+                    <th style="padding: 12px; text-align: right; font-weight: bold; border: 0; width: 100px;">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Brand Identity Design</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">1</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$800.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$800.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Website Design & Development</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">1</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$2,500.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$2,500.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Social Media Graphics (20 assets)</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">20</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$75.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$1,500.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Marketing Collateral Design</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">1</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$600.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$600.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Video Production & Editing</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">3</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$400.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$1,200.00</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; border: 0;">Copywriting & Content Strategy</td>
+                    <td style="padding: 12px; text-align: center; border: 0;">1</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$350.00</td>
+                    <td style="padding: 12px; text-align: right; border: 0;">$350.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Section -->
+      <div class="cs-row invoice-row invoice-row--summary" id="row_summary_d2" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
+        <!-- Notes -->
+        <div class="cs-col" style="flex: 1 1 50%; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Notes" id="block_notes_d2" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+            <div class="edit_me resize" id="dynamic_notes_d2" placeholder="" style="font-size: 12px; color: #333;">
+              <div style="margin-bottom: 15px;">
+                <div style="font-weight: bold; color: #333; margin-bottom: 8px; font-size: 13px;">Special Notes:</div>
+                <div style="font-size: 11px; line-height: 1.6; color: #666;">
+                  Thank you for your project request! Upon project completion, all files and assets will be delivered in the agreed formats. Payment due upon invoice date as per our agreement.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment & Totals -->
+        <div class="cs-col" style="flex: 0 0 50%; max-width: 100%; min-height: 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Payment Info" id="block_payment_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: #f97316; padding: 20px; border-radius: 4px; color: white;">
+            <div class="edit_me resize" id="dynamic_payment_d2" placeholder="" style="font-size: 12px; color: #ffffff; margin: 0;">
+              <div style="margin-bottom: 15px;">
+                <div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Payment Details:</div>
+                <div style="font-size: 11px; line-height: 1.8;">
+                  <div><strong>Bank:</strong> {{bank_name}}</div>
+                  <div><strong>Account:</strong> {{bank_account}}</div>
+                  <div><strong>Routing:</strong> {{routing_number}}</div>
+                </div>
+              </div>
+              <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 15px;">
+                <div style="display: grid; grid-template-columns: 120px 80px; gap: 10px; margin-bottom: 8px;">
+                  <div style="text-align: right;">Subtotal:</div>
+                  <div style="text-align: right;">$6,750.00</div>
+                </div>
+                <div style="display: grid; grid-template-columns: 120px 80px; gap: 10px; margin-bottom: 12px;">
+                  <div style="text-align: right;">Tax:</div>
+                  <div style="text-align: right;">$0.00</div>
+                </div>
+                <div style="display: grid; grid-template-columns: 120px 80px; gap: 10px; font-size: 14px; font-weight: bold;">
+                  <div style="text-align: right;">Total Due:</div>
+                  <div style="text-align: right;">$6,750.00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="cs-row" id="row_footer_d2" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #f97316; min-height: 0px;">
+        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Footer" id="block_footer_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
+            <div class="edit_me resize" id="dynamic_footer_d2" placeholder="" style="font-size: 11px; color: #999; text-align: center;">
+              <div>Modern Creative Agency | hello@modernagency.com | 1-800-MODERN-1</div>
+              <div style="margin-top: 6px;">© 2024 Modern Agency. All Rights Reserved. www.modernagency.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
