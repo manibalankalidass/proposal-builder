@@ -743,7 +743,7 @@
   max-width: none;
   gap: 2px;
   padding: 3px 6px;
-  background: #248567;
+  background: #23243d;
   border-radius: 8px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   z-index: 9100;
@@ -755,7 +755,7 @@
   height: 24px;
   border: none;
   border-radius: 4px;
-  background: #248567;
+  background: #57586b;
   color: #fff;
   font-size: 11px;
   padding: 0 4px;
@@ -787,11 +787,11 @@
 }
 
 .cs-pen-toolbar button:hover {
-  background: #353b4d;
+  background: #f48220;
 }
 
 .cs-pen-toolbar button.is-active {
-  background: #2e2f47;
+  background: #248567;
   color: #fff;
 }
 
@@ -1230,9 +1230,136 @@
 /* Hide the toolbar separator that preceded the props block in panel mode. */
 .cs-pen-toolbar.cs-pen-has-props-panel {}
 
+/* ---------------------------------------------------------------------------
+   In-canvas pen toolbar — a slim VERTICAL dock on the RIGHT of the block,
+   trimmed to the essentials (Pen / Edit, Undo / Redo, solid Fill colour,
+   layer order + delete + the shapes strip). The full toolbar still renders in
+   the page-background modal, which carries .cs-pen-has-props-panel and is
+   excluded by every :not() selector below.
+   --------------------------------------------------------------------------- */
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  justify-items: stretch;
+  align-items: center;
+  width: 180px;
+  box-sizing: border-box;
+  left: calc(100% + 8px);
+  right: auto;
+  top: 0;
+  bottom: auto;
+  transform: none;
+  gap: 3px;
+}
+
+/* Separators, the props block and the layers strip span the full grid width so
+   only the icon buttons flow 3-per-row — keeps the dock short instead of one
+   long single column. */
+.cs-pen-toolbar:not(.cs-pen-has-props-panel)>.cs-pen-sep,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel)>.cs-pen-props,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel)>.cs-pen-layers {
+  grid-column: 1 / -1;
+}
+
+.cs-pen-toolbar:not(.cs-pen-has-props-panel)>.cs-pen-sep {
+  width: 100%;
+  height: 1px;
+  margin: 2px 0;
+}
+
+/* Drop every non-essential control. */
+/* .cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-sep,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) [data-pen="resize"],
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) [data-pen="snap"],
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) [data-pen="smooth"],
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) [data-pen="dup"],
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) [data-pen="clear"],
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) [data-pen="delete"],
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) [data-pen^="preset-"],
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-group--transform,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-group--opacity,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-group--stroke {
+  display: none !important;
+} */
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-layers {
+  display: none;
+}
+
+/* Fill group: keep ONLY the solid colour swatch (gradient / image fill live in
+   the page-background modal's full toolbar). */
+/* .cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-group--fill .cs-pen-props__label,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-group--fill [data-pen="fill-type"],
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-group--fill .cs-pen-fill-gradient,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-group--fill .cs-pen-fill-image {
+  display: none !important;
+} */
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-group--fill,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-group--fill .cs-pen-fill-solid {
+  display: flex !important;
+  justify-content: center;
+}
+
+/* Props block: stack its groups full-width so wide controls (gradient selects,
+   colour stops, angle, blend, stroke) wrap INSIDE the dock instead of spilling
+   out to the side. */
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-props {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-props__group,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-fill-solid,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-fill-gradient,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-fill-image,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-grad-stops {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Every text/number/select control fills the row; ranges + swatches too. */
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-props select,
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-props input[type="number"],
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-props input[type="range"],
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-num {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Numeric fields keep their tiny icon label inline, input takes the rest. */
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-num input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/* Layers strip wraps to the column width instead of scrolling sideways. */
+.cs-pen-toolbar:not(.cs-pen-has-props-panel) .cs-pen-layers {
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: none;
+  width: 100%;
+  overflow-x: visible;
+}
+
+/* Icon buttons fill their grid cell. */
+.cs-pen-toolbar:not(.cs-pen-has-props-panel)>button {
+  width: 100%;
+  min-width: 0;
+}
+
 /* Right-side shapes panel (preset library). */
 .cs-page-shape-shapes {
-  flex: 0 0 188px;
+  flex: 0 0 250px;
   display: flex;
   flex-direction: column;
   background: #1b2030;
@@ -1305,6 +1432,101 @@
 .cs-page-shape-shapes__grid button:hover {
   background: rgba(92, 92, 255, 0.18);
   border-color: #5c5cff;
+}
+
+/* Custom in-page colour picker — replaces the native <input type="color">
+   popup, which clips at the screen edge when a swatch sits in the right-docked
+   panel. Positioned in JS (fixed) and clamped inside the viewport. */
+.cs-pen-cpick {
+  position: fixed;
+  z-index: 2147483600;
+  width: 208px;
+  padding: 10px;
+  box-sizing: border-box;
+  background: #232a3d;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cs-pen-cpick__sv {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  border-radius: 6px;
+  cursor: crosshair;
+  background:
+    linear-gradient(to top, #000, rgba(0, 0, 0, 0)),
+    linear-gradient(to right, #fff, var(--cs-cpick-hue, #f00));
+  touch-action: none;
+}
+
+.cs-pen-cpick__svthumb,
+.cs-pen-cpick__huethumb {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.cs-pen-cpick__hue {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  margin-top: 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  touch-action: none;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+
+.cs-pen-cpick__huethumb {
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+}
+
+.cs-pen-cpick__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cs-pen-cpick__hex {
+  flex: 0 0 84px;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 5px;
+  background: #2a3042;
+  color: #fff;
+  font-size: 12px;
+  text-transform: uppercase;
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+
+.cs-pen-cpick__sw {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cs-pen-cpick__sw button {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 /* Stage area centres the page-sized drawing block. */

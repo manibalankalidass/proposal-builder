@@ -15,9 +15,21 @@ Because it is a Web Component, it works **natively in every framework**:
 | Svelte / SolidJS       | ✅        |
 | Plain HTML (no build)  | ✅        |
 
-The whole editor engine runs inside an isolated, same-origin `iframe`, so its
-internal jQuery / Froala / globals **never collide** with your app, and you can
-mount **multiple editors** on one page.
+This is the **complete editor UI** — top toolbar, left component palette
+(Templates / History), the canvas, and the right Properties / Data Binding /
+Style panels — bundled into one self-contained document. The whole thing runs
+inside an isolated, same-origin `iframe`, so its internal Angular runtime /
+jQuery / Froala / globals **never collide** with your host app (which can be a
+different Angular version, React, Vue, …), and you can mount **multiple
+editors** on one page.
+
+> **Sizing:** the editor is a full app with its own internal scrolling, so give
+> it a height — e.g. `<proposal-studio style="height:90vh">`. It defaults to
+> `720px` if you don't.
+>
+> **Bundle size:** ~1.3 MB (≈300 KB gzipped) because it ships the full editor
+> application. It loads lazily inside the iframe and never touches your app's
+> bundle.
 
 ---
 
@@ -159,18 +171,25 @@ framework.
 
 ## Build from source / contribute
 
-The editor engine lives in [`public/custom-form/`](../../public/custom-form) of
-the monorepo. The build inlines those assets into one self-contained document
-and bundles the element.
+The editor is the monorepo's Angular app (`src/app/`) driving the pure-JS canvas
+engine (`public/custom-form/`). The build:
+
+1. runs `ng build` (the Angular app → `dist/custom-form/browser/`),
+2. inlines the canvas engine into one self-contained document (the canvas
+   iframe's `srcdoc`),
+3. inlines the Angular build + that canvas doc into one portable "outer"
+   document, and
+4. bundles the `<proposal-studio>` element (esm / cjs / global / `.d.ts`).
 
 ```bash
 cd packages/proposal-studio
-npm run build          # → dist/  (esm, cjs, global, .d.ts, editor-document.html)
-node scripts/smoke-test.mjs   # headless browser sanity check
+npm run build               # reuses an existing Angular build if present
+PS_NG_BUILD=1 npm run build # force a fresh `ng build` first
+npm test                    # headless browser sanity check (full UI boots)
 ```
 
-Edit the engine under `public/custom-form/js/`, then re-run `npm run build`.
-PRs welcome.
+Edit the Angular UI under `src/app/` or the canvas engine under
+`public/custom-form/js/`, then re-run the build. PRs welcome.
 
 ## Licensing
 

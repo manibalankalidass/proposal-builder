@@ -462,6 +462,28 @@
     };
   };
 
+  // Walk UP from a selected block collecting every ancestor that is itself a
+  // content block (.cs_block_s) — e.g. the Flexible / Section that wraps it.
+  // Returns innermost-first ({id, name}) so the panel can offer a "Choose
+  // parent <name>" button for each level. Ids are minted lazily so the panel
+  // can target them with `block:select`.
+  const getBlockParents = (block) => {
+    const out = [];
+    let cur = block && block.parentElement;
+    while (cur && cur !== document.body) {
+      if (cur.matches && cur.matches('.cs-doc, .cs-flow-canvas, .cs_paper, .cs_page')) break;
+      if (cur.classList && cur.classList.contains('cs_block_s')) {
+        if (!cur.id) cur.id = 'block_' + Math.random().toString(36).substr(2, 9);
+        out.push({
+          id: cur.id,
+          name: cur.getAttribute('custom-name') || cur.dataset.blockType || cur.getAttribute('data') || 'Block'
+        });
+      }
+      cur = cur.parentElement;
+    }
+    return out;
+  };
+
   const broadcastSelection = () => {
     // Find the currently selected block, whether it is selected via inline-editor class or custom-form class
     let block = document.querySelector('.cs_block_s.cs-selected, .cs_block_s.cs-editing') ||
@@ -490,7 +512,8 @@
         twigIf: block.dataset.twigIf || '',
         tableBorderWidth: block.querySelector('table') ? (block.querySelector('table').dataset.borderWidth || '0') : '0',
         tableBorderColor: block.querySelector('table') ? (block.querySelector('table').dataset.borderColor || '#000000') : '#000000',
-        styles: readBlockStyles(block)
+        styles: readBlockStyles(block),
+        parents: getBlockParents(block)
       }
     }, '*');
   };

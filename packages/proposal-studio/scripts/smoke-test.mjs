@@ -1,5 +1,6 @@
 // Headless smoke test: load the global bundle in a real browser, mount the
-// element, and assert the editor boots (ready event + a working canvas).
+// element, and assert the FULL editor UI boots — Angular chrome (toolbar +
+// sidebars) AND the nested canvas engine — and that setHtml round-trips.
 import puppeteer from 'puppeteer';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
@@ -11,7 +12,7 @@ const bundle = readFileSync(join(dist, 'proposal-studio.global.js'), 'utf8');
 
 const page_html = `<!doctype html><html><head><meta charset="utf-8"></head>
 <body>
-<proposal-studio id="ed" style="height:400px"></proposal-studio>
+<proposal-studio id="ed" style="height:700px"></proposal-studio>
 <script>${bundle.replace(/<\/script>/gi, '<\\/script>')}<\/script>
 </body></html>`;
 
@@ -21,13 +22,9 @@ const browser = await puppeteer.launch({
 });
 try {
   const page = await browser.newPage();
-  page.on('console', (m) => {
-    const t = m.text();
-    if (/error|fail/i.test(t)) console.log('  [page]', t);
-  });
-  await page.setContent(page_html, { waitUntil: 'networkidle2', timeout: 60000 });
+  page.on('pageerror', (e) => console.log('  [pageerror]', String(e).split('\n')[0]));
+  await page.setContent(page_html, { waitUntil: 'networkidle2', timeout: 90000 });
 
-  // Wait for the element's `ready` event.
   const result = await page.evaluate(() => {
     const el = document.getElementById('ed');
     return new Promise((res) => {
@@ -35,14 +32,22 @@ try {
       const finish = () => {
         try {
           el.setHtml('<div id="probe" style="padding:8px">hello from proposal-studio</div>');
-          const doc = el.contentDocument;
-          const canvas = doc && doc.querySelector('.custom-form-design');
+          const outer = el.contentDocument; // Angular app document
+          const chrome = {
+            shell: !!outer.querySelector('.editor-shell'),
+            topbar: !!outer.querySelector('.topbar'),
+            leftSidebar: !!outer.querySelector('.sidebar--left'),
+            rightSidebar: !!outer.querySelector('.sidebar--right'),
+            paletteItems: outer.querySelectorAll('.library-item').length
+          };
+          const canvasFrame = outer.querySelector('iframe.canvas-frame__iframe');
+          const canvasDoc = canvasFrame && canvasFrame.contentWindow.document;
+          const canvas = canvasDoc && canvasDoc.querySelector('.custom-form-design');
           const probe = canvas && canvas.querySelector('#probe');
-          const hasEngine = !!(el.contentWindow && el.contentWindow.FlowCanvas);
           done(true, {
             ready: el.ready,
-            hasEngine,
-            canvasFound: !!canvas,
+            chrome,
+            hasCanvas: !!canvas,
             roundTrip: !!probe,
             valueLen: (el.getHtml() || '').length
           });
@@ -52,16 +57,23 @@ try {
       };
       if (el.ready) finish();
       else el.addEventListener('ready', finish, { once: true });
-      setTimeout(() => done(false, 'timeout waiting for ready'), 30000);
+      setTimeout(() => done(false, 'timeout waiting for ready'), 60000);
     });
   });
 
-  console.log('[smoke] result:', JSON.stringify(result.info));
-  if (!result.ok || !result.info.ready || !result.info.hasEngine || !result.info.roundTrip) {
+  console.log('[smoke] result:', JSON.stringify(result.info, null, 0));
+  const i = result.info;
+  const pass =
+    result.ok && i.ready && i.hasCanvas && i.roundTrip &&
+    i.chrome && i.chrome.shell && i.chrome.topbar &&
+    i.chrome.leftSidebar && i.chrome.rightSidebar && i.chrome.paletteItems > 0;
+  if (!pass) {
     console.error('[smoke] FAILED');
     process.exitCode = 1;
   } else {
-    console.log('[smoke] PASSED ✔  editor boots, engine present, setHtml round-trips');
+    console.log(
+      `[smoke] PASSED ✔  full UI boots — chrome + ${i.chrome.paletteItems} palette items + canvas, setHtml round-trips`
+    );
   }
 } finally {
   await browser.close();

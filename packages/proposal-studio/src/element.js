@@ -1,12 +1,17 @@
 // <proposal-studio> — a framework-agnostic Custom Element that hosts the
-// visual editor inside an isolated iframe.
+// FULL visual editor (toolbar + sidebars + canvas) inside an isolated iframe.
 //
-// Why an iframe?  The editor engine ships its own jQuery + Froala + a pile of
-// `window.*` globals.  Running it in an iframe keeps all of that sealed off
-// from the host application (Angular / React / Vue), so there are zero global
-// collisions and you can mount several editors on one page.  The iframe uses
-// `srcdoc`, so it inherits the host page's origin — that means same-origin DOM
-// access AND working localStorage (the editor's "save template" feature).
+// Why an iframe?  The editor is a complete Angular application bundled into one
+// self-contained document.  Running it in an iframe seals its Angular runtime,
+// jQuery, Froala and globals off from the host app (which may itself be Angular
+// of a different version, React, Vue, …) — zero collisions, multiple instances.
+// The iframe uses `srcdoc`, so it inherits the host page's origin: same-origin
+// DOM access AND working localStorage (the editor's save/template features).
+//
+// Frame layout (all same-origin via the srcdoc chain):
+//   <proposal-studio> → outer iframe (Angular app) → inner iframe (canvas engine)
+// The canvas (.custom-form-design) and its engine (window.FlowCanvas) live in
+// the inner iframe; getHtml/setHtml reach it by traversing both frames.
 //
 // Public surface (see types/index.d.ts for the full contract):
 //   Properties : value (get/set HTML), contentWindow, contentDocument, ready
@@ -18,6 +23,7 @@
 import EDITOR_HTML from './_generated/editor-html.js';
 
 const CANVAS_SELECTOR = '.custom-form-design';
+const CANVAS_FRAME_SELECTOR = 'iframe.canvas-frame__iframe';
 
 // SSR / Node-import safety: `HTMLElement` only exists in the browser. Extending
 // a dummy base on the server lets `import 'proposal-studio'` run during SSR
@@ -48,12 +54,14 @@ export class ProposalStudioElement extends HTMLElementBase {
     if (this._iframe) return; // already mounted (re-connect)
 
     if (!this.style.display) this.style.display = 'block';
+    // The editor is a full app with its own internal scrolling, so the frame
+    // fills the host element. Give it a sensible default height if the host
+    // hasn't sized us (so it's never a 0px-tall, invisible element).
+    if (!this.style.height && !this.getAttribute('height')) this.style.height = '720px';
 
     const iframe = document.createElement('iframe');
     iframe.setAttribute('part', 'frame');
-    iframe.style.cssText =
-      'width:100%;border:0;display:block;' +
-      (this._autoHeight() ? '' : 'height:100%;');
+    iframe.style.cssText = 'width:100%;height:100%;border:0;display:block;';
     iframe.setAttribute('title', 'Proposal Studio editor');
     // Allow the rich-text / clipboard / fullscreen features the editor uses.
     iframe.setAttribute(
@@ -72,6 +80,10 @@ export class ProposalStudioElement extends HTMLElementBase {
 
   disconnectedCallback() {
     window.removeEventListener('message', this._onMessage);
+    if (this._observer) {
+      this._observer.disconnect();
+      this._observer = null;
+    }
   }
 
   attributeChangedCallback(name) {
@@ -147,14 +159,14 @@ export class ProposalStudioElement extends HTMLElementBase {
    * @param {any} message
    */
   post(message) {
-    const win = this.contentWindow;
+    const win = this._canvasWin();
     if (win) win.postMessage(message, '*');
     return this;
   }
 
   /** Focus the editor canvas. */
   focus() {
-    const win = this.contentWindow;
+    const win = this._canvasWin();
     if (win) win.focus();
     const canvas = this._canvas();
     if (canvas) canvas.focus && canvas.focus();
@@ -162,8 +174,22 @@ export class ProposalStudioElement extends HTMLElementBase {
 
   // -- internals ------------------------------------------------------------
 
+  /** The inner canvas iframe element (lives inside the outer Angular doc). */
+  _canvasIframe() {
+    const doc = this.contentDocument; // outer Angular document
+    return doc ? doc.querySelector(CANVAS_FRAME_SELECTOR) : null;
+  }
+
+  /** The canvas iframe's window — hosts window.FlowCanvas (the engine). */
+  _canvasWin() {
+    const f = this._canvasIframe();
+    return f ? f.contentWindow : null;
+  }
+
+  /** The .custom-form-design element inside the (nested) canvas document. */
   _canvas() {
-    const doc = this.contentDocument;
+    const win = this._canvasWin();
+    const doc = win && win.document;
     return doc ? doc.querySelector(CANVAS_SELECTOR) : null;
   }
 
@@ -187,18 +213,19 @@ export class ProposalStudioElement extends HTMLElementBase {
   }
 
   _onFrameLoad() {
-    // The injected ready-signal posts {source:'proposal-studio', type:'ready'}
-    // once FlowCanvas is up. As a fallback, poll for the engine ourselves.
+    // The editor boots asynchronously: the outer Angular app loads, then it
+    // mounts the inner canvas iframe, then the engine (window.FlowCanvas) wires
+    // up. Poll the whole chain until the canvas engine is live.
     let tries = 0;
     const poll = () => {
       if (this._ready) return;
-      const win = this.contentWindow;
+      const win = this._canvasWin();
       const canvas = this._canvas();
       if (win && win.FlowCanvas && canvas) {
         this._markReady();
         return;
       }
-      if (tries++ < 200) setTimeout(poll, 50); // up to ~10s
+      if (tries++ < 400) setTimeout(poll, 50); // up to ~20s (Angular boot + engine)
     };
     poll();
   }
@@ -211,14 +238,38 @@ export class ProposalStudioElement extends HTMLElementBase {
       this._pendingValue = null;
       this.setHtml(html);
     }
+    this._observeChanges();
     this.dispatchEvent(new CustomEvent('ready', { detail: { editor: this } }));
     const waiters = this._readyWaiters.splice(0);
     waiters.forEach((res) => res(this));
   }
 
+  /**
+   * Emit `change` when the canvas content changes. The engine posts its
+   * twig:updated message to the Angular app (not to us), so we watch the canvas
+   * DOM directly. Debounced to coalesce burst mutations.
+   */
+  _observeChanges() {
+    const canvas = this._canvas();
+    const win = this._canvasWin();
+    if (!canvas || !win) return;
+    let timer = null;
+    const MO = win.MutationObserver || window.MutationObserver;
+    this._observer = new MO(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => this._emitChange(), 150);
+    });
+    this._observer.observe(canvas, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true
+    });
+  }
+
   _reinit() {
     // Give the engine a chance to re-wire after a bulk innerHTML swap.
-    const win = this.contentWindow;
+    const win = this._canvasWin();
     try {
       const fc = win && win.FlowCanvas;
       const canvas = this._canvas();

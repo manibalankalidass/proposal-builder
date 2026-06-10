@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CanvasComponent } from './canvas/canvas';
 import { IconPickerComponent } from './icon-picker.component';
 import { ConditionEditorComponent } from './condition-editor.component';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 import { buildExportFile, downloadJson, sanitizeFilename, parseImportFile, readFileText, type ExportFile } from './template-io';
 
 type ToolbarAction = {
@@ -167,6 +167,11 @@ export class App implements AfterViewInit {
     pageBackgroundImage: '',
   };
   protected readonly frameUrl: SafeResourceUrl;
+  // When the app is embedded by the proposal-studio npm package, the canvas
+  // engine HTML is injected as a global string before bootstrap so the iframe
+  // is fully self-contained (no /custom-form/* asset path needed). Falls back
+  // to frameUrl when the global is absent (normal dev app behaviour).
+  protected readonly frameSrcdoc: SafeHtml | null = null;
   protected iframeHeight = 1123;
   protected latestTwigCode: string = '';
   protected availableFields: { key: string; kind: string; expr: string }[] = [];
@@ -205,6 +210,11 @@ export class App implements AfterViewInit {
 
   constructor(private readonly sanitizer: DomSanitizer) {
     this.frameUrl = this.sanitizer.bypassSecurityTrustResourceUrl('/custom-form/custom-form.html');
+    const injected =
+      typeof window !== 'undefined' ? (window as any).__PS_CANVAS_SRCDOC__ : null;
+    if (typeof injected === 'string' && injected.length > 0) {
+      this.frameSrcdoc = this.sanitizer.bypassSecurityTrustHtml(injected);
+    }
   }
 
   @HostListener('window:message', ['$event'])
@@ -288,6 +298,19 @@ export class App implements AfterViewInit {
     if (msg.type === 'iframe:height') {
       this.iframeHeight = msg.height;
     }
+  }
+
+  // Select an ancestor block in the canvas (the "Choose parent <name>" buttons
+  // rendered from activeBlock.parents). The iframe resolves the id and selects
+  // it, which echoes a fresh selection:changed back to refresh this panel.
+  protected selectParent(blockId: string): void {
+    if (!blockId) return;
+    const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
+    iframe?.contentWindow?.postMessage({
+      target: 'custom-form-twig',
+      type: 'block:select',
+      blockId,
+    }, '*');
   }
 
   protected hasProp(prop: string): boolean {

@@ -784,6 +784,13 @@
   window.EditorManager = {
     init,
     clearAll,
+    // Programmatically select a block (used by the panel's "Choose parent"
+    // buttons). Mirrors a fresh user click → idle → selected.
+    select: (block) => {
+      if (!block || !block.classList || !block.classList.contains('cs_block_s')) return;
+      enterSelected(block);
+      try { block.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { /* */ }
+    },
     getSelected: () => selectedBlock,
     getEditing: () => editingBlock,
     getFroalaEditor: () => {

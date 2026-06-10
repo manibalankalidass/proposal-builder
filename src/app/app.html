@@ -106,7 +106,7 @@
         <section class="library-section" style="flex: 1; display: flex; flex-direction: column;">
           <h2>All Icons</h2>
           <app-icon-picker style="flex: 1;"></app-icon-picker>
-        </section>
+        </section> -->
         } @else if (activeLeftTab === 'Templates') {
         <div style="padding: 16px; color: #666;">
           <div class="first-templates-design">
@@ -238,7 +238,13 @@
     </aside>
 
     <div class="canvas-stage">
+      @if (frameSrcdoc) {
+      <!-- Embedded (npm package): self-contained canvas via injected srcdoc. -->
+      <iframe class="canvas-frame__iframe" [srcdoc]="frameSrcdoc"></iframe>
+      } @else {
+      <!-- Normal dev app: canvas served from /custom-form/custom-form.html. -->
       <iframe class="canvas-frame__iframe" [src]="frameUrl"></iframe>
+      }
     </div>
 
     <aside class="sidebar sidebar--right">
@@ -255,6 +261,17 @@
         <ng-container *ngIf="activeBlock; else emptySettings">
           <div class="properties-header" style="padding: 16px;padding-bottom: 0px;">
             <h3>{{ activeBlock.label || 'Block Settings' }}</h3>
+          </div>
+          <!-- Parent breadcrumb: when the selected block is nested, offer a
+               button per ancestor so the user can jump selection up the tree. -->
+          <div *ngIf="activeBlock.parents?.length"
+            style="padding: 8px 16px 0; display: flex; flex-wrap: wrap; gap: 6px;">
+            <button type="button" *ngFor="let parent of activeBlock.parents"
+              (click)="selectParent(parent.id)"
+              [title]="'Select parent ' + parent.name"
+              style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer;">
+              ↑ Choose parent {{ parent.name }}
+            </button>
           </div>
           <div class="properties-body" style="padding: 16px;">
             <button type="button" (click)="saveAsComponent()"

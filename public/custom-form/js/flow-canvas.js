@@ -599,6 +599,14 @@
     if (msg.type === 'component:insert') {
       window.FlowCanvas?.insertComponentHtml?.(msg.html);
     }
+    if (msg.type === 'block:select' && msg.blockId) {
+      // Panel asked us to select an ancestor block (the "Choose parent" button).
+      const el = document.getElementById(msg.blockId);
+      if (el) {
+        if (window.EditorManager?.select) window.EditorManager.select(el);
+        else el.click();
+      }
+    }
     if (msg.type === 'comment:toggle') {
       window.Collab?.toggleCommentMode?.();
     }

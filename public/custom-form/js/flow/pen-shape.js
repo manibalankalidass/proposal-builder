@@ -1116,13 +1116,13 @@
       <button type="button" data-pen="undo"   title="Undo (Ctrl+Z)">↶</button>
       <button type="button" data-pen="redo"   title="Redo (Ctrl+Shift+Z)">↷</button>
       <div class="cs-pen-props" data-pen-props>
-        <div class="cs-pen-props__group">
+        <div class="cs-pen-props__group cs-pen-group--transform">
           <span class="cs-pen-props__label">Transform</span>
           <button type="button" data-pen="flip-h" title="Flip horizontal">⇆</button>
           <button type="button" data-pen="flip-v" title="Flip vertical">⇅</button>
           <label class="cs-pen-num" title="Rotate">↻<input type="range" min="0" max="360" step="1" data-pen="rotate"></label>
         </div>
-        <div class="cs-pen-props__group">
+        <div class="cs-pen-props__group cs-pen-group--fill">
           <span class="cs-pen-props__label">Fill</span>
           <select data-pen="fill-type" title="Fill type">
             <option value="solid">Solid</option>
@@ -1146,7 +1146,7 @@
             <button type="button" data-pen="image" title="Choose image">🖼 Image</button>
           </span>
         </div>
-        <div class="cs-pen-props__group">
+        <div class="cs-pen-props__group cs-pen-group--opacity">
           <span class="cs-pen-props__label">Opacity</span>
           <label class="cs-pen-num" title="Fill opacity (transparency)">◑<input type="range" min="0" max="1" step="0.05" data-pen="fill-opacity"></label>
           <select data-pen="blend" title="Blend mode">
@@ -1158,7 +1158,7 @@
             <option value="lighten">Lighten</option>
           </select>
         </div>
-        <div class="cs-pen-props__group">
+        <div class="cs-pen-props__group cs-pen-group--stroke">
           <span class="cs-pen-props__label">Stroke</span>
           <label class="cs-pen-swatch" title="Stroke colour"><input type="color" data-pen="stroke"></label>
           <label class="cs-pen-num" title="Stroke width">W<input type="number" min="0" max="40" step="1" data-pen="stroke-width"></label>

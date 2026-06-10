@@ -1,9 +1,9 @@
 {
   "name": "proposal-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-agnostic visual form / proposal / brochure editor as a Web Component. Works in Angular (7–22+), React, Vue, Svelte and plain HTML.",
   "type": "module",
-  "main": "./dist/proposal-studio.cjs.js",
+  "main": "./dist/proposal-studio.cjs",
   "module": "./dist/proposal-studio.esm.js",
   "unpkg": "./dist/proposal-studio.global.js",
   "jsdelivr": "./dist/proposal-studio.global.js",
@@ -12,8 +12,8 @@
     ".": {
       "types": "./dist/proposal-studio.d.ts",
       "import": "./dist/proposal-studio.esm.js",
-      "require": "./dist/proposal-studio.cjs.js",
-      "default": "./dist/proposal-studio.global.js"
+      "require": "./dist/proposal-studio.cjs",
+      "default": "./dist/proposal-studio.esm.js"
     },
     "./element": "./dist/proposal-studio.esm.js",
     "./dist/*": "./dist/*"
@@ -25,7 +25,7 @@
   ],
   "sideEffects": [
     "./dist/proposal-studio.esm.js",
-    "./dist/proposal-studio.cjs.js",
+    "./dist/proposal-studio.cjs",
     "./dist/proposal-studio.global.js"
   ],
   "scripts": {
@@ -56,7 +56,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/manibalankalidass/proposal-builder.git"
+    "url": "git+https://github.com/manibalankalidass/proposal-builder.git"
   },
   "devDependencies": {
     "esbuild": "^0.27.0"
