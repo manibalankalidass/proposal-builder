@@ -1,6 +1,6 @@
 {
   "name": "custom-form",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "scripts": {
     "ng": "ng",
     "kill:4200": "fuser -k 4200/tcp 2>/dev/null; lsof -ti tcp:4200 | xargs -r kill -9 2>/dev/null; exit 0",
