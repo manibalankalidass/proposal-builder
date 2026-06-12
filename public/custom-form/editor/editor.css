@@ -81,6 +81,22 @@
   pointer-events: none;
 }
 
+/* Renaming the block (Ctrl+R): the label becomes an inline text field. Override
+   the badge's user-select:none / label's pointer-events:none so the caret and
+   text selection work. */
+.cs-block-badge__label--editing {
+  pointer-events: auto;
+  user-select: text;
+  cursor: text;
+  outline: none;
+  min-width: 12px;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #1f2937;
+  caret-color: #1f2937;
+}
+
 .cs-block-badge__menu {
   cursor: pointer;
   display: inline-flex;
@@ -387,6 +403,21 @@
   border-radius: inherit;
 }
 
+/* ---- Image zoom / pan (active only while the block is in edit mode) ---- */
+/* Hint that the image can be scrolled to zoom while editing. */
+.cs-image-block.cs-editing .image-container img {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* Once zoomed past 1x the image is draggable to reposition the crop. */
+.cs-image-block.cs-editing.cs-img-zoomed .image-container {
+  cursor: grab;
+}
+.cs-image-block.cs-img-panning .image-container,
+.cs-image-block.cs-img-panning .image-container img {
+  cursor: grabbing !important;
+}
+
 /* ==============================    upload-image block css  ======================================= */
 .img-btn {
   background-color: var(--upload-image-placeholder-bg);
@@ -488,46 +519,45 @@
 }
 
 /* ==============================    image block shapes css  ======================================= */
-.image-container.square-image,
-.image-container.square-image img,
-.image-container.square-image .img-btn {
-  @include mixins.square-shape-mixin;
+/* Frame shapes are applied to the CONTAINER only. The container is never
+ * transformed, so its clip/round stays fixed while the <img> inside can still
+ * be zoomed/panned (image-zoom.js) and gets clipped to the frame by the
+ * container's `overflow: hidden`. clip-path needs !important to beat the base
+ * `.image-container { clip-path: unset !important }` rule above. */
+.image-container.square-image {
+  border-radius: 0;
+  clip-path: none !important;
 }
 
-.image-container.rounded-square-image,
-.image-container.rounded-square-image img,
-.image-container.rounded-square-image .img-btn {
-  @include mixins.rounded-square-shape-mixin;
+.image-container.rounded-square-image {
+  border-radius: 16px;
+  clip-path: none !important;
 }
 
-.image-container.circle-image,
-.image-container.circle-image img,
-.image-container.circle-image .img-btn {
-  @include mixins.circle-shape-mixin;
+.image-container.circle-image {
+  aspect-ratio: 1 !important;
+  border-radius: 50%;
+  clip-path: none !important;
 }
 
-.image-container.diagonal-corners-image,
-.image-container.diagonal-corners-image img,
-.image-container.diagonal-corners-image .img-btn {
-  @include mixins.diagonal-corner-shape-mixin;
+.image-container.diagonal-corners-image {
+  border-radius: 0;
+  clip-path: polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%) !important;
 }
 
-.image-container.star,
-.image-container.star img,
-.image-container.star .img-btn {
-  @include mixins.star-shape-mixin;
+.image-container.star {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%) !important;
 }
 
-.image-container.polygon,
-.image-container.polygon img,
-.image-container.polygon .img-btn {
-  @include mixins.polygon-shape-mixin;
+.image-container.polygon {
+  border-radius: 0;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%) !important;
 }
 
-.image-container.rectangle-image,
-.image-container.rectangle-image img,
-.image-container.rectangle-image .img-btn {
-  @include mixins.rectangle-shape-mixin;
+.image-container.rectangle-image {
+  border-radius: 0;
+  clip-path: none !important;
 }
 
 .image-container.rectangle-image {
@@ -1562,4 +1592,472 @@
   flex-wrap: wrap;
   max-width: 92vw;
   justify-content: center;
+}
+
+/* ===========================================================================
+   CustomRichEditor — inline rich-text toolbar (replaces the commercial Froala
+   toolbar). Floats above the current selection while a text block is editing.
+   =========================================================================== */
+.cre-toolbar {
+  position: fixed;
+  z-index: 9500;
+  display: none;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 96vw;
+  padding: 5px 6px;
+  background: #1f2533;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-family: Inter, "Segoe UI", sans-serif;
+  user-select: none;
+}
+
+.cre-toolbar.is-visible {
+  display: flex;
+  animation: slideUpBadge 0.16s ease forwards;
+}
+
+.cre-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 5px;
+  margin-right: 1px;
+  border-right: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.cre-group:last-child {
+  border-right: none;
+  padding-right: 0;
+  margin-right: 0;
+}
+
+.cre-toolbar button {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #e5e7f0;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cre-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cre-toolbar button.is-active {
+  background: #248567;
+  color: #fff;
+}
+
+.cre-toolbar select {
+  height: 26px;
+  max-width: 96px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: #2a3042;
+  color: #fff;
+  font-size: 12px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.cre-color {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  color: #e5e7f0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.cre-color:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* The native colour input fills the swatch but stays invisible — the glyph
+   (A / ▣) is the visible affordance. */
+.cre-color input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Lists made inside a text block: visible markers + sensible indent. The marker
+   tracks the <li> font-size, which CustomRichEditor syncs to the content size
+   so "1." / "•" match large text instead of staying tiny. */
+.edit_me ol,
+.edit_me ul {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.edit_me ol {
+  list-style: decimal outside;
+}
+
+.edit_me ul {
+  list-style: disc outside;
+}
+
+.edit_me li {
+  line-height: 1.4;
+}
+
+/* Font-size dropdown in the toolbar. */
+.cre-toolbar .cre-size {
+  width: 64px;
+  min-width: 64px;
+}
+
+/* Headings (H1–H6) created in a text block get a clear size hierarchy. An
+   explicit font-size the user applies on a run still wins over these. */
+.edit_me h1 {
+  font-size: 2em;
+}
+
+.edit_me h2 {
+  font-size: 1.6em;
+}
+
+.edit_me h3 {
+  font-size: 1.35em;
+}
+
+.edit_me h4 {
+  font-size: 1.15em;
+}
+
+.edit_me h5 {
+  font-size: 1em;
+}
+
+.edit_me h6 {
+  font-size: 0.85em;
+}
+
+.edit_me h1,
+.edit_me h2,
+.edit_me h3,
+.edit_me h4,
+.edit_me h5,
+.edit_me h6 {
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* ===========================================================================
+   Static Table block (Canva-style)
+   =========================================================================== */
+.cs-table-block {
+  width: 100%;
+}
+
+.cs-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14px;
+  color: #333;
+}
+
+.cs-table .cs-cell {
+  border: 1px solid #d0d5e2;
+  padding: 8px 10px;
+  vertical-align: top;
+  min-width: 24px;
+  /* On a <td>, `height` is a MINIMUM — keeps empty cells from collapsing to a
+     thin strip while still growing with content. */
+  height: 36px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.cs-table .cs-cell--head {
+  background: #f3f5fb;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* Editing affordances. */
+.cs-table-block.cs-editing .cs-cell {
+  outline: none;
+}
+
+/* The cell holding the caret gets a clear highlight. */
+.cs-table .cs-cell:focus {
+  box-shadow: inset 0 0 0 1px #248567;
+  background: rgba(92, 92, 255, 0.06);
+}
+
+/* Canva-style cell selection: a soft tint on each cell + one crisp rectangle
+   (.cs-tbl-selrect) drawn around the whole selection. */
+.cs-table .cs-cell--selected {
+  background: rgba(92, 92, 255, 0.18);
+}
+
+.cs-tbl-selrect {
+  position: fixed;
+  z-index: 9450;
+  display: none;
+  pointer-events: none;
+  border: 1px solid #248567;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+/* Red delete-preview (shown while hovering a Delete menu item). */
+.cs-table .cs-cell--danger {
+  box-shadow: inset 0 0 0 2px #e5484d;
+  background: rgba(229, 72, 77, 0.16) !important;
+}
+
+/* Right-click context menu. */
+.cs-tbl-menu {
+  position: fixed;
+  z-index: 9700;
+  min-width: 190px;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  font-family: Inter, "Segoe UI", sans-serif;
+  user-select: none;
+}
+
+.cs-tbl-menu__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #1f2937;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cs-tbl-menu__item:hover {
+  background: #eef2ff;
+}
+
+.cs-tbl-menu__item--danger {
+  color: #e5484d;
+}
+
+.cs-tbl-menu__item--danger:hover {
+  background: #fdecec;
+}
+
+.cs-tbl-menu__sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: #eceef3;
+}
+
+/* Floating table toolbar (lives in <body>, never exported). */
+.cs-tbl-toolbar {
+  position: fixed;
+  z-index: 9600;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 96vw;
+  padding: 5px 6px;
+  background: #1f2533;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-family: Inter, "Segoe UI", sans-serif;
+  user-select: none;
+  animation: slideUpBadge 0.16s ease forwards;
+}
+
+.cs-tbl-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 5px;
+  margin-right: 1px;
+  border-right: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.cs-tbl-group:last-child {
+  border-right: none;
+  padding-right: 0;
+  margin-right: 0;
+}
+
+.cs-tbl-toolbar button {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #e5e7f0;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cs-tbl-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cs-tbl-color {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  color: #e5e7f0;
+  font-size: 13px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.cs-tbl-color:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cs-tbl-color input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ===================== List block (synchronised columns) ================== */
+
+/* Three selectable tiers: the List (outer), each Column ("Container"), and the
+   blocks inside. Each tier gets a little padding so there's a clickable band to
+   select it without hitting the tier below.
+   Neutralise the leaked `.cs_block_s` base (width:250px / border / max-content)
+   so the List always spans its column full-width. */
+.cs-synclist-block {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  /* border: none !important; */
+  padding: 10px !important;
+  box-sizing: border-box;
+}
+
+/* Wix-repeater-style wrapping row, optimised for SMOOTH px resize. Before any
+   resize columns split the row equally (flex: 1 1 0). Once a column is resized
+   they all take that exact px width (--cs-col-w) via .cs-synclist--sized — so
+   the drag is 1:1/smooth — pack from the left with a consistent gap, and wrap
+   to the next line when they no longer fit (partial last row stays left-
+   aligned). Row height is uniform via --cs-col-h. */
+.cs-synclist {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  align-content: flex-start;
+  justify-content: space-between;
+  gap: 5px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* A column is a flex item AND a free canvas (position:relative) — its blocks
+   are absolutely positioned and drag/resize freely, bounded to it. */
+.cs-synclist__col {
+  /* Default: split the row equally. */
+  flex: 1 1 0;
+  min-width: 0;
+  /* Floor the height (the leaked .cs_block_s height:max-content would collapse
+     the column to ~0 since its blocks are absolutely positioned).
+     --cs-col-h is inherited and bumped on height-resize. */
+  min-height: var(--cs-col-h, 240px);
+  /* Override the leaked width:250px / height:max-content. */
+  width: auto;
+  height: auto;
+  position: relative;
+  display: block;
+  padding: 0;
+  border-left: 1px solid #e6e8f2;
+  box-sizing: border-box;
+}
+
+/* After a resize: every column is the SAME exact px width/height (smooth, 1:1
+   with the drag); flex-wrap pushes them to the next line when the row is full. */
+.cs-synclist--sized .cs-synclist__col {
+  flex: 0 0 var(--cs-col-w, 200px);
+  width: var(--cs-col-w, 200px);
+  height: var(--cs-col-h, 240px);
+}
+
+
+/* Free-floating content block — keep its own size, just cap width to the
+   column so it can't spill out sideways. */
+.cs-synclist__col>.cs_block_s {
+  max-width: 100%;
+  margin: 0 !important;
+}
+
+.cs-synclist__col img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Light column guides on hover — editing aid, harmless in export. */
+.cs-synclist-block:hover .cs-synclist__col {
+  box-shadow: inset 0 0 0 1px #eef0f6;
+}
+
+/* The Container resizes with the right (e), bottom (s) and bottom-right (se)
+   handles — drag them to size the column (width sticks via the flex-basis
+   mirror in synclist.js; height stretches every column via the flex row).
+   The other handles are hidden. Content blocks keep all 8 handles. */
+.cs-synclist__col>.cs-resize-handle {
+  display: none !important;
+}
+
+.cs-synclist__col>.cs-resize-handle[data-dir="e"],
+.cs-synclist__col>.cs-resize-handle[data-dir="s"],
+.cs-synclist__col>.cs-resize-handle[data-dir="se"] {
+  display: block !important;
+}
+
+.cs-synclist__col.cs-editing,
+.cs-synclist__col.cs-selected {
+  border: 1px solid #248567;
+}
+
+/* Drop highlight while dragging a sidebar block into a Container. */
+.cs-synclist__col--dropping {
+  box-shadow: inset 0 0 0 2px #5c5cff !important;
+  background: rgba(92, 92, 255, 0.06);
 }

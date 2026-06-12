@@ -484,6 +484,62 @@
     return out;
   };
 
+  // The set of mutually-exclusive frame-shape classes an image container can
+  // carry. Shared by the read (getImageFrame) and write (set-image-frame) paths
+  // so they never drift. Mirrors the .image-container.<shape> rules in editor.css.
+  const IMAGE_FRAME_SHAPES = [
+    'square-image',
+    'rounded-square-image',
+    'circle-image',
+    'diagonal-corners-image',
+    'polygon',
+    'star',
+    'rectangle-image',
+  ];
+
+  const getImageFrame = (container) => {
+    for (const shape of IMAGE_FRAME_SHAPES) {
+      if (container.classList.contains(shape)) return shape;
+    }
+    return 'square-image'; // default framing when no shape class is present
+  };
+
+  // Geometric frames need a 1:1 box — otherwise a percentage clip-path (star /
+  // polygon / hexagon) stretches across the image's wide-and-short frame and
+  // stops looking like the shape. They also need the image to COVER that box;
+  // the global `.cs_block_s img { object-fit: contain }` rule otherwise
+  // letterboxes the picture inside the shape. Rectangular frames keep the
+  // default contain / full-width framing.
+  //
+  // These have to be driven via inline `!important` from JS: the container's
+  // creation-time inline `aspect-ratio` carries `!important`, which no
+  // stylesheet rule (even `!important`) can override — only another inline
+  // declaration can.
+  const SHAPED_FRAMES = ['circle-image', 'diagonal-corners-image', 'polygon', 'star'];
+
+  const setImageFrame = (container, shape) => {
+    if (!IMAGE_FRAME_SHAPES.includes(shape)) return;
+    IMAGE_FRAME_SHAPES.forEach((s) => container.classList.remove(s));
+    container.classList.add(shape);
+
+    const img = container.querySelector('img');
+    if (SHAPED_FRAMES.includes(shape)) {
+      // Square, centred box (margin:auto on the container already centres it)
+      // so the shape renders true-to-form, with the image filling it.
+      container.style.setProperty('aspect-ratio', '1', 'important');
+      container.style.setProperty('width', 'auto', 'important');
+      img?.style.setProperty('object-fit', 'cover', 'important');
+    } else {
+      // Restore the default wide framing for square / rounded / rectangle.
+      container.style.setProperty('aspect-ratio', 'auto', 'important');
+      container.style.setProperty('width', '100%', 'important');
+      img?.style.removeProperty('object-fit');
+    }
+
+    // The box size/aspect just changed, so re-clamp any active zoom/pan.
+    window.FlowCanvas?.refreshImageZoom?.(container);
+  };
+
   const broadcastSelection = () => {
     // Find the currently selected block, whether it is selected via inline-editor class or custom-form class
     let block = document.querySelector('.cs_block_s.cs-selected, .cs_block_s.cs-editing') ||
@@ -502,6 +558,11 @@
       block.id = 'block_' + Math.random().toString(36).substr(2, 9);
     }
 
+    // Image-block frame: surface whether this is an image and which frame
+    // shape it currently uses, so the parent panel can show the shape picker
+    // only for images and highlight the active shape.
+    const imageContainer = block.querySelector('.image-container');
+
     window.parent?.postMessage({
       source: 'custom-form-twig',
       type: 'selection:changed',
@@ -512,6 +573,8 @@
         twigIf: block.dataset.twigIf || '',
         tableBorderWidth: block.querySelector('table') ? (block.querySelector('table').dataset.borderWidth || '0') : '0',
         tableBorderColor: block.querySelector('table') ? (block.querySelector('table').dataset.borderColor || '#000000') : '#000000',
+        isImage: !!imageContainer,
+        imageFrame: imageContainer ? getImageFrame(imageContainer) : '',
         styles: readBlockStyles(block),
         parents: getBlockParents(block)
       }
@@ -593,7 +656,9 @@
 
         const activeBlock = document.querySelector('.cs_block_s.cs-selected, .cs_block_s.cs-editing') || document.querySelector('.canvas-block--selected');
         if (activeBlock) {
-          deleteBlockWithAnimation(activeBlock);
+          // Route through FlowCanvas.deleteBlock so wrappers (e.g. the List's
+          // group-delete) run; it falls back to deleteBlockWithAnimation.
+          (window.FlowCanvas?.deleteBlock || deleteBlockWithAnimation)(activeBlock);
         }
       }
     });
@@ -720,6 +785,20 @@
 
         // After applying styles, broadcast the selection to update the panel
         setTimeout(() => broadcastSelection(), 50);
+        generate();
+      }
+    }
+
+    // Change an image block's frame shape (square / rounded / circle / polygon
+    // / star …). Only the .image-container's shape class is swapped — the <img>,
+    // its src and any zoom/pan transform are untouched, so all other image
+    // functionality keeps working; only the visible frame changes.
+    if (msg.type === 'set-image-frame') {
+      const block = document.getElementById(msg.blockId);
+      const container = block?.querySelector('.image-container');
+      if (container && msg.shape) {
+        setImageFrame(container, msg.shape);
+        broadcastSelection();
         generate();
       }
     }

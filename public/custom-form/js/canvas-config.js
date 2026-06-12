@@ -11,10 +11,10 @@
   // CSS px at 96 dpi — these are the physical paper dimensions, so the
   // canvas .cs-doc matches what the printed PDF page will be.
   const PageSizes = {
-    'A4':                 { label: 'A4 Portrait',       width: 794,  height: 1123, format: 'A4',     landscape: false },
-    'A4-Landscape':       { label: 'A4 Landscape',      width: 1123, height: 794,  format: 'A4',     landscape: true  },
-    'Letter':             { label: 'Letter Portrait',   width: 816,  height: 1056, format: 'Letter', landscape: false },
-    'Letter-Landscape':   { label: 'Letter Landscape',  width: 1056, height: 816,  format: 'Letter', landscape: true  },
+    'A4': { label: 'A4 Portrait', width: 794, height: 1123, format: 'A4', landscape: false },
+    'A4-Landscape': { label: 'A4 Landscape', width: 1123, height: 794, format: 'A4', landscape: true },
+    'Letter': { label: 'Letter Portrait', width: 816, height: 1056, format: 'Letter', landscape: false },
+    'Letter-Landscape': { label: 'Letter Landscape', width: 1056, height: 816, format: 'Letter', landscape: true },
   };
 
   const DEFAULT_PAGE_KEY = 'A4';
@@ -81,12 +81,27 @@
     /** Inline "+" insert control. */
     inlineInsert: {
       enabled: true
+    },
+
+    /**
+     * Editor engine switch — flip this one boolean to swap the whole editor.
+     *   useFroala: false → NEW custom logic (CustomRichEditor for text blocks +
+     *                      the custom static Table block). The default.
+     *   useFroala: true  → LEGACY Froala editor for text; the custom Table
+     *                      engine is turned off (Froala-era behaviour).
+     */
+    editor: {
+      useFroala: true
     }
   };
 
   // Make available on window so flow-canvas.js and CSS-via-JS can read it.
   window.CanvasConfig = Config;
   window.CanvasPageSizes = PageSizes;
+
+  // Convenience accessor used by inline-editor.js / table-block.js to decide
+  // which editor engine to run. Reads the live config each call.
+  window.isFroalaEditor = () => !!(window.CanvasConfig && window.CanvasConfig.editor && window.CanvasConfig.editor.useFroala);
 
   // Switch the editor canvas to a different paper size at runtime.
   // Re-applies the CSS vars so every .cs-doc updates in place. Existing

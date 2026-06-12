@@ -18,6 +18,15 @@
   // enterSelected, regardless of DOM classes — prevents a single user click
   // from doing both teardown AND edit-mode entry in one gesture.
   let forceFreshSelect = false;
+  // In-progress rename of a block's badge label (Ctrl+R). Holds the block, the
+  // contenteditable label span, and its original text so we can save or cancel.
+  let labelEdit = null;
+  // True when the most recent press landed inside the active block. A drag to
+  // select text can start inside the editor and release (mouseup) outside the
+  // page; the browser then fires `click` on a common ancestor outside the
+  // canvas, which would otherwise look like an "outside click" and tear down
+  // editing mid-selection. We use this to skip that teardown.
+  let pressStartedInActive = false;
 
   const isFroalaAvailable = () => typeof FroalaEditor !== 'undefined';
 
@@ -55,6 +64,69 @@
     return badge;
   };
 
+  /* ----------------------------- rename (Ctrl+R) ----------------------------- */
+  // Renaming edits ONLY the friendly `custom-name` attribute (shown in the
+  // badge). The `data` attribute — the block-type identifier the rest of the
+  // app reads — is never touched.
+
+  const onLabelKeydown = (event) => {
+    // Keep the keystroke inside the label: don't trigger the block-level
+    // shortcuts (Escape teardown, arrow nudge, Ctrl+R again, copy/paste).
+    event.stopPropagation();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitLabelEdit(true);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      commitLabelEdit(false);
+    }
+  };
+
+  const onLabelBlur = () => commitLabelEdit(true);
+
+  // Finish an in-progress rename. save=true writes the new name to custom-name;
+  // save=false (or empty input) restores the original. Idempotent — safe to call
+  // from Enter, blur, or a teardown (clearAll) without double-applying.
+  function commitLabelEdit(save) {
+    if (!labelEdit) return;
+    const { block, label, original } = labelEdit;
+    labelEdit = null;
+
+    label.removeEventListener('keydown', onLabelKeydown);
+    label.removeEventListener('blur', onLabelBlur);
+    label.removeAttribute('contenteditable');
+    label.classList.remove('cs-block-badge__label--editing');
+
+    const next = (label.textContent || '').replace(/\s+/g, ' ').trim();
+    if (save && next) {
+      block.setAttribute('custom-name', next); // data attribute stays untouched
+      label.textContent = next;
+    } else {
+      label.textContent = original;
+    }
+  }
+
+  // Make the selected block's badge label editable, focused, and fully selected.
+  const startLabelEdit = (block) => {
+    if (!block || labelEdit) return;
+    const badge = block.querySelector(':scope > .cs-block-badge');
+    const label = badge && badge.querySelector('.cs-block-badge__label');
+    if (!label) return;
+
+    labelEdit = { block, label, original: label.textContent };
+    label.setAttribute('contenteditable', 'true');
+    label.classList.add('cs-block-badge__label--editing');
+    label.addEventListener('keydown', onLabelKeydown);
+    label.addEventListener('blur', onLabelBlur);
+
+    label.focus();
+    const range = document.createRange();
+    range.selectNodeContents(label);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
   // Run a badge action button. The button carries data-cs-action; the owning
   // block is resolved from the badge's parent. All actions delegate to the
   // FlowCanvas helpers so behaviour stays consistent with keyboard shortcuts.
@@ -62,10 +134,10 @@
     if (!block) return;
     const FC = window.FlowCanvas || {};
     switch (action) {
-      case 'move-up':   FC.moveBlock?.(block, 'up'); break;
+      case 'move-up': FC.moveBlock?.(block, 'up'); break;
       case 'move-down': FC.moveBlock?.(block, 'down'); break;
       case 'duplicate': FC.duplicateBlock?.(block); break;
-      case 'delete':    clearAll(); FC.deleteBlock?.(block); break;
+      case 'delete': clearAll(); FC.deleteBlock?.(block); break;
     }
   };
 
@@ -97,6 +169,11 @@
     block.querySelector('.edit_me') || block.querySelector('.canvas-block__content') || null;
 
   const startFroala = (block) => {
+    // The List block and its columns are structural containers — they have no
+    // text of their own, and any `.edit_me` matches belong to nested cells.
+    // Never start an editor on them (that would hijack a cell's text editor).
+    if (block.dataset.blockType === 'sync-list' || block.dataset.blockType === 'sync-list-col') return;
+
     const target = findEditTarget(block);
     if (!target) return;
 
@@ -111,12 +188,37 @@
     // where the user click-storms between blocks faster than destroy() finishes).
     hardCleanFroala(block);
 
-    // Lock the block's WIDTH at its rendered value before Froala wraps things —
-    // otherwise Froala's .fr-box can collapse the block. Height stays auto so
-    // the block grows as the user types.
+    // Lock the block's WIDTH at its rendered value before the editor wraps
+    // things — otherwise the box can collapse. Force HEIGHT to auto (clearing
+    // any pinned/resized height) so the block grows as the user types / hits
+    // Enter, instead of overflowing a fixed-height box.
     const rect = block.getBoundingClientRect();
     block.style.width = `${rect.width}px`;
     block.style.maxWidth = 'none';
+    block.style.height = 'auto';
+    const editTarget = findEditTarget(block);
+    if (editTarget) editTarget.style.height = 'auto';
+
+    // Engine switch (CanvasConfig.editor.useFroala): false → our custom editor,
+    // true → legacy Froala. See canvas-config.js.
+    const useFroala = (typeof window.isFroalaEditor === 'function') ? window.isFroalaEditor() : false;
+
+    // NEW custom editor (default). Dependency-free, edits in place, and exposes
+    // the same `.commands.exec()` / `.destroy()` surface so froala-style-handler
+    // + the style panel keep working.
+    if (!useFroala && typeof window.CustomRichEditor === 'function') {
+      try {
+        const editor = new window.CustomRichEditor(target, {
+          placeholder: target.getAttribute('placeholder') || 'Enter text here',
+          fonts: window.FROALA_FONTS || null,
+          fontSizes: ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '32', '36', '40', '48', '56', '64', '72', '80', '88', '96'],
+        });
+        blockEditors.set(block, editor);
+        return;
+      } catch (err) {
+        console.warn('CustomRichEditor init failed, falling back:', err);
+      }
+    }
 
     // Froala needs the element to be contenteditable-friendly; it handles that itself.
     if (isFroalaAvailable()) {
@@ -173,6 +275,19 @@
       } catch (err) {
         console.warn('Froala init failed, falling back to contenteditable:', err);
       }
+    }
+
+    // Last resort: if the preferred engine wasn't available (e.g. Froala mode
+    // but Froala didn't load), use the custom editor before bare contenteditable.
+    if (typeof window.CustomRichEditor === 'function') {
+      try {
+        const editor = new window.CustomRichEditor(target, {
+          placeholder: target.getAttribute('placeholder') || 'Enter text here',
+          fonts: window.FROALA_FONTS || null,
+        });
+        blockEditors.set(block, editor);
+        return;
+      } catch (err) { /* fall through */ }
     }
 
     // Fallback
@@ -250,6 +365,10 @@
   /* ----------------------------- state transitions ----------------------------- */
 
   const clearAll = ({ internal = false } = {}) => {
+    // Save an in-progress rename before the badge (and its label) is removed —
+    // a blur event isn't guaranteed once the focused node is detached.
+    commitLabelEdit(true);
+
     const stoppedBlock = editingBlock;
     if (stoppedBlock) {
       stopFroala(stoppedBlock);
@@ -296,6 +415,11 @@
     removeChrome(block);
     block.classList.remove('cs-selected');
     block.classList.add('cs-editing');
+
+    // Drop the inline "+" insert indicator right away so it never overlaps the
+    // editing surface (refreshHover also guards on .cs-editing, but that only
+    // fires on the next pointermove — this hides it instantly on entry).
+    window.FlowCanvas?.hideInlineInsert?.();
 
     editingBlock = block;
     selectedBlock = null;
@@ -357,6 +481,8 @@
     if (event.target.closest('.cs-resize-handle')) return;
     // Badge action buttons are clicks, not drags — never start a move on them.
     if (event.target.closest('[data-cs-action]')) return;
+    // Renaming the badge label: clicks place the caret, they don't drag.
+    if (event.target.closest('.cs-block-badge__label[contenteditable="true"]')) return;
 
     const block = event.target.closest('.cs_block_s');
     if (!block) return;
@@ -482,7 +608,19 @@
     const isFreeForm = isFlexibleBlock || !!block.dataset.csInSection;
     const flexCfg = window.CanvasConfig?.flexible || {};
     const MIN_W = isFreeForm ? (flexCfg.minWidth ?? 20) : MIN;
-    const MIN_H = isFreeForm ? (flexCfg.minHeight ?? 20) : MIN;
+    let MIN_H = isFreeForm ? (flexCfg.minHeight ?? 20) : MIN;
+
+    // For a TEXT block, never shrink the height below the text's natural height
+    // — otherwise the box clips and the text overflows it (the box would be
+    // shorter than the content). The edit target is height:auto, so its
+    // scrollHeight is the true content height regardless of the box size.
+    const editEl = block.querySelector('.edit_me');
+    if (editEl && editEl.closest('.cs_block_s') === block) {
+      const csb = getComputedStyle(block);
+      const extra = (parseFloat(csb.paddingTop) || 0) + (parseFloat(csb.paddingBottom) || 0)
+        + (parseFloat(csb.borderTopWidth) || 0) + (parseFloat(csb.borderBottomWidth) || 0);
+      MIN_H = Math.max(MIN_H, Math.ceil(editEl.scrollHeight + extra));
+    }
 
     if (dir.includes('e')) newW = Math.max(MIN_W, startW + dx);
     if (dir.includes('s')) newH = Math.max(MIN_H, startH + dy);
@@ -555,6 +693,15 @@
     const block = event.target.closest('.cs_block_s');
 
     if (!block) {
+      // No block under the click. If this is the tail of a drag that began
+      // inside the active block (text selection released on empty page area),
+      // the user never meant to click away — keep editing + the selection.
+      // A real click on empty canvas has its press start outside the block, so
+      // the flag is false and we tear down as normal.
+      if (pressStartedInActive) {
+        pressStartedInActive = false;
+        return;
+      }
       clearAll();
       return;
     }
@@ -598,10 +745,18 @@
    */
   const onCaptureMouseDown = (event) => {
     // selectedBlock OR editingBlock — both should tear down on outside click
-    if (!editingBlock && !selectedBlock) return;
+    if (!editingBlock && !selectedBlock) {
+      pressStartedInActive = false;
+      return;
+    }
 
     const target = event.target;
     const activeBlock = editingBlock || selectedBlock;
+
+    // Remember whether this gesture began inside the active block so the trailing
+    // `click` (which may land outside the page if the user drag-selected past the
+    // block edge) isn't mistaken for an outside click that exits edit mode.
+    pressStartedInActive = activeBlock.contains(target);
 
     // Inside the currently active block — leave alone (Froala / move-handle owns it)
     if (activeBlock.contains(target)) return;
@@ -629,12 +784,35 @@
 
     if (target.closest && target.closest('.custom-form-design, [data-cs-chrome]')) return;
     if (isFroalaUi(target)) return;
+
+    // Tail of a text-selection drag that began inside the block and released
+    // fully outside the page: the browser fires `click` on a common ancestor
+    // outside the canvas. The user never meant to click away, so keep editing.
+    if (pressStartedInActive) {
+      pressStartedInActive = false;
+      return;
+    }
+
     clearAll();
   };
 
   const onKeydown = (event) => {
+    // A rename is in progress — the label's own listeners own the keyboard.
+    if (labelEdit) return;
+
     if (event.key === 'Escape') {
       clearAll();
+      return;
+    }
+
+    // Ctrl/Cmd+R on the active block → rename it (edit the badge label).
+    // preventDefault stops the browser's reload while a block is active.
+    if ((event.ctrlKey || event.metaKey) && (event.key === 'r' || event.key === 'R')) {
+      const block = selectedBlock || editingBlock;
+      if (block) {
+        event.preventDefault();
+        startLabelEdit(block);
+      }
       return;
     }
 

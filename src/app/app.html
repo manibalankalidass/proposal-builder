@@ -34,7 +34,7 @@
       </button>
     </div> -->
 
-    <div class="topbar__group topbar__group--page-size">
+    <!-- <div class="topbar__group topbar__group--page-size">
       <label class="page-size-control">
         <span class="page-size-control__label">Page</span>
         <select class="page-size-control__select" [ngModel]="pdfSettings.pageSize"
@@ -44,7 +44,7 @@
           }
         </select>
       </label>
-    </div>
+    </div> -->
 
     <!-- <div class="topbar__group topbar__group--title">
       <span>{{ documentTitle }}</span>
@@ -103,7 +103,7 @@
         </section>
         }
 
-        <section class="library-section" style="flex: 1; display: flex; flex-direction: column;">
+        <!-- <section class="library-section" style="flex: 1; display: flex; flex-direction: column;">
           <h2>All Icons</h2>
           <app-icon-picker style="flex: 1;"></app-icon-picker>
         </section> -->
@@ -266,8 +266,7 @@
                button per ancestor so the user can jump selection up the tree. -->
           <div *ngIf="activeBlock.parents?.length"
             style="padding: 8px 16px 0; display: flex; flex-wrap: wrap; gap: 6px;">
-            <button type="button" *ngFor="let parent of activeBlock.parents"
-              (click)="selectParent(parent.id)"
+            <button type="button" *ngFor="let parent of activeBlock.parents" (click)="selectParent(parent.id)"
               [title]="'Select parent ' + parent.name"
               style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer;">
               ↑ Choose parent {{ parent.name }}
@@ -397,7 +396,7 @@
               </label>
             </div>
 
-            <div class="pdf-settings-row"
+            <!-- <div class="pdf-settings-row"
               style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px;">
               <label for="pdf-comments" style="margin-bottom: 0;">Enable comments</label>
               <label class="switch-toggle" style="position: relative; display: inline-block; width: 34px; height: 20px;">
@@ -425,7 +424,7 @@
                     [style.transform]="pdfSettings.enablePresence ? 'translateX(14px)' : 'translateX(0)'"></span>
                 </span>
               </label>
-            </div>
+            </div> -->
 
             <div class="pdf-settings-row">
               <label for="pdf-page-size">Page size</label>
@@ -583,6 +582,23 @@
       <div class="style-panel" *ngIf="activeRightTab === 'Style'">
         <ng-container *ngIf="activeBlock; else pageSettings">
           <div class="properties-body" style="padding: 16px;">
+            <!-- Image frame: only for image blocks. Clicking a shape swaps the
+                 frame; the image + its zoom/pan are preserved. -->
+            <div class="style-section" *ngIf="activeBlock.isImage">
+              <h4 class="style-section__title">IMAGE FRAME</h4>
+              <div class="image-frame-grid">
+                <button type="button" class="image-frame-item"
+                  *ngFor="let frame of imageFrames"
+                  [class.image-frame-item--active]="(activeBlock.imageFrame || 'square-image') === frame.key"
+                  (click)="onImageFrameChange(frame.key)" [title]="frame.label">
+                  <span class="image-frame-swatch"
+                    [style.border-radius]="frame.round || '0'"
+                    [style.clip-path]="frame.clip || 'none'"></span>
+                  <span class="image-frame-label">{{ frame.label }}</span>
+                </button>
+              </div>
+            </div>
+
             <div class="style-section" *ngIf="hasProp('layoutStyle') || hasProp('layoutColumns')">
               <h4 class="style-section__title">LAYOUT & DESIGN</h4>
 
@@ -1010,8 +1026,8 @@
       <div class="saveas-modal__actions">
         <button type="button" class="saveas-modal__btn saveas-modal__btn--ghost"
           (click)="cancelSaveAs()">Cancel</button>
-        <button type="button" class="saveas-modal__btn saveas-modal__btn--primary"
-          (click)="confirmSaveAs()">Save as Template</button>
+        <button type="button" class="saveas-modal__btn saveas-modal__btn--primary" (click)="confirmSaveAs()">Save as
+          Template</button>
       </div>
     </div>
   </div>

@@ -337,6 +337,14 @@
         hideVisuals();
         return;
       }
+      // While any block is being edited (typing / selecting text), the insert
+      // indicator must stay hidden — it overlaps the editing surface and makes
+      // mouse text-selection awkward. `.cs-editing` is the shared edit-mode
+      // marker set by inline-editor.js for every editable block type.
+      if (document.querySelector('.cs_block_s.cs-editing')) {
+        hideVisuals();
+        return;
+      }
       if (eventTarget?.closest?.('.cs-inline-insert, .cs-inline-insert-menu')) {
         if (state.geometry) showVisuals(state.geometry);
         return;
@@ -472,6 +480,10 @@
         applyEnabledState(nextEnabled);
         return enabled;
       },
+      // Let other modules force the insert indicator away immediately — e.g.
+      // the editor calls this the moment a block enters edit mode, so the line
+      // and "+" handle vanish without waiting for the next pointermove.
+      hideInlineInsert: () => closeMenu(),
     });
   };
 })();

@@ -83,6 +83,16 @@
 
     const clone = cleanClone(block.cloneNode(true));
     clipboardHtml = clone.outerHTML;
+
+    // Also overwrite the SYSTEM clipboard with this block's text. The paste
+    // handler treats "an image sits on the clipboard" as a newer external copy
+    // that should out-rank the in-memory block — so a picture copied earlier
+    // must not linger and hijack a fresh block copy. Writing here clears it.
+    // Best-effort: if clipboard-write isn't permitted we still have clipboardHtml.
+    try {
+      const text = (block.innerText || '').trim() || ' ';
+      navigator.clipboard?.writeText?.(text)?.catch?.(() => {});
+    } catch (e) { /* clipboard API unavailable — ignore */ }
     return true;
   };
 
@@ -139,6 +149,26 @@
   // feedback + becomes the next paste/duplicate anchor).
   const placeAndSelect = (canvas, newBlock, anchor) => {
     if (!newBlock) return null;
+
+    // List-aware paste. Two cases, both keep the synced behaviour:
+    //   - a whole Container (column) was copied → add it as a new column whose
+    //     children clone into the existing sync groups (handleColumnPaste);
+    //   - a content block was copied while a column is the anchor → paste into
+    //     that column + clone across the others as a new group (handlePaste).
+    if (anchor?.closest?.('.cs-synclist__col') && window.SyncList) {
+      const isColumn = newBlock.classList?.contains('cs-synclist__col');
+      const fn = isColumn ? window.SyncList.handleColumnPaste : window.SyncList.handlePaste;
+      const placed = fn && fn(anchor, newBlock);
+      if (placed) {
+        requestAnimationFrame(() => {
+          if (!canvas.contains(placed)) return;
+          placed.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          placed.click();
+        });
+        return placed;
+      }
+    }
+
     const placement = resolvePasteTarget(canvas, anchor);
     if (!placement) return null;
 
@@ -167,10 +197,97 @@
     return newBlock;
   };
 
-  const pasteBlock = (canvas) => {
+  // The block a freshly-pasted block should anchor next to: the current
+  // selection, but only when it's a real flow/list/flexible block we know how
+  // to place beside. Returns null otherwise (→ append at end of the doc).
+  const currentAnchor = (canvas) => {
     const anchor = window.EditorManager?.getSelected?.();
-    const useAnchor = (isFlowBlock(anchor, canvas) || isFlexibleChild(anchor, canvas)) ? anchor : null;
-    return !!placeAndSelect(canvas, buildPasteBlock(), useAnchor);
+    const inList = !!anchor?.closest?.('.cs-synclist__col');
+    return (inList || isFlowBlock(anchor, canvas) || isFlexibleChild(anchor, canvas)) ? anchor : null;
+  };
+
+  const pasteBlock = (canvas) => (
+    !!placeAndSelect(canvas, buildPasteBlock(), currentAnchor(canvas))
+  );
+
+  /* ------------------- external clipboard → new block ----------------------- */
+  // Pasting content copied from another site/app (when NOT editing a block)
+  // auto-creates the matching block, just like adding it from the sidebar and
+  // then filling in the content:
+  //   - image data  → an Image block showing the pasted picture;
+  //   - text        → a Textarea (body-text) block holding the pasted text.
+
+  // Escape plain text for safe innerHTML and keep line breaks visible (newlines
+  // → <br>) so a multi-line paste reads the same as when it was copied.
+  const textToHtml = (text) => text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\r\n?|\n/g, '<br>');
+
+  // Build an Image block populated with the pasted picture. Mirrors the
+  // image-upload handler in flow-canvas.js: drop the "click to select"
+  // placeholder and append a real <img> the container styles fill.
+  const buildPastedImageBlock = (dataUrl) => {
+    const block = window.FlowCanvas.createBlock?.('image');
+    if (!block) return null;
+    const container = block.querySelector('.image-container');
+    if (container) {
+      container.querySelector('.img-btn')?.remove();
+      container.querySelector('img')?.remove();
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.alt = 'Pasted image';
+      container.appendChild(img);
+    }
+    return block;
+  };
+
+  // Build a Textarea (body-text) block holding the pasted text.
+  const buildPastedTextBlock = (text) => {
+    const block = window.FlowCanvas.createBlock?.('body-text');
+    if (!block) return null;
+    const editable = block.querySelector('.edit_me');
+    if (editable) editable.innerHTML = textToHtml(text);
+    return block;
+  };
+
+  // Place the clipboard's image as a NEW Image block on the canvas, next to
+  // `anchor`. Used both for plain canvas paste AND to push an image OUT of a
+  // text block (a picture must never live inside a Title/Textarea — it lands in
+  // the parent instead). Returns true when an image was found and placement
+  // kicked off.
+  //
+  // A pasted image file ("Copy image") is always handled. An <img> embedded in
+  // copied rich HTML (e.g. a web-page region) is only handled when
+  // `includeHtmlImg` is set — on the canvas a text+image region stays a text
+  // block (keeps the text); ejecting from a text block extracts the picture.
+  const placePastedImageBlock = (canvas, clipboardData, anchor, includeHtmlImg = false) => {
+    if (!clipboardData) return false;
+
+    const imageItem = Array.from(clipboardData.items || [])
+      .find((it) => it.kind === 'file' && it.type.startsWith('image/'));
+    if (imageItem) {
+      const file = imageItem.getAsFile();
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          placeAndSelect(canvas, buildPastedImageBlock(e.target.result), anchor);
+        };
+        reader.readAsDataURL(file);
+        return true;
+      }
+    }
+
+    if (includeHtmlImg) {
+      const html = clipboardData.getData('text/html') || '';
+      const src = html.match(/<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/i)?.[1];
+      if (src) {
+        placeAndSelect(canvas, buildPastedImageBlock(src), anchor);
+        return true;
+      }
+    }
+    return false;
   };
 
   // Public: duplicate a specific block (used by the badge "duplicate" action).
@@ -244,13 +361,107 @@
                          target?.tagName === 'TEXTAREA';
       if (inEditable) return;
 
+      // Only handle COPY here. Paste (Ctrl+V) is deliberately left to the native
+      // `paste` listener below, so it can inspect the REAL system clipboard.
+      // That's what lets a freshly-copied external image/text win over a
+      // previously-copied internal block — hijacking paste here would always
+      // re-insert the in-memory block and never even look at the clipboard.
       if (key === 'c') {
         // Only hijack copy when a block is actually selected; otherwise let the
         // browser copy any plain text selection normally.
         if (copySelected()) event.preventDefault();
-      } else if (key === 'v') {
-        if (clipboardHtml && pasteBlock(canvas)) event.preventDefault();
       }
     });
+
+    // Native paste. Two contexts:
+    //   1. Editing a text block (or focused in a field) → text blocks accept
+    //      TEXT ONLY. A pasted picture never lands inside a Title/Textarea; it
+    //      is ejected to the parent as its own Image block instead, while any
+    //      accompanying text still pastes into the block.
+    //   2. Not editing (canvas) → drop the highest-priority clipboard content
+    //      as a new block: external image → Image, else internal block, else
+    //      external text → Textarea.
+    //
+    // CAPTURE phase (the `true` below): this must run BEFORE the active text
+    // editor's (Froala's) own paste handler so we can stop it from inserting an
+    // image into a text block. Cases we don't handle return early WITHOUT
+    // stopping propagation, so the editor / table handlers still run normally.
+    document.addEventListener('paste', (event) => {
+      const target = event.target;
+      const clipboardData = event.clipboardData;
+
+      const inEditable = target?.isContentEditable ||
+                         target?.tagName === 'INPUT' ||
+                         target?.tagName === 'TEXTAREA';
+
+      // --- text-editing context: keep images out of text blocks ---
+      if (window.EditorManager?.getEditing?.() || inEditable) {
+        // Plain fields can't hold images, and the Table block runs its own
+        // text-only paste handler — leave both to their native behaviour.
+        if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+        if (target?.closest?.('table')) return;
+
+        // Does the clipboard carry an image? Either a pasted file ("Copy
+        // image") or an <img> embedded in copied rich HTML (a web-page region).
+        const html = clipboardData?.getData('text/html') || '';
+        const hasImageFile = Array.from(clipboardData?.items || [])
+          .some((it) => it.kind === 'file' && it.type.startsWith('image/'));
+        const htmlHasImage = /<img\b/i.test(html);
+
+        // No image → let the native (rich) text paste run untouched.
+        if (!hasImageFile && !htmlHasImage) return;
+
+        // Image present → block the paste so no picture is inserted into the
+        // text block. preventDefault alone is NOT enough: the active editor
+        // (Froala) inserts the image programmatically from its OWN paste
+        // handler, immune to the default-action cancel. stopImmediatePropagation
+        // (this listener runs at capture phase, before the editor's handler)
+        // stops that handler from ever firing. Then keep any accompanying plain
+        // text in the block and eject the image to the parent as an Image block.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const text = clipboardData?.getData('text/plain') || '';
+        if (text) {
+          try { document.execCommand('insertText', false, text); } catch (e) { /* */ }
+        }
+
+        // Anchor the new Image block next to this text block so it lands right
+        // in the parent (column / row), not somewhere unrelated.
+        const editingBlock = window.EditorManager?.getEditing?.();
+        const onCanvas = canvas.contains(target) ||
+                         (editingBlock && canvas.contains(editingBlock));
+        if (onCanvas) {
+          const anchor = currentAnchor(canvas) ||
+            ((editingBlock && (isFlowBlock(editingBlock, canvas) || isFlexibleChild(editingBlock, canvas)))
+              ? editingBlock : null);
+          placePastedImageBlock(canvas, clipboardData, anchor, true);
+        }
+        return;
+      }
+
+      // --- canvas context: decide what Ctrl+V drops in ---
+      // Priority:
+      //   1. An external IMAGE on the clipboard. It can only have come from a
+      //      copy made AFTER any internal block copy (an internal copy never
+      //      writes to the system clipboard), so it reflects the latest intent.
+      //      This is the fix for "copy a block, copy an image elsewhere, paste →
+      //      the block came back": now the image wins.
+      //   2. A previously-copied internal block (held in memory).
+      //   3. External text.
+      const anchor = currentAnchor(canvas);
+      if (placePastedImageBlock(canvas, clipboardData, anchor)) {
+        event.preventDefault();
+        return;
+      }
+      if (clipboardHtml && pasteBlock(canvas)) {
+        event.preventDefault();
+        return;
+      }
+      const text = clipboardData?.getData('text/plain');
+      if (text && text.trim()) {
+        placeAndSelect(canvas, buildPastedTextBlock(text), anchor);
+        event.preventDefault();
+      }
+    }, true);
   };
 })();

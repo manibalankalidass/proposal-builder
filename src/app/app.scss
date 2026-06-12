@@ -1653,6 +1653,54 @@ button {
   }
 }
 
+// Image-frame shape picker (shown only for image blocks).
+.image-frame-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.image-frame-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: #c7d2fe;
+  }
+
+  &--active {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 1px #4f46e5 inset;
+  }
+}
+
+.image-frame-swatch {
+  width: 38px;
+  height: 38px;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  display: block;
+
+  .image-frame-item--active & {
+    background: #c7d2fe;
+    border-color: #818cf8;
+  }
+}
+
+.image-frame-label {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1;
+}
+
 // =========================================================================
 // History/Backup Panel Styles
 // =========================================================================

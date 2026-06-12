@@ -54,6 +54,7 @@
     { type: 'button', label: 'Button', icon: '⬡', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: STD_TEXT, legacyKeys: ['Button'] },
     { type: 'divider', label: 'Divider', icon: '─', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: BOX_NO_RADIUS },
     { type: 'spacer', label: 'Spacer', icon: '⋮', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: SPACER, legacyKeys: ['Spacer'] },
+    { type: 'table', label: 'Table', icon: '▦', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: TABLE_RADIUS },
     { type: 'page-break', label: 'Page Break', icon: '⤵', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: [] },
 
     // ---- Data Elements ----
@@ -61,7 +62,8 @@
     { type: 'flexible', label: 'Flexible', icon: '⬡', category: 'Data Elements', inSidebar: true, inInlineMenu: true, styleProps: BOX_RADIUS },
     { type: 'table-repeater', label: 'Table Repeater', icon: '⊟', category: 'Data Elements', inSidebar: true, inInlineMenu: true, isRepeater: true, restrictInFlexible: false, alias: 'row', styleProps: TABLE, legacyKeys: [{ key: 'Table', styleProps: TABLE_RADIUS }] },
     { type: 'data-field', label: 'Data Field', icon: '{{}}', category: 'Data Elements', inSidebar: true, inInlineMenu: true, styleProps: STD_TEXT, legacyKeys: ['Data Field'] },
-    { type: 'list-repeater', label: 'List Repeater', icon: '≡', category: 'Data Elements', inSidebar: true, inInlineMenu: true, isRepeater: true, restrictInFlexible: true, alias: 'item', styleProps: BOX_NO_RADIUS, legacyKeys: ['List Repeater'] },
+    // { type: 'list-repeater', label: 'List Repeater', icon: '≡', category: 'Data Elements', inSidebar: true, inInlineMenu: true, isRepeater: true, restrictInFlexible: true, alias: 'item', styleProps: BOX_NO_RADIUS, legacyKeys: ['List Repeater'] },
+    { type: 'sync-list', label: 'List', icon: '▥', category: 'Data Elements', inSidebar: true, inInlineMenu: true, restrictInFlexible: true, styleProps: BOX_RADIUS },
 
     // ---- Builder-only (created programmatically, never shown in palettes) ----
     { type: 'heading-two', label: 'Heading', icon: 'H', category: null, inSidebar: false, inInlineMenu: false, styleProps: STD_TEXT },

@@ -138,6 +138,18 @@ export class App implements AfterViewInit {
   protected readonly blockStyleConfig: Record<string, string[]> =
     blockRegistry()?.styleConfig() ?? {};
 
+  // Image-frame shapes for the picker shown only when an image block is
+  // selected (activeBlock.isImage). `key` matches the .image-container.<key>
+  // class in editor.css; `clip` is the CSS clip-path used for the little
+  // preview swatch so the panel mirrors the actual frame.
+  protected readonly imageFrames: ReadonlyArray<{ key: string; label: string; round?: string; clip?: string }> = [
+    { key: 'square-image', label: 'Square', round: '0' },
+    { key: 'rounded-square-image', label: 'Round', round: '8px' },
+    { key: 'circle-image', label: 'Ellipse', round: '50%' },
+    { key: 'polygon', label: 'Polygon', clip: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' },
+    { key: 'star', label: 'Star', clip: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' },
+  ];
+
   // PDF page settings — shown in the Properties panel when no block is
   // selected. Values are sent to /api/save-twig-puppeteer. The same
   // pageSize value drives the editor canvas (.cs-doc) live via
@@ -346,6 +358,20 @@ export class App implements AfterViewInit {
         value,
       }, '*');
     }
+  }
+
+  // Apply a frame shape to the selected image block. Tells the iframe to swap
+  // the .image-container shape class; the image + its zoom/pan stay intact.
+  protected onImageFrameChange(shape: string): void {
+    if (!this.activeBlock?.blockId) return;
+    this.activeBlock.imageFrame = shape; // optimistic highlight; echoed back too
+    const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
+    iframe?.contentWindow?.postMessage({
+      target: 'custom-form-twig',
+      type: 'set-image-frame',
+      blockId: this.activeBlock.blockId,
+      shape,
+    }, '*');
   }
 
   private defaultAliasFor(blockType: string): string {
