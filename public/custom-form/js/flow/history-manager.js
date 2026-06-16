@@ -62,7 +62,7 @@
 
   // Take a fresh snapshot of the canvas. Returns the HTML string we'd
   // restore on undo. We snapshot innerHTML of the canvas (which
-  // contains the cs-doc pages); the canvas element itself stays in
+  // contains the cs_margin pages); the canvas element itself stays in
   // place so listeners attached to it survive the restore.
   const snapshot = () => canvasRef ? canvasRef.innerHTML : '';
 
@@ -211,8 +211,8 @@
     // contenteditable (Froala) we defer to its own undo handler.
     document.addEventListener('keydown', (e) => {
       const inEditable = e.target?.isContentEditable ||
-                         e.target?.tagName === 'INPUT' ||
-                         e.target?.tagName === 'TEXTAREA';
+        e.target?.tagName === 'INPUT' ||
+        e.target?.tagName === 'TEXTAREA';
       if (inEditable) return;
       const ctrl = e.ctrlKey || e.metaKey;
       if (!ctrl) return;

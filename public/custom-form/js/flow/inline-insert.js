@@ -40,12 +40,12 @@
   );
 
   const rowChildrenOfRoot = (root) => (
-    directChildren(root, '.cs-row')
+    directChildren(root, '.row-item')
   );
 
   const isContentRoot = (node) => (
     !!node && (
-      node.classList?.contains('cs-doc') ||
+      node.classList?.contains('cs_margin') ||
       node.classList?.contains('body-main-content') ||
       node.classList?.contains('section-container-content')
     )
@@ -53,7 +53,7 @@
 
   const isInteractiveChrome = (target) => (
     !!target?.closest?.(
-      '.cs-block-grip, .cs-col-divider, [data-cs-chrome], .fr-toolbar, .fr-popup, .fr-modal, .fr-tooltip'
+      '.cs-block-grip, .cs-line-divider, [data-cs-chrome], .fr-toolbar, .fr-popup, .fr-modal, .fr-tooltip'
     )
   );
 
@@ -78,10 +78,10 @@
   // "new column beside this block" drop (col-edge) instead of an in-column
   // insert. Returns null when the pointer is comfortably inside the column.
   const resolveColEdge = (col, clientX, gap = COL_EDGE_GAP) => {
-    const row = col.closest('.cs-row');
+    const row = col.closest('.row-item');
     if (!row) return null;
     const rect = col.getBoundingClientRect();
-    const cols = directChildren(row, '.cs-col');
+    const cols = directChildren(row, '.col-item');
 
     if (clientX <= rect.left + gap) {
       return { target: { kind: 'col-edge', row, beforeCol: col } };
@@ -98,7 +98,7 @@
 
     if (target.kind === 'col-edge' && target.row) {
       const rowRect = target.row.getBoundingClientRect();
-      const cols = directChildren(target.row, '.cs-col');
+      const cols = directChildren(target.row, '.col-item');
       let x;
       if (target.beforeCol) {
         x = target.beforeCol.getBoundingClientRect().left;
@@ -255,7 +255,9 @@
     const showVisuals = (geometry) => {
       if (!enabled) return;
       state.visible = true;
-      lineEl.classList.add('is-visible');
+      // Cover pages show only the "+" — the line is distracting there.
+      if (geometry.plusOnly) lineEl.classList.remove('is-visible');
+      else lineEl.classList.add('is-visible');
       plusEl.classList.add('is-visible');
 
       if (geometry.vertical) {
@@ -278,7 +280,7 @@
         lineEl.style.height = '';
         lineEl.style.width = `${Math.max(32, geometry.right - geometry.left)}px`;
 
-        plusEl.style.left = `${geometry.left - 14}px`;
+        plusEl.style.left = `${(geometry.plusX ?? geometry.left) - 14}px`;
         plusEl.style.top = `${geometry.y}px`;
       }
     };
@@ -287,7 +289,7 @@
       if (!state.geometry) return;
       const g = state.geometry;
       const anchorY = g.y ?? g.top;
-      const anchorX = g.vertical ? g.x : g.left;
+      const anchorX = g.vertical ? g.x : (g.plusX ?? g.left);
       const menuHeight = Math.min(420, menuEl.offsetHeight || 420);
       const maxTop = Math.max(12, window.innerHeight - menuHeight - 12);
       const maxLeft = Math.max(12, window.innerWidth - 288);
@@ -297,8 +299,10 @@
       menuEl.style.left = `${left}px`;
     };
 
+    // Cover pages (.cs_page[data-cs-cover]) are free-move canvases — included
+    // here so the insert "+" works on them too (it tracks the pointer there).
     const findActiveDoc = (clientX, clientY) => {
-      const docs = Array.from(paper.querySelectorAll('.cs-doc'));
+      const docs = Array.from(paper.querySelectorAll('.cs_margin, .cs_page[data-cs-cover="1"]'));
       for (const doc of docs) {
         const rect = doc.getBoundingClientRect();
         if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
@@ -309,7 +313,7 @@
     };
 
     const resolveTarget = (doc, clientX, clientY, eventTarget) => {
-      const hoveredCol = eventTarget?.closest?.('.cs-col');
+      const hoveredCol = eventTarget?.closest?.('.col-item');
       if (hoveredCol && doc.contains(hoveredCol)) {
         // Near the column's left/right edge → offer a new column beside it.
         // Tighten that edge band while hovering a block so an in-column insert
@@ -363,6 +367,55 @@
       const insideCanvas = eventTarget?.closest?.('.custom-form-design');
       if (!insideCanvas) {
         hideVisuals();
+        return;
+      }
+
+      // Cover page: a free-move canvas with no rows/columns. The indicator is a
+      // full-width horizontal line with the "+" on the left (same look as a
+      // content page), but its Y follows the pointer; a click drops the block at
+      // the cursor (absolute placement, same path as a sidebar drag onto the
+      // cover). Resolve the cover from the hovered element so we only activate
+      // when truly over one.
+      const coverEl = eventTarget?.closest?.('[data-cs-cover="1"]');
+      if (coverEl) {
+        // On a cover page the line only shows in the IDLE state — never while a
+        // block is selected, being edited, moved, or resized. (Move requires a
+        // selected block, resize requires an editing block, so checking
+        // selected + editing here covers all of those interactions.)
+        if (coverEl.querySelector('.cs-selected, .cs-multi-selected, .cs-editing')) {
+          hideVisuals();
+          return;
+        }
+        const coverRect = coverEl.getBoundingClientRect();
+        // The "+" is an edge affordance: it appears only when the cursor is
+        // within EDGE px of the page's left or right edge — left edge → "+" on
+        // the left, right edge → "+" on the right. Anywhere in between shows
+        // nothing (the line was distracting; a centre "+" isn't wanted).
+        const EDGE = 30;
+        const distLeft = clientX - coverRect.left;
+        const distRight = coverRect.right - clientX;
+        let plusX = null;
+        if (distLeft >= 0 && distLeft <= EDGE && distLeft <= distRight) {
+          plusX = coverRect.left;
+        } else if (distRight >= 0 && distRight <= EDGE) {
+          plusX = coverRect.right;
+        }
+        if (plusX === null) {
+          hideVisuals();
+          return;
+        }
+        state.doc = coverEl;
+        state.target = { kind: 'between-rows', beforeRow: null, parent: coverEl };
+        state.clientX = clientX;
+        state.clientY = clientY;
+        state.geometry = {
+          left: coverRect.left,
+          right: coverRect.right,
+          y: clamp(clientY, coverRect.top + 8, coverRect.bottom - 8),
+          plusOnly: true, // cover: show only the "+", the line is distracting
+          plusX,
+        };
+        showVisuals(state.geometry);
         return;
       }
 

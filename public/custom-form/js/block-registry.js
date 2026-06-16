@@ -47,6 +47,7 @@
     // ---- Basic Elements ----
     { type: 'heading', label: 'Heading', icon: 'H', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: STD_TEXT, legacyKeys: ['Title'] },
     { type: 'body-text', label: 'Body Text', icon: '¶', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: STD_TEXT, legacyKeys: ['Textarea'] },
+    { type: 'aiden', label: 'AI Writer', icon: '✦', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: STD_TEXT },
     { type: 'label-tag', label: 'Label / Tag', icon: 'A', category: 'Basic Elements', inSidebar: true, inInlineMenu: false, styleProps: STD_TEXT },
     { type: 'image', label: 'Image', icon: '▨', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: BOX_RADIUS, legacyKeys: ['Image'] },
     { type: 'video', label: 'Video', icon: '▶', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: VIDEO, legacyKeys: ['Video'] },
@@ -70,6 +71,14 @@
     { type: 'fa-icon', label: 'Icon', icon: '★', category: null, inSidebar: false, inInlineMenu: false, styleProps: ICON },
   ];
 
+  // A block whose `feature` flag is switched off is hidden from every palette.
+  const featureOn = (b) => {
+    if (!b.feature) return true;
+    const flags = (typeof window !== 'undefined' && window.EditorFeatures) ? window.EditorFeatures
+      : (typeof globalThis !== 'undefined' ? globalThis.EditorFeatures : null);
+    return !flags || flags[b.feature] !== false;
+  };
+
   // ---- helper accessors -----------------------------------------------------
   const byType = (type) => BLOCKS.find((b) => b.type === type) || null;
 
@@ -79,7 +88,7 @@
     const order = [];
     const map = new Map();
     BLOCKS.forEach((b) => {
-      if (!b[flag] || !b.category) return;
+      if (!b[flag] || !b.category || !featureOn(b)) return;
       if (!map.has(b.category)) {
         map.set(b.category, []);
         order.push(b.category);

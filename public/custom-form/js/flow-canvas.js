@@ -10,7 +10,7 @@
  *   - cleanup-observer.js  — auto-remove empty cols/rows
  *
  * This file:
- *   1. Bootstraps the .cs-doc root inside the canvas.
+ *   1. Bootstraps the .cs_margin root inside the canvas.
  *   2. Attaches drag/drop listeners that route through findDropTarget → placeBlock.
  *   3. Initializes column resize + cleanup observer.
  *
@@ -44,13 +44,13 @@
   // Document model:
   //   canvas (.custom-form-design)
   //     └─ .cs_paper        — multi-page container
-  //          ├─ .cs-doc[data-page="1"]  — first page (always has header/footer)
-  //          ├─ .cs-doc[data-page="2"]  — additional pages (with or without)
+  //          ├─ .cs_margin[data-page="1"]  — first page (always has header/footer)
+  //          ├─ .cs_margin[data-page="2"]  — additional pages (with or without)
   //          └─ ...
   // -------------------------------------------------------------------------
   // The host page owns the outer .cs_paper wrapper (see custom-form.html);
   // we must NOT inject a second .cs_paper inside the canvas. Pages
-  // (.cs-doc) attach directly under the canvas so the existing drag /
+  // (.cs_margin) attach directly under the canvas so the existing drag /
   // drop listeners (mounted on the canvas) keep working. From the rest
   // of the file's point of view, `paper` is "the element pages live in" —
   // here, that's the canvas itself.
@@ -59,14 +59,14 @@
   // its docs up to canvas level and drop the empty wrapper.
   const legacyPaper = canvas.querySelector(':scope > .cs_paper');
   if (legacyPaper) {
-    legacyPaper.querySelectorAll(':scope > .cs-doc').forEach((d) => canvas.appendChild(d));
+    legacyPaper.querySelectorAll(':scope > .cs_margin').forEach((d) => canvas.appendChild(d));
     legacyPaper.remove();
   }
   const paper = canvas.closest('.cs_paper') || canvas;
 
   const makeRegion = (region) => {
     const el = (FC.makeRow && FC.makeRow()) || document.createElement('div');
-    el.className = `cs-row cs-page-${region}`;
+    el.className = `row-item cs-page-${region}`;
     FC.assignNodeId?.(el, 'row');
     el.setAttribute('data-cs-page-region', region);
     el.setAttribute('data-cs-region-label', region.toUpperCase());
@@ -75,7 +75,7 @@
 
     if (region === 'header') {
       const col1 = (FC.makeCol && FC.makeCol()) || document.createElement('div');
-      if (!col1.classList.contains('cs-col')) col1.classList.add('cs-col');
+      if (!col1.classList.contains('col-item')) col1.classList.add('col-item');
       col1.style.flex = '6';
       col1.style.maxWidth = '100%';
       const imgBlock = FC.createBlock && FC.createBlock('image');
@@ -91,13 +91,13 @@
       el.appendChild(col1);
 
       const colGap = (FC.makeCol && FC.makeCol()) || document.createElement('div');
-      if (!colGap.classList.contains('cs-col')) colGap.classList.add('cs-col');
+      if (!colGap.classList.contains('col-item')) colGap.classList.add('col-item');
       colGap.style.flex = '1';
       colGap.style.maxWidth = '100%';
       el.appendChild(colGap);
 
       const col2 = (FC.makeCol && FC.makeCol()) || document.createElement('div');
-      if (!col2.classList.contains('cs-col')) col2.classList.add('cs-col');
+      if (!col2.classList.contains('col-item')) col2.classList.add('col-item');
       col2.style.flex = '3';
       col2.style.maxWidth = '100%';
       const textBlock = FC.createBlock && FC.createBlock('body-text');
@@ -113,7 +113,7 @@
       setTimeout(() => { if (FC.rebuildDividers) FC.rebuildDividers(el); }, 0);
     } else if (region === 'footer') {
       const col1 = (FC.makeCol && FC.makeCol()) || document.createElement('div');
-      if (!col1.classList.contains('cs-col')) col1.classList.add('cs-col');
+      if (!col1.classList.contains('col-item')) col1.classList.add('col-item');
       col1.style.flex = '6';
       col1.style.maxWidth = '100%';
       const textBlock = FC.createBlock && FC.createBlock('body-text');
@@ -127,13 +127,13 @@
       el.appendChild(col1);
 
       const colGap = (FC.makeCol && FC.makeCol()) || document.createElement('div');
-      if (!colGap.classList.contains('cs-col')) colGap.classList.add('cs-col');
+      if (!colGap.classList.contains('col-item')) colGap.classList.add('col-item');
       colGap.style.flex = '1';
       colGap.style.maxWidth = '100%';
       el.appendChild(colGap);
 
       const col2 = (FC.makeCol && FC.makeCol()) || document.createElement('div');
-      if (!col2.classList.contains('cs-col')) col2.classList.add('cs-col');
+      if (!col2.classList.contains('col-item')) col2.classList.add('col-item');
       col2.style.flex = '3';
       col2.style.maxWidth = '100%';
       const imgBlock = FC.createBlock && FC.createBlock('image');
@@ -151,7 +151,7 @@
       setTimeout(() => { if (FC.rebuildDividers) FC.rebuildDividers(el); }, 0);
     } else {
       const col = (FC.makeCol && FC.makeCol()) || document.createElement('div');
-      if (!col.classList.contains('cs-col')) col.classList.add('cs-col');
+      if (!col.classList.contains('col-item')) col.classList.add('col-item');
       col.setAttribute('data-cs-placeholder', placeholder);
       el.appendChild(col);
     }
@@ -179,7 +179,7 @@
     }
 
     if (!main.parentNode) {
-      Array.from(docEl.querySelectorAll(':scope > .cs-row:not(.cs-page-header):not(.cs-page-footer)')).forEach(r => main.appendChild(r));
+      Array.from(docEl.querySelectorAll(':scope > .row-item:not(.cs-page-header):not(.cs-page-footer)')).forEach(r => main.appendChild(r));
     }
 
     if (!footer) {
@@ -195,7 +195,7 @@
 
   const setRegionActive = (docEl, region) => {
     // Clear active state across ALL pages.
-    paper.querySelectorAll('.cs-doc').forEach((d) => {
+    paper.querySelectorAll('.cs_margin').forEach((d) => {
       d.classList.remove('editing-header', 'editing-footer');
       d.querySelectorAll('.cs-page-header, .cs-page-footer')
         .forEach((el) => el.classList.remove('is-active'));
@@ -259,15 +259,15 @@
 
   const syncRegion = (region, sourceDocEl) => {
     if (regionSyncing) return;
-    const source = sourceDocEl.querySelector(`:scope > .cs-page-${region} > .cs-col`);
+    const source = sourceDocEl.querySelector(`:scope > .cs-page-${region} > .col-item`);
     if (!source) return;
     const html = source.innerHTML;
     regionSyncing = true;
-    paper.querySelectorAll('.cs-doc').forEach((d) => {
+    paper.querySelectorAll('.cs_margin').forEach((d) => {
       if (d === sourceDocEl) return;
       // Don't clobber the page the user is actively typing into.
       if (editingState.docEl === d && editingState.region === region) return;
-      const target = d.querySelector(`:scope > .cs-page-${region} > .cs-col`);
+      const target = d.querySelector(`:scope > .cs-page-${region} > .col-item`);
       if (target && target.innerHTML !== html) {
         target.innerHTML = html;
         rewriteIds(target, d.dataset.page || 'x');
@@ -279,7 +279,7 @@
   const wireRegionSync = (docEl) => {
     ['header', 'footer'].forEach((region) => {
       const regionEl = docEl.querySelector(`:scope > .cs-page-${region}`);
-      const col = docEl.querySelector(`:scope > .cs-page-${region} > .cs-col`);
+      const col = docEl.querySelector(`:scope > .cs-page-${region} > .col-item`);
       if (!regionEl || !col) return;
 
       // Track when this region is the one being actively edited so the
@@ -311,12 +311,14 @@
     });
   };
 
-  // Pull current header/footer content from page 1 into a freshly-created doc.
+  // Pull current header/footer content from the canonical page into a
+  // freshly-created doc. No-ops when there's no canonical page (it was deleted
+  // and not yet re-established) or when seeding the canonical into itself.
   const seedRegionsFromCanonical = (docEl) => {
-    if (docEl === firstDoc) return;
+    if (!firstDoc || !document.contains(firstDoc) || docEl === firstDoc) return;
     ['header', 'footer'].forEach((region) => {
-      const src = firstDoc.querySelector(`:scope > .cs-page-${region} > .cs-col`);
-      const dst = docEl.querySelector(`:scope > .cs-page-${region} > .cs-col`);
+      const src = firstDoc.querySelector(`:scope > .cs-page-${region} > .col-item`);
+      const dst = docEl.querySelector(`:scope > .cs-page-${region} > .col-item`);
       if (src && dst) {
         regionSyncing = true;
         dst.innerHTML = src.innerHTML;
@@ -327,10 +329,10 @@
   };
 
   // Bootstrap page 1.
-  let firstDoc = paper.querySelector('.cs-doc[data-page="1"]') || paper.querySelector('.cs-doc');
+  let firstDoc = paper.querySelector('.cs_margin[data-page="1"]') || paper.querySelector('.cs_margin');
   if (!firstDoc) {
     firstDoc = document.createElement('div');
-    firstDoc.className = 'cs-doc';
+    firstDoc.className = 'cs_margin';
     firstDoc.dataset.page = '1';
     const firstPageWrapper = paper.querySelector('.cs_page') || paper;
     firstPageWrapper.appendChild(firstDoc);
@@ -355,18 +357,34 @@
   //   window.FlowCanvas.addPage({ headerFooter: true | false }) → docEl
   // -------------------------------------------------------------------------
   const renumberPages = () => {
-    paper.querySelectorAll('.cs-doc').forEach((d, i) => { d.dataset.page = String(i + 1); });
+    paper.querySelectorAll('.cs_margin').forEach((d, i) => { d.dataset.page = String(i + 1); });
+  };
+
+  // Total pages = every `.cs_page` directly under the paper (content wrappers +
+  // cover pages). Reported to the host shell so the footer / Delete-page button
+  // stay in sync with add/remove.
+  const countPages = () => paper.querySelectorAll(':scope > .cs_page').length;
+  const postPageCount = () => {
+    try {
+      window.parent?.postMessage({ source: 'custom-form-twig', type: 'page:count', count: countPages() }, '*');
+    } catch (e) { /* parent on different origin — ignore */ }
+  };
+  const postRemoveResult = (ok, reason) => {
+    try {
+      window.parent?.postMessage({ source: 'custom-form-twig', type: 'page:removed', ok: !!ok, reason: reason || null, count: countPages() }, '*');
+    } catch (e) { /* ignore */ }
+    return !!ok;
   };
 
   FC.addPage = function (opts) {
     const withHF = ENABLE_HEADER_FOOTER && (!opts || opts.headerFooter !== false);
     const newDoc = document.createElement('div');
-    newDoc.className = 'cs-doc';
+    newDoc.className = 'cs_margin';
     if (!withHF) newDoc.dataset.csNoHeaderFooter = '1';
 
     if (paper.classList.contains('cs_paper')) {
       const pageWrapper = document.createElement('div');
-      pageWrapper.className = 'cs_page custom-form-design centercontent cs_selected cs-flow-canvas';
+      pageWrapper.className = 'cs_page custom-form-design centercontent cs-flow-canvas';
       pageWrapper.style.visibility = 'visible';
       pageWrapper.appendChild(newDoc);
       paper.appendChild(pageWrapper);
@@ -375,15 +393,22 @@
     }
     if (withHF) {
       ensurePageRegions(newDoc);
-      // Seed the new page's header/footer with the canonical content
-      // from page 1, then start observing for two-way sync.
-      seedRegionsFromCanonical(newDoc);
+      // If the canonical page was deleted (no content page left to copy from),
+      // this new page becomes the canonical source. Otherwise seed its
+      // header/footer from the canonical, then start two-way sync.
+      if (!firstDoc || !document.contains(firstDoc)) firstDoc = newDoc;
+      seedRegionsFromCanonical(newDoc); // no-ops when newDoc IS the canonical
       wireRegionSync(newDoc);
       wireRegionEvents(newDoc);
       wireRegionOrderObserver(newDoc);
     }
     renumberPages();
-    newDoc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    postPageCount();
+    // Scroll to the new page and mark it active. focusPage handles the host
+    // scroll container + waits for the iframe to resize; plain scrollIntoView
+    // can't cross the iframe→host boundary reliably.
+    if (FC.focusPage) FC.focusPage(newDoc);
+    else newDoc.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return newDoc;
   };
 
@@ -391,7 +416,121 @@
     if (!docEl || docEl === firstDoc) return false; // can't remove page 1
     docEl.remove();
     renumberPages();
+    postPageCount();
     return true;
+  };
+
+  // Remove the page the user is currently viewing (scroll-tracked active page),
+  // covering both content pages (`.cs_page` wrapping a `.cs_margin`) and cover
+  // pages (`.cs_page[data-cs-cover]`). Falls back to the last page when nothing
+  // is selected. Page 1 (the header/footer canonical source) and the very last
+  // remaining page are protected. Posts a `page:removed` result so the host can
+  // surface why a delete was refused.
+  FC.removeActivePage = function () {
+    const pages = Array.from(paper.querySelectorAll(':scope > .cs_page'));
+    if (pages.length <= 1) return postRemoveResult(false, 'last');
+
+    const page = (FC.getSelectedPage && FC.getSelectedPage()) || pages[pages.length - 1];
+    if (!page || !pages.includes(page)) return postRemoveResult(false, 'none');
+
+    const isCover = page.matches('[data-cs-cover="1"]');
+
+    // Any page can be deleted as long as one page (of any type) remains. If this
+    // page held the header/footer canonical source (firstDoc), hand that role to
+    // another content page when one exists; otherwise leave it empty — the next
+    // content page added re-establishes it (see addPage). Every content page
+    // already carries identical, synced header/footer content, so any other
+    // `.cs_margin` is a valid replacement.
+    if (!isCover && firstDoc && page.contains(firstDoc)) {
+      firstDoc = Array.from(paper.querySelectorAll('.cs_margin')).find((m) => m !== firstDoc) || null;
+    }
+
+    // Pick a neighbour to scroll to once this page is gone.
+    const i = pages.indexOf(page);
+    const neighbor = pages[i - 1] || pages[i + 1] || null;
+
+    page.remove();
+    renumberPages();
+    if (neighbor && FC.focusPage) FC.focusPage(neighbor);
+    postPageCount();
+    return postRemoveResult(true);
+  };
+
+  // Clear the content of the page the user is viewing WITHOUT deleting the page:
+  // every dropped block / row is removed, but the header & footer regions, the
+  // page-number / overflow chrome and any designed background-shape layer are
+  // kept. Works on content pages (clears the `.body-main-content`) and cover
+  // pages (clears the absolutely-positioned blocks). Falls back to the last
+  // page when nothing is scrolled into view.
+  FC.clearActivePage = function () {
+    const pages = Array.from(paper.querySelectorAll(':scope > .cs_page'));
+    const page = (FC.getSelectedPage && FC.getSelectedPage()) || pages[pages.length - 1];
+    if (!page) return false;
+    const doc = page.matches('[data-cs-cover="1"]')
+      ? page
+      : (page.querySelector(':scope > .cs_margin') || page);
+
+    // Drop any selection / inline-edit chrome first so no overlay is orphaned
+    // when its block is detached.
+    try { window.EditorManager?.clearAll?.(); } catch (e) { /* */ }
+
+    // Content page: empty the main body region (keeps header/footer in place).
+    const main = doc.querySelector(':scope > .body-main-content');
+    if (main) main.innerHTML = '';
+
+    // Sweep any remaining top-level user content — covers / blank pages keep
+    // their blocks directly on the doc, and legacy pages may have stray rows.
+    Array.from(doc.children).forEach((c) => {
+      if (c === main) return;
+      if (c.matches('.cs-page-header, .cs-page-footer')) return; // shared regions
+      if (c.matches('[data-cs-chrome]')) return;                 // page number / marks
+      if (c.classList && c.classList.contains('cs-page-shape-bg')) return; // designed bg
+      c.remove();
+    });
+
+    try {
+      window.parent?.postMessage({ source: 'custom-form-twig', type: 'page:cleared', ok: true }, '*');
+    } catch (e) { /* ignore */ }
+    return true;
+  };
+
+  // -------------------------------------------------------------------------
+  // Cover page — a free-move canvas.
+  //
+  // Unlike a normal page (rigid row/col flow), a cover page's body is one
+  // full-page `.cs-flexible-content`. Every block dropped onto it is placed
+  // with `position:absolute` (free move + resize), reusing the existing
+  // flexible-container machinery in row-col-builder.js / inline-editor.js /
+  // drop-zones.js. The `data-cs-cover="1"` flag lets placeBlock relax the
+  // `restrictInFlexible` rule so ALL block types are allowed here. No
+  // header/footer regions — it always renders blank like an added page.
+  //
+  //   window.FlowCanvas.addCoverPage() → docEl
+  // -------------------------------------------------------------------------
+  FC.addCoverPage = function () {
+    // A cover page is a free-move canvas: the `.cs_page` IS the page and the
+    // positioning context — dropped blocks become absolutely-positioned DIRECT
+    // children of it. No `.cs_margin` and no inner `.cs-flexible-content`
+    // wrapper (that's the structure the export/template layer expects).
+    //
+    // It carries `.custom-form-design` so the twig generator (which iterates
+    // `.custom-form-design`) serialises it as its own sheet, and so the editor
+    // surface (now `.cs_paper`-wide) covers it for selection/move/resize.
+    // `data-cs-cover="1"` is the single flag drop-zones / placeBlock key off to
+    // treat it as a free canvas instead of a row/col flow root.
+    const newDoc = document.createElement('div');
+    newDoc.className = 'cs_page custom-form-design centercontent cs-flow-canvas cs-cover-canvas';
+    newDoc.id = `cover_${FC.generateHash ? FC.generateHash() : Math.random().toString(16).slice(2)}`;
+    newDoc.dataset.csCover = '1';
+    newDoc.dataset.csNoHeaderFooter = '1';
+    newDoc.style.visibility = 'visible';
+
+    paper.appendChild(newDoc);
+    renumberPages();
+    postPageCount();
+    if (FC.focusPage) FC.focusPage(newDoc);
+    else newDoc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return newDoc;
   };
 
   // -------------------------------------------------------------------------
@@ -408,7 +547,7 @@
   // -------------------------------------------------------------------------
   FC.splitPageAt = function (docEl, breakBlock) {
     if (!docEl || !breakBlock) return null;
-    const breakRow = breakBlock.closest('.cs-row');
+    const breakRow = breakBlock.closest('.row-item');
     if (!breakRow || breakRow.parentElement !== docEl) return null;
 
     // Collect every row that comes AFTER the break row at the doc root,
@@ -429,7 +568,7 @@
     // Remove the break marker row itself — its job is done. If the row
     // contained other siblings inside the same column, keep those by
     // detaching just the break block.
-    const breakCol = breakBlock.closest('.cs-col');
+    const breakCol = breakBlock.closest('.col-item');
     if (breakCol && breakCol.children.length > 1) {
       breakBlock.remove();
     } else {
@@ -451,7 +590,7 @@
   // -------------------------------------------------------------------------
   // A4 overflow indicator
   //
-  // Adds .cs-overflowing to any .cs-doc whose content exceeds the
+  // Adds .cs-overflowing to any .cs_margin whose content exceeds the
   // configured A4 height. CSS renders a dashed boundary at the A4 mark
   // with a hint suggesting the user drop a Page Break. We only TOGGLE
   // the class — the visible split is the user's call.
@@ -464,7 +603,7 @@
   // the class can never come back off when content shrinks.
   const measureContentBottom = (docEl) => {
     let bottom = 0;
-    docEl.querySelectorAll(':scope > .cs-row, :scope > .body-main-content').forEach((row) => {
+    docEl.querySelectorAll(':scope > .row-item, :scope > .body-main-content').forEach((row) => {
       const rect = row.getBoundingClientRect();
       const docRect = docEl.getBoundingClientRect();
       const offset = (rect.bottom - docRect.top);
@@ -489,7 +628,7 @@
     docEl.querySelectorAll(':scope > .cs-overflow-mark').forEach((m) => m.remove());
   };
   const updatePageNumbers = () => {
-    const docs = Array.from(paper.querySelectorAll('.cs-doc'));
+    const docs = Array.from(paper.querySelectorAll('.cs_margin'));
     const total = docs.length;
     docs.forEach((d, index) => {
       let pageNumEl = d.querySelector(':scope > .cs-page-number');
@@ -511,7 +650,7 @@
   };
 
   const updateOverflowMarks = () => {
-    paper.querySelectorAll('.cs-doc').forEach((d) => {
+    paper.querySelectorAll('.cs_margin').forEach((d) => {
       const contentBottom = measureContentBottom(d);
       const overflowing = contentBottom > PAGE_TARGET_HEIGHT + 1;
       if (overflowing) ensureOverflowMark(d);
@@ -538,7 +677,7 @@
   if (typeof ResizeObserver !== 'undefined') {
     const ro = new ResizeObserver(() => requestAnimationFrame(updateOverflowMarks));
     const observeDocs = () => {
-      paper.querySelectorAll('.cs-doc').forEach((d) => ro.observe(d));
+      paper.querySelectorAll('.cs_margin').forEach((d) => ro.observe(d));
     };
     observeDocs();
     // Re-observe whenever a new doc is added (FC.addPage).
@@ -551,11 +690,16 @@
   // iframe can grow to fit all stacked pages.
   // -------------------------------------------------------------------------
   const reportHeight = () => {
-    const h = Math.max(
-      document.body.scrollHeight,
-      document.documentElement.scrollHeight,
-      paper.scrollHeight + 64
-    );
+    // Measure the ACTUAL content (the paper), never document.body /
+    // documentElement scrollHeight: those are pinned to the iframe's
+    // host-forced height, so once the host grows the iframe they floor at
+    // that value and never let it shrink again (e.g. after a page is
+    // deleted the empty space stays). Walking the offset chain gives the
+    // paper's absolute bottom independent of the iframe's current height.
+    let top = 0;
+    for (let el = paper; el; el = el.offsetParent) top += el.offsetTop;
+    const contentH = Math.max(paper.offsetHeight, paper.scrollHeight);
+    const h = Math.ceil(top + contentH + 64);
     try {
       window.parent?.postMessage({
         source: 'custom-form-twig',
@@ -568,6 +712,10 @@
   heightObs.observe(paper, { childList: true, subtree: true, attributes: true });
   window.addEventListener('load', reportHeight);
   requestAnimationFrame(reportHeight);
+  // Tell the host how many pages exist on boot (e.g. a multi-page template
+  // loaded) so the footer / Delete-page button start in sync.
+  window.addEventListener('load', postPageCount);
+  requestAnimationFrame(postPageCount);
 
   // -------------------------------------------------------------------------
   // postMessage listener — host shell can ask us to add/remove pages.
@@ -578,9 +726,18 @@
     if (msg.type === 'page:add') {
       FC.addPage({ headerFooter: msg.headerFooter !== false });
     }
+    if (msg.type === 'page:add-cover') {
+      FC.addCoverPage();
+    }
     if (msg.type === 'page:remove' && msg.pageNumber > 1) {
-      const docEl = paper.querySelector(`.cs-doc[data-page="${msg.pageNumber}"]`);
+      const docEl = paper.querySelector(`.cs_margin[data-page="${msg.pageNumber}"]`);
       FC.removePage(docEl);
+    }
+    if (msg.type === 'page:remove-active') {
+      FC.removeActivePage();
+    }
+    if (msg.type === 'page:clear-active') {
+      FC.clearActivePage();
     }
     if (msg.type === 'page-size:change' && msg.sizeKey) {
       if (typeof window.setCanvasPageSize === 'function') {
@@ -590,6 +747,28 @@
     if (msg.type === 'page-bg:change') {
       if (typeof window.setCanvasPageBackground === 'function') {
         window.setCanvasPageBackground(msg.imageUrl || '');
+      }
+    }
+    // Per-page background image: apply to the page the user is currently viewing
+    // (content `.cs_margin` OR cover `.cs_page[data-cs-cover]`). Inline style wins
+    // over the global `--cs-page-bg-image` var; `data-cs-bg-image` lets us read it
+    // back (panel preview on page switch) and survives template save/export.
+    if (msg.type === 'page-bg:set-active') {
+      const page = FC.getSelectedDrawablePage ? FC.getSelectedDrawablePage() : null;
+      if (page) {
+        const url = msg.imageUrl || '';
+        if (url) {
+          page.style.backgroundImage = `url("${url}")`;
+          page.style.backgroundSize = 'cover';
+          page.style.backgroundPosition = 'center';
+          page.style.backgroundRepeat = 'no-repeat';
+          page.dataset.csBgImage = url;
+        } else {
+          page.style.backgroundImage = '';
+          delete page.dataset.csBgImage;
+        }
+        // Echo back so the panel preview matches this page immediately.
+        try { window.parent?.postMessage({ source: 'custom-form-twig', type: 'page:active', bgImage: url }, '*'); } catch (e) { /* */ }
       }
     }
     if (msg.type === 'component:capture') {
@@ -617,19 +796,23 @@
       window.PageShapeDesigner?.open();
     }
     if (msg.type === 'page-shape:clear') {
-      window.PageShapeDesigner?.clearAll();
+      // Per-page: remove the shape only from the page the user is working on.
+      window.PageShapeDesigner?.removeFromActive();
     }
     if (msg.type === 'page-margins:change') {
       const margins = msg.margins || {};
       const { top, right, bottom, left } = margins;
-      paper.querySelectorAll('.cs-doc').forEach(docEl => {
+      paper.querySelectorAll('.cs_margin').forEach(docEl => {
         docEl.style.padding = `${top || 0}mm ${right || 0}mm ${bottom || 0}mm ${left || 0}mm`;
       });
       setTimeout(updateOverflowMarks, 50);
     }
     if (msg.type === 'header-footer:toggle') {
       ENABLE_HEADER_FOOTER = msg.enabled;
-      paper.querySelectorAll('.cs-doc').forEach(p => {
+      paper.querySelectorAll('.cs_margin').forEach(p => {
+        // Cover pages are always blank free-move canvases — never give them
+        // header/footer regions, regardless of the global toggle.
+        if (p.dataset.csCover === '1') return;
         if (msg.enabled) {
           delete p.dataset.csNoHeaderFooter;
           ensurePageRegions(p);
@@ -655,6 +838,14 @@
         type: 'inline-insert:state',
         enabled
       }, '*');
+    }
+    if (msg.type === 'rich-toolbar:dock') {
+      // Place the CustomRichEditor toolbar: docked (top sticky) vs inline float.
+      if (typeof window.setRichToolbarDocked === 'function') {
+        window.setRichToolbarDocked(!!msg.docked);
+      } else if (window.CanvasConfig && window.CanvasConfig.editor) {
+        window.CanvasConfig.editor.dockRichToolbar = !!msg.docked;
+      }
     }
     if (msg.type === 'set-block-style') {
       const block = document.getElementById(msg.blockId);
@@ -825,12 +1016,22 @@
     const block = createBlockFromPayload(payload);
     if (!block) return null;
 
+    // A reusable component carries blockType 'component', but for placement
+    // rules (row/col wrap + the flexible-container restriction in placeBlock) it
+    // must behave like its underlying block — e.g. a saved Section must bounce
+    // out of a flexible container just like a real section-container would,
+    // instead of being placed as a stray absolute child. Derive the real type
+    // from the built block.
+    const effectiveType = payload.blockType === 'component'
+      ? (block.dataset.blockType || 'component')
+      : payload.blockType;
+
     if (payload.blockType === 'page-break') {
       let beforeRow = null;
       if (target.kind === 'between-rows') {
         beforeRow = target.beforeRow || null;
       } else if (target.kind === 'col-edge' || target.kind === 'in-col') {
-        const refRow = (target.row || target.col || target.beforeBlock)?.closest?.('.cs-row');
+        const refRow = (target.row || target.col || target.beforeBlock)?.closest?.('.row-item');
         beforeRow = refRow?.nextElementSibling || null;
       }
       FC.placeBlock?.(activeDoc, block, { kind: 'between-rows', beforeRow }, clientX, clientY, payload.blockType);
@@ -838,7 +1039,7 @@
       return block;
     }
 
-    FC.placeBlock?.(activeDoc, block, target, clientX, clientY, payload.blockType);
+    FC.placeBlock?.(activeDoc, block, target, clientX, clientY, effectiveType);
     maybeOpenBindingModal(payload, block);
     return block;
   };
@@ -868,9 +1069,11 @@
     }
   });
 
-  // Pick the .cs-doc that's currently under the pointer (multi-page aware).
+  // Pick the page that's currently under the pointer (multi-page aware).
+  // Includes cover pages, which are free-canvas `.cs_page[data-cs-cover]`
+  // elements rather than `.cs_margin` flow pages.
   const findActiveDoc = (clientX, clientY) => {
-    const docs = Array.from(paper.querySelectorAll('.cs-doc'));
+    const docs = Array.from(paper.querySelectorAll('.cs_margin, .cs_page[data-cs-cover="1"]'));
     for (const d of docs) {
       const r = d.getBoundingClientRect();
       if (clientY >= r.top && clientY <= r.bottom) return d;
@@ -968,13 +1171,21 @@
     if (newDoc) wireDocFeatures(newDoc);
     return newDoc;
   };
+  const _origAddCoverPage = FC.addCoverPage;
+  FC.addCoverPage = function () {
+    const newDoc = _origAddCoverPage.call(FC);
+    if (newDoc) wireDocFeatures(newDoc);
+    return newDoc;
+  };
 
   // -------------------------------------------------------------------------
   // Image upload handler
   // -------------------------------------------------------------------------
   const initImageUpload = () => {
-    // Attach click listeners to all image buttons (img-btn) and their children
-    canvas.addEventListener('click', (e) => {
+    // Attach to the whole board (.cs_paper) — not just page 1's canvas — so the
+    // image upload also fires for image blocks on added pages and cover pages,
+    // which live in their own sibling `.custom-form-design` wrappers.
+    paper.addEventListener('click', (e) => {
       const imgBtn = e.target.closest('.img-btn');
       if (!imgBtn) return;
 

@@ -22,10 +22,10 @@ const puppeteer = require('puppeteer');
 // everything past the first A4 page. These overrides release the height
 // lock so content can flow naturally and Chromium will paginate it
 // across as many pages as needed.
-// The .cs-doc element is the A4 page in the editor and already supplies
+// The .cs_margin element is the A4 page in the editor and already supplies
 // its own padding (var(--cs-page-padding, 32px)) plus a 1px border. We
 // want the PDF page to match that exactly, so:
-//   - keep .cs-doc's padding intact (don't strip it)
+//   - keep .cs_margin's padding intact (don't strip it)
 //   - drop the 1px border, the .cs_paper gap, and the page-number badge,
 //     since those are editor chrome that shouldn't appear in the PDF
 //   - drop box-shadow so we don't print a halo
@@ -53,14 +53,14 @@ const PRINT_OVERRIDES_CSS = `
     background: transparent !important;
   }
   .cs_paper { gap: 0 !important; }
-  /* Each page canvas (.custom-form-design) wraps one .cs-doc A4 page.
+  /* Each page canvas (.custom-form-design) wraps one .cs_margin A4 page.
      Force every page after the first to begin on a fresh PDF page, so a
      new cs_page always starts at the top of a new sheet — regardless of
      how much the previous page's content used. The first page must NOT
      break (otherwise the PDF would start with a blank leading page). */
   .custom-form-design { break-before: page !important; page-break-before: always !important; }
   .custom-form-design:first-of-type { break-before: auto !important; page-break-before: avoid !important; }
-  .cs-doc {
+  .cs_margin {
     /* width / max-width set dynamically per page size below */
     /* Keep a full A4 minimum so page backgrounds fill the sheet, but let
        height grow so overflowing content flows onto additional pages
@@ -74,13 +74,13 @@ const PRINT_OVERRIDES_CSS = `
     box-shadow: none !important;
   }
   /* Editor-only chrome that should not appear in the PDF */
-  .cs-doc::before { display: none !important; content: none !important; }
+  .cs_margin::before { display: none !important; content: none !important; }
   .cs-overflow-mark { display: none !important; }
   .cs-page-header, .cs-page-footer { border: none !important; }
   /* Remove default border that causes 1px gap, but let user inline styles override this */
   .cs_block_s { border: none; }
   /* Only keep individual table rows from splitting — let larger blocks
-     (cs-row, canvas-block) flow naturally across pages so we don't get
+     (row-item, canvas-block) flow naturally across pages so we don't get
      big empty gaps at the bottom of a page. */
   tr { page-break-inside: avoid; break-inside: avoid; }
   /* Disable all animations during PDF generation */
@@ -117,7 +117,7 @@ function readPageSettings() {
     return n;
   };
 
-  // Default to 0 print margins. The editor's .cs-doc element already
+  // Default to 0 print margins. The editor's .cs_margin element already
   // applies its own padding (var(--cs-page-padding, 32px)), so adding
   // Chrome print margins on top of that produces visibly larger insets
   // in the PDF than in the editor preview. Keep margins at 0 unless
@@ -135,7 +135,7 @@ function readPageSettings() {
 }
 
 // CSS px viewport size for each page key. Used by puppeteer's setViewport
-// so the editor's .cs-doc width matches the rendered page.
+// so the editor's .cs_margin width matches the rendered page.
 const VIEWPORTS = {
   'A4': { width: 794, height: 1123 },
   'A4-Landscape': { width: 1123, height: 794 },
@@ -146,7 +146,7 @@ const VIEWPORTS = {
   'Legal': { width: 816, height: 1344 },
 };
 
-// Runs INSIDE the page. Rebuilds every .cs-doc into a table and pins its
+// Runs INSIDE the page. Rebuilds every .cs_margin into a table and pins its
 // page header to the TOP and footer to the BOTTOM of every printed page via
 // position:fixed, while a matching thead/tfoot spacer reserves that space so
 // body content never slides under the header/footer.
@@ -154,11 +154,11 @@ const VIEWPORTS = {
 // position:fixed gives a true page-bottom footer on every sheet — including a
 // partially filled final page — which thead/tfoot alone cannot. The catch is
 // that fixed elements repeat on EVERY printed page globally, so this is only
-// correct when ONE .cs-doc is present. Multi-page documents are therefore
-// rendered one .cs-doc at a time (the others are removed before this runs)
+// correct when ONE .cs_margin is present. Multi-page documents are therefore
+// rendered one .cs_margin at a time (the others are removed before this runs)
 // and the resulting single-doc PDFs are merged.
 function restructureDocsForPrint() {
-  document.querySelectorAll('.cs-doc').forEach(doc => {
+  document.querySelectorAll('.cs_margin').forEach(doc => {
     const header = doc.querySelector(':scope > .cs-page-header');
     const footer = doc.querySelector(':scope > .cs-page-footer');
 
@@ -254,7 +254,7 @@ function restructureDocsForPrint() {
       });
     }
 
-    Array.from(doc.querySelectorAll(':scope > .cs-row:not(.cs-page-header):not(.cs-page-footer)')).forEach(node => {
+    Array.from(doc.querySelectorAll(':scope > .row-item:not(.cs-page-header):not(.cs-page-footer)')).forEach(node => {
       tbody.appendChild(wrapNode(node));
     });
 
@@ -263,7 +263,7 @@ function restructureDocsForPrint() {
     table.appendChild(tfoot);
 
     // Preserve the page background shape layer(s): they're direct children of
-    // .cs-doc but aren't header/footer/rows, so the innerHTML reset below would
+    // .cs_margin but aren't header/footer/rows, so the innerHTML reset below would
     // otherwise drop them (this is why designed clip-paths didn't appear in the
     // PDF). Re-add them FIRST (behind content) and lift the content table above
     // them with z-index.
@@ -320,14 +320,14 @@ async function renderCanvasPdf(browser, fileUrl, viewport, pdfOpts, keepIndex, o
 
     // Inject overrides AFTER load so we beat any CSS that sets fixed
     // heights / overflow:hidden on html, body, and the page wrappers.
-    // The .cs-doc width override is computed from the requested page size
+    // The .cs_margin width override is computed from the requested page size
     // so each rendered page matches the chosen paper. When isolating a
     // single canvas we also neutralise the inter-page break so an isolated
     // non-first page doesn't emit a blank leading sheet (page separation
     // is provided by the merge instead).
     await page.addStyleTag({
       content: PRINT_OVERRIDES_CSS + `
-        .cs-doc {
+        .cs_margin {
           width: ${viewport.width}px !important;
           max-width: ${viewport.width}px !important;
         }
@@ -380,13 +380,13 @@ async function generatePdf(inputHtmlPath, outputPdfPath) {
 
   try {
     // Count the page canvases. Each .custom-form-design is one cs_page that
-    // must start on its own sheet; .cs-doc is the fallback for older markup
+    // must start on its own sheet; .cs_margin is the fallback for older markup
     // that isn't wrapped.
     const probe = await browser.newPage();
     await probe.goto(fileUrl, { waitUntil: ['load', 'networkidle0'], timeout: 60000 });
     const canvasCount = await probe.evaluate(() =>
       document.querySelectorAll('.custom-form-design').length ||
-      document.querySelectorAll('.cs-doc').length
+      document.querySelectorAll('.cs_margin').length
     );
     await probe.close();
 

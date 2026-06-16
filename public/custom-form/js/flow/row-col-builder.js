@@ -36,33 +36,33 @@
 
   const makeRow = () => {
     const row = document.createElement('div');
-    row.className = 'cs-row';
+    row.className = 'row-item';
     return assignNodeId(row, 'row');
   };
 
   const makeCol = (flexGrow = 1) => {
     const col = document.createElement('div');
-    col.className = 'cs-col';
+    col.className = 'col-item';
     col.style.flex = `${flexGrow} 1 0`;
     return assignNodeId(col, 'col');
   };
 
   const makeDivider = () => {
     const div = document.createElement('div');
-    div.className = 'cs-col-divider';
+    div.className = 'cs-line-divider';
     return div;
   };
 
   const rebuildDividers = (row) => {
-    row.querySelectorAll(':scope > .cs-col-divider').forEach(d => d.remove());
-    const cols = Array.from(row.querySelectorAll(':scope > .cs-col'));
+    row.querySelectorAll(':scope > .cs-line-divider').forEach(d => d.remove());
+    const cols = Array.from(row.querySelectorAll(':scope > .col-item'));
     for (let i = 0; i < cols.length - 1; i++) {
       cols[i].after(makeDivider());
     }
   };
 
   const resetColFlex = (row) => {
-    row.querySelectorAll(':scope > .cs-col').forEach(col => {
+    row.querySelectorAll(':scope > .col-item').forEach(col => {
       col.style.flex = '1 1 0';
     });
   };
@@ -73,6 +73,7 @@
     block.style.top = '';
     block.style.width = '';
     block.style.height = '';
+    block.style.minHeight = '';
     block.style.maxWidth = '';
     block.style.minWidth = '';
     delete block.dataset.csInSection;
@@ -109,7 +110,7 @@
   /**
    * Insert a block into the document tree at the specified target.
    *
-   * @param {HTMLElement} doc - the .cs-doc container
+   * @param {HTMLElement} doc - the .cs_margin container
    * @param {HTMLElement} block - block element to insert
    * @param {Object} target - { kind, ... } from drop-zone detection
    */
@@ -136,7 +137,7 @@
     });
 
 
-    if (/^predefine-template-\d+$/.test(blockType) && $(target.parent).hasClass('cs-doc')) {
+    if (/^predefine-template-\d+$/.test(blockType) && $(target.parent).hasClass('cs_margin')) {
       $(target.parent).append(block);
       return;
     }
@@ -145,12 +146,21 @@
     if (target.kind === 'between-rows') {
       const parent = target.parent || doc;
 
-      // Check if parent is a flexible container - if so, use absolute positioning
-      if (parent && parent.classList.contains('cs-flexible-content')) {
-        // Restrict certain block types from being placed in flexible containers
+      // Check if parent is a free canvas (flexible container OR a cover page) -
+      // if so, use absolute positioning. A cover page (.cs_page[data-cs-cover])
+      // hosts its blocks as absolutely-positioned DIRECT children, with no
+      // flexible-content wrapper.
+      const isFreeCanvasParent = parent &&
+        (parent.classList.contains('cs-flexible-content') || parent.dataset?.csCover === '1');
+      if (isFreeCanvasParent) {
+        // Restrict certain block types from being placed in flexible containers.
+        // Exception: a cover page is a free-move canvas where ALL block types
+        // are allowed, so the restriction is bypassed when the flexible
+        // container lives inside a `data-cs-cover` page.
+        const inCoverPage = !!parent.closest('[data-cs-cover="1"]');
         const RESTRICTED_TYPES = window.FormBlockRegistry?.restrictedInFlexibleTypes() ||
           ['section-container', 'table-repeater', 'list-repeater'];
-        if (RESTRICTED_TYPES.includes(blockType)) {
+        if (!inCoverPage && RESTRICTED_TYPES.includes(blockType)) {
           // Fallback: place in doc root instead
           normalizeForFlow(block);
           const row = makeRow();
@@ -167,30 +177,37 @@
         // Check if this is an existing flexible block being moved (already has width/height)
         // If so, preserve its size but update position based on cursor
         const isExistingFlexibleBlock = block.dataset.csInSection === '1' &&
-                                        (block.style.width || block.style.height);
+          (block.style.width || block.style.height);
 
-        if (isExistingFlexibleBlock) {
-          // Block is being moved - PRESERVE its entire position, size, and state
-          // Do NOT recalculate position from cursor - that resets it
-          // Just reinsert it at the target location, keeping all styles intact
-        } else {
-          // New block being placed - calculate position from scratch
-          const parentRect = parent.getBoundingClientRect();
-          let left = clientX - parentRect.left - (block.offsetWidth / 2);
-          let top = clientY - parentRect.top - (block.offsetHeight / 2);
-
-          // Keep block within bounds of container
-          left = Math.max(0, Math.min(left, parentRect.width - 40));
-          top = Math.max(0, Math.min(top, parentRect.height - 40));
-
-          block.style.left = `${left}px`;
-          block.style.top = `${top}px`;
-        }
-
+        // Insert FIRST so a new block can be measured — offsetWidth/Height are 0
+        // while detached, which made the centring + clamp wrong and let the
+        // block hang off the page edge (worst at the right edge).
         if (target.beforeRow) {
           target.beforeRow.before(block);
         } else {
           parent.appendChild(block);
+        }
+
+        if (!isExistingFlexibleBlock) {
+          // New block - drop it where the cursor is RELEASED: the cursor maps to
+          // the block's top-left corner (not its centre, which pulled a wide
+          // default block ~half-its-width to the left). Account for the parent's
+          // border so the math matches the absolute-positioning origin (the
+          // padding edge), then clamp so the whole block stays inside the page.
+          const parentRect = parent.getBoundingClientRect();
+          const cs = getComputedStyle(parent);
+          const borderL = parseFloat(cs.borderLeftWidth) || 0;
+          const borderT = parseFloat(cs.borderTopWidth) || 0;
+          const bw = block.offsetWidth || 0;
+          const bh = block.offsetHeight || 0;
+          let left = clientX - parentRect.left - borderL;
+          let top = clientY - parentRect.top - borderT;
+
+          left = Math.max(0, Math.min(left, Math.max(0, parent.clientWidth - bw)));
+          top = Math.max(0, Math.min(top, Math.max(0, parent.clientHeight - bh)));
+
+          block.style.left = `${left}px`;
+          block.style.top = `${top}px`;
         }
         syncFlexibleContentBounds(block);
         return;

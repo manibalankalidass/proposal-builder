@@ -190,7 +190,7 @@ app.post('/api/save-twig-puppeteer', async (req, res) => {
     await runCommand('php', [renderScript, phpPath, dataPath], htmlPath);
 
     // Pass page settings to the puppeteer script via env vars. Default to
-    // 0mm margins so the editor's cs-doc padding is the single source of
+    // 0mm margins so the editor's cs_margin padding is the single source of
     // page inset (no double-padding in the PDF).
     const env = {
       ...process.env,

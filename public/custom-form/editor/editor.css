@@ -8,6 +8,10 @@
 
 .cs_block_s {
   cursor: pointer;
+  /* No visible border at rest — only hover / selected / editing reveal it by
+     swapping border-color below. `transparent` (not `none`) keeps the 1px so
+     hovering never shifts layout. Overrides the solid #e1e1e1 base in
+     custom-form.css (editor.css loads last). */
   /* border: 1px solid transparent; */
   transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -95,6 +99,144 @@
   background: #ffffff;
   color: #1f2937;
   caret-color: #1f2937;
+}
+
+/* Live X/Y (move) or W/H (resize) readout shown in place of the title while
+   dragging/resizing a free-move block. Blue HUD so it reads as a measurement. */
+.cs-block-badge__label--metric {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.cs-block-badge:has(.cs-block-badge__label--metric) {
+  background: #248567;
+}
+
+/* While the live readout is active (dragging/resizing), show ONLY the X/Y
+   (or W/H) value — hide the move handle, duplicate, delete and menu. */
+.cs-block-badge:has(.cs-block-badge__label--metric) .cs-block-badge__handle,
+.cs-block-badge:has(.cs-block-badge__label--metric) .cs-block-badge__actions,
+.cs-block-badge:has(.cs-block-badge__label--metric) .cs-block-badge__menu {
+  display: none;
+}
+
+/* ============================================================
+   Cover-page grouping: marquee, multi-select, group, toolbar
+   ============================================================ */
+
+/* Rubber-band marquee rectangle */
+.cs-marquee {
+  pointer-events: none;
+  background: rgba(92, 92, 255, 0.10);
+  border: 1px solid rgba(92, 92, 255, 0.55);
+  border-radius: 2px;
+}
+
+/* Dotted bounding box around the whole multi-selection (shown before grouping) */
+.cs-group-bounds {
+  pointer-events: none;
+  border: 1px dashed #20233d;
+  background: transparent;
+}
+
+/* Blocks caught by the marquee (multi-selected, pre-group) */
+.cs-multi-selected {
+  outline: 1px solid #248567;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 1px rgba(92, 92, 255, 0.25);
+}
+
+/* A group container on the cover page */
+.cs-group-block {
+  box-sizing: border-box;
+}
+
+.cs-group-block.cs-selected,
+.cs-group-block.cs-editing {
+  outline: 1.5px solid #5c5cff;
+  outline-offset: 0;
+}
+
+/* Children of a group are absolutely positioned within the group box */
+.cs-group-block>.cs_block_s[data-cs-in-section="1"] {
+  position: absolute !important;
+  display: block !important;
+  margin: 0 !important;
+}
+
+/* Floating Group / Ungroup button */
+.cs-group-toolbar {
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  background: #1b2030;
+  /* border: 1px solid rgba(255, 255, 255, 0.12); */
+  /* border-radius: 9px; */
+  /* box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4); */
+}
+
+/* Align / distribute icon buttons inside the multi-select toolbar. */
+.cs-group-toolbar__ico {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #e5e7f0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cs-group-toolbar__ico:hover {
+  background: rgba(92, 92, 255, 0.3);
+}
+
+.cs-group-toolbar__ico svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cs-group-toolbar__ico svg rect {
+  fill: currentColor;
+}
+
+.cs-group-toolbar__ico svg line {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.cs-group-toolbar__sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 3px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.cs-group-toolbar__btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: #5c5cff;
+  color: #ffffff;
+  font-family: Inter, "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(92, 92, 255, 0.35);
+  transition: background 120ms ease;
+}
+
+.cs-group-toolbar__btn:hover {
+  background: #4a4ae6;
 }
 
 .cs-block-badge__menu {
@@ -409,10 +551,12 @@
   user-select: none;
   -webkit-user-drag: none;
 }
+
 /* Once zoomed past 1x the image is draggable to reposition the crop. */
 .cs-image-block.cs-editing.cs-img-zoomed .image-container {
   cursor: grab;
 }
+
 .cs-image-block.cs-img-panning .image-container,
 .cs-image-block.cs-img-panning .image-container img {
   cursor: grabbing !important;
@@ -713,6 +857,15 @@
   touch-action: none;
 }
 
+/* Space held → "move whole clip-path" mode: show the grab/hand cursor. */
+.cs-pen-overlay.cs-pen-pan {
+  cursor: grab;
+}
+
+.cs-pen-overlay.cs-pen-pan:active {
+  cursor: grabbing;
+}
+
 .cs-pen-overlay-svg {
   position: absolute;
   inset: 0;
@@ -758,6 +911,237 @@
   stroke: #9aa0ff;
   stroke-width: 1;
   stroke-dasharray: 4 3;
+}
+
+/* Pen-tool hover affordances on a finished shape: + (add a point on an edge),
+   × (remove the point under the cursor). */
+.cs-pen-add {
+  fill: rgba(36, 133, 103, 0.16);
+  stroke: #248567;
+  stroke-width: 1.5;
+}
+
+.cs-pen-add-mark {
+  stroke: #248567;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.cs-pen-remove {
+  fill: rgba(225, 29, 72, 0.14);
+  stroke: #e11d48;
+  stroke-width: 1.5;
+}
+
+.cs-pen-remove-mark {
+  stroke: #e11d48;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* Smart alignment guide — appears when a point lines up with another point's
+   x or y (straight edges / equal heights / equal widths). */
+.cs-pen-guide {
+  stroke: #f43f7e;
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+/* Align / distribute toolbar (free-move block selection). */
+.cs-align-bar {
+  position: fixed;
+  z-index: 9996;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: #1b2030;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  transform: translateX(-50%);
+}
+
+.cs-align-bar button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #e5e7f0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cs-align-bar button:hover {
+  background: rgba(92, 92, 255, 0.25);
+}
+
+.cs-align-bar svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cs-align-bar svg rect {
+  fill: currentColor;
+}
+
+.cs-align-bar svg line {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.cs-align-bar__sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 3px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Right-click context menu. */
+.cs-ctx-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 184px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e6f0;
+  border-radius: 10px;
+  box-shadow: 0 18px 40px rgba(20, 24, 60, 0.18);
+  font-size: 13px;
+}
+
+.cs-ctx-menu__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #243047;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cs-ctx-menu__item:hover {
+  background: #eef2ff;
+}
+
+.cs-ctx-menu__item.is-danger {
+  color: #dc2626;
+}
+
+.cs-ctx-menu__item.is-danger:hover {
+  background: #fef2f2;
+}
+
+.cs-ctx-menu__hint {
+  color: #9aa0b4;
+  font-size: 11px;
+}
+
+.cs-ctx-menu__sep {
+  height: 1px;
+  margin: 5px 6px;
+  background: #eef1f6;
+}
+
+/* Keyboard-shortcuts help overlay. */
+.cs-shortcuts {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+}
+
+.cs-shortcuts__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 24, 48, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.cs-shortcuts__panel {
+  position: relative;
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 28px 64px rgba(14, 20, 48, 0.4);
+  padding: 18px 20px 22px;
+}
+
+.cs-shortcuts__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 14px;
+}
+
+.cs-shortcuts__close {
+  border: none;
+  background: #f3f4f6;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.cs-shortcuts__close:hover {
+  background: #e5e7eb;
+}
+
+.cs-shortcuts__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px 28px;
+}
+
+.cs-shortcuts__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7b8198;
+  margin-bottom: 8px;
+}
+
+.cs-shortcuts__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: #374151;
+}
+
+.cs-shortcuts__row kbd {
+  flex: 0 0 auto;
+  min-width: 64px;
+  text-align: center;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: #243047;
+  background: #f3f4f6;
+  border: 1px solid #e2e6f0;
+  border-radius: 5px;
+  padding: 3px 7px;
 }
 
 /* Floating pen toolbar */
@@ -948,6 +1332,28 @@
   background: #1f2937;
   padding: 3px 8px;
   border-radius: 999px;
+}
+
+.cs-page-shape-modal__pagepick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9ca3af;
+  margin-left: auto;
+  margin-right: 16px;
+}
+
+.cs-page-shape-modal__pagepick select {
+  background: #1f2937;
+  color: #f9fafb;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .cs-page-shape-modal__actions {
@@ -1563,10 +1969,55 @@
 .cs-page-shape-stagewrap {
   flex: 1 1 auto;
   display: flex;
+  /* `safe` keeps the stage's top-left reachable (scrollable) when it's zoomed
+     larger than the viewport, instead of clipping the overflow. Plain `center`
+     is the fallback for parsers without `safe`. */
   align-items: center;
+  align-items: safe center;
   justify-content: center;
+  justify-content: safe center;
   overflow: auto;
   padding: 24px;
+}
+
+/* Zoom control — pinned to the viewport bottom-centre (fixed ignores the
+   stagewrap scroll). */
+.cs-page-shape-modal .cs-page-shape-zoom {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: #1b2030;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 5;
+}
+
+.cs-page-shape-zoom button {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #e5e7f0;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cs-page-shape-zoom button:hover {
+  background: rgba(92, 92, 255, 0.22);
+}
+
+.cs-page-shape-zoom__val {
+  font-size: 12px !important;
+  min-width: 46px !important;
 }
 
 /* The drawing stage holds a page-aspect pen-shape block. */
@@ -1579,13 +2030,140 @@
 .cs-page-shape-block {
   height: 100%;
   position: relative;
+  z-index: 1;
+}
+
+/* Keep the designer's pen block transparent so the trace-reference image
+   behind it stays visible while drawing. */
+.cs-page-shape-block,
+.cs-page-shape-block .cs-pen-shape,
+.cs-page-shape-block .cs-pen-svg {
+  background: transparent !important;
+}
+
+/* Page designer ONLY: let the pen overlay extend a bleed margin PAST the page so
+   anchors + handles can be placed and grabbed OFF-PAGE. The overlay is a
+   transparent hit + marker layer; it's clipped to the scrolling stagewrap so it
+   never overlaps the side panels, and the toolbar/zoom (position:fixed) stay on
+   top. The rendered fill still clips to the page (off-page = bleed). Zoom out to
+   see/reach the whole margin without scrolling. */
+.cs-page-shape-block .cs-pen-overlay {
+  inset: -50%;
+}
+
+/* Trace-reference image: faint guide behind the pen block, clicks pass through. */
+.cs-page-shape-ref-img {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+  pointer-events: none;
+  z-index: 0;
+  display: none;
+}
+
+.cs-page-shape-ref-img.is-on {
+  display: block;
+}
+
+/* Trace-reference controls (top of the right-hand shapes panel). */
+.cs-page-shape-ref {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.cs-page-shape-ref__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e5e7f0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cs-page-shape-ref__btn:hover {
+  border-color: #5c5cff;
+  background: rgba(92, 92, 255, 0.16);
+}
+
+.cs-page-shape-ref__btn input {
+  display: none;
+}
+
+.cs-page-shape-ref__op {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8aa4e6;
+}
+
+.cs-page-shape-ref__op input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cs-page-shape-ref__clear {
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cs-page-shape-ref__clear:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.cs-page-shape-ref__hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #94a3b8;
+}
+
+.cs-page-shape-ref__chk {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.cs-page-shape-ref__chk input {
+  margin-top: 1px;
+  flex: 0 0 auto;
+}
+
+/* "Outline only" trace mode: show the traced clip-paths as outlines (no fill)
+   while drawing, so the reference image underneath stays visible. View-only —
+   the saved shape keeps its real fills (this class isn't in the captured SVG). */
+.cs-page-shape-stage.cs-trace-outline .cs-pen-fill {
+  fill: none !important;
+  stroke: #e11d48 !important;
+  stroke-width: 1.6px !important;
+  vector-effect: non-scaling-stroke;
 }
 
 /* Float the pen toolbar at the top of the modal instead of above the block
    (the block fills the stage, so the default `bottom: 100%` would clip it). */
 .cs-page-shape-modal .cs-pen-toolbar {
   position: fixed;
-  top: 56px;
+  top: 20px;
   bottom: auto;
   left: 50%;
   transform: translateX(-50%);
@@ -1617,7 +2195,40 @@
 
 .cre-toolbar.is-visible {
   display: flex;
-  animation: slideUpBadge 0.16s ease forwards;
+  /* animation: slideUpBadge 0.16s ease forwards; */
+}
+
+/* Docked mode — pinned to the top of the canvas viewport as a full-width sticky
+   strip (Page Settings → "Inline text toolbar" OFF). Overrides the floating
+   inline placement; top/left are forced so any leftover inline coords lose. */
+.cre-toolbar--docked {
+  /* The editor runs in an iframe that GROWS to fit every page, and the HOST
+     scrolls it — so position:fixed would pin to the iframe's content-top and
+     scroll out of view for blocks lower down. We use position:absolute and JS
+     moves `top` to the current visible viewport top each frame (see
+     CustomRichEditor.trackDockedBar). top:0 is the safe fallback. */
+  position: absolute;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: auto;
+  width: 92%;
+  max-width: 100%;
+  justify-content: center;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  animation: none;
+}
+
+/* Idle placeholder — the always-present docked bar shown when docked mode is ON
+   and no block is being edited. Looks like the real bar but is non-interactive
+   ("select a block to use it"). The functional bar replaces it on edit. */
+.cre-toolbar--placeholder {
+  pointer-events: none;
+  opacity: 0.55;
+  cursor: default;
 }
 
 .cre-group {
@@ -1701,6 +2312,20 @@
   cursor: pointer;
 }
 
+/* Centre glyphs in toolbar buttons so the SVG icons (alignment + the table
+   block's appended structure icons) sit crisply centred. */
+.cre-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cre-toolbar button svg,
+.cre-color svg {
+  display: block;
+  pointer-events: none;
+}
+
 /* Lists made inside a text block: visible markers + sensible indent. The marker
    tracks the <li> font-size, which CustomRichEditor syncs to the content size
    so "1." / "•" match large text instead of staying tiny. */
@@ -1780,7 +2405,13 @@
   color: #333;
 }
 
-.cs-table .cs-cell {
+/* Target every cell, not just `.cs-cell`: in legacy Froala mode Froala's own
+   "insert column/row" creates bare <td>s without our class, and they must still
+   show a border. The normalizer re-stamps `.cs-cell` afterwards, but this keeps
+   the border visible regardless. */
+.cs-table .cs-cell,
+.cs-table td,
+.cs-table th {
   border: 1px solid #d0d5e2;
   padding: 8px 10px;
   vertical-align: top;
@@ -1827,7 +2458,7 @@
 
 /* Red delete-preview (shown while hovering a Delete menu item). */
 .cs-table .cs-cell--danger {
-  box-shadow: inset 0 0 0 2px #e5484d;
+  box-shadow: inset 0 0 0 1px #e5484d;
   background: rgba(229, 72, 77, 0.16) !important;
 }
 
@@ -1913,6 +2544,9 @@
 }
 
 .cs-tbl-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 28px;
   height: 26px;
   padding: 0 6px;
@@ -1925,8 +2559,38 @@
   cursor: pointer;
 }
 
+/* Crisp SVG glyphs that follow the button's text colour. */
+.cs-tbl-toolbar button svg,
+.cs-tbl-color svg {
+  display: block;
+  pointer-events: none;
+}
+
 .cs-tbl-toolbar button:hover {
   background: rgba(255, 255, 255, 0.12);
+}
+
+/* Font family / size / line-height / letter-spacing dropdowns. */
+.cs-tbl-toolbar select {
+  height: 26px;
+  max-width: 112px;
+  padding: 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: #2a3142;
+  color: #e5e7f0;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cs-tbl-toolbar select:hover {
+  border-color: rgba(255, 255, 255, 0.30);
+}
+
+.cs-tbl-toolbar select:focus {
+  outline: none;
+  border-color: #5b8cff;
 }
 
 .cs-tbl-color {
@@ -1976,10 +2640,10 @@
 
 /* Wix-repeater-style wrapping row, optimised for SMOOTH px resize. Before any
    resize columns split the row equally (flex: 1 1 0). Once a column is resized
-   they all take that exact px width (--cs-col-w) via .cs-synclist--sized — so
+   they all take that exact px width (--col-item-w) via .cs-synclist--sized — so
    the drag is 1:1/smooth — pack from the left with a consistent gap, and wrap
    to the next line when they no longer fit (partial last row stays left-
-   aligned). Row height is uniform via --cs-col-h. */
+   aligned). Row height is uniform via --col-item-h. */
 .cs-synclist {
   display: flex;
   flex-wrap: wrap;
@@ -1999,8 +2663,8 @@
   min-width: 0;
   /* Floor the height (the leaked .cs_block_s height:max-content would collapse
      the column to ~0 since its blocks are absolutely positioned).
-     --cs-col-h is inherited and bumped on height-resize. */
-  min-height: var(--cs-col-h, 240px);
+     --col-item-h is inherited and bumped on height-resize. */
+  min-height: var(--col-item-h, 240px);
   /* Override the leaked width:250px / height:max-content. */
   width: auto;
   height: auto;
@@ -2014,9 +2678,9 @@
 /* After a resize: every column is the SAME exact px width/height (smooth, 1:1
    with the drag); flex-wrap pushes them to the next line when the row is full. */
 .cs-synclist--sized .cs-synclist__col {
-  flex: 0 0 var(--cs-col-w, 200px);
-  width: var(--cs-col-w, 200px);
-  height: var(--cs-col-h, 240px);
+  flex: 0 0 var(--col-item-w, 200px);
+  width: var(--col-item-w, 200px);
+  height: var(--col-item-h, 240px);
 }
 
 
@@ -2060,4 +2724,170 @@
 .cs-synclist__col--dropping {
   box-shadow: inset 0 0 0 2px #5c5cff !important;
   background: rgba(92, 92, 255, 0.06);
+}
+
+/* ===========================================================================
+   Aiden — AI writing assistant block (chrome; stripped from exports)
+   =========================================================================== */
+.cs-aiden-block .cs-aiden-text {
+  min-height: 1.5em;
+  outline: none;
+}
+
+/* While the AI flow is open, the block becomes a single row: the editable text
+   on the left and the action bar docked on the right — all INSIDE the input
+   box. */
+/* High specificity (+ [data-block-type]) so it beats the cover-page rule
+   `.cs-cover-canvas > .cs_block_s[data-cs-in-section="1"] { display:block !important }`
+   — otherwise the editable + bar stack onto two lines instead of one row. */
+.cs_block_s.cs-aiden-block.cs-aiden--active[data-block-type="aiden"] {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 0 0 1.5px #8b5cf6, 0 8px 24px rgba(124, 58, 237, 0.14);
+  border-radius: 4px;
+}
+
+.cs_block_s.cs-aiden-block.cs-aiden--active .cs-aiden-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* When a multi-line result is showing, dock the buttons to the top-right
+   instead of vertically centring them against tall text. */
+.cs_block_s.cs-aiden-block.cs-aiden--active[data-aiden-phase="result"] {
+  align-items: flex-start;
+}
+
+/* Action bar docked inside the block, right-aligned. */
+.cs-aiden-bar {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.cs-aiden-bar__sp {
+  display: none;
+}
+
+.cs-aiden-btn {
+  border: none;
+  border-radius: 7px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1;
+  background: transparent;
+  transition: background 120ms ease, opacity 120ms ease, color 120ms ease;
+}
+
+.cs-aiden-btn--primary {
+  color: #fff;
+  background: linear-gradient(90deg, #7c3aed, #d9772b);
+}
+
+.cs-aiden-btn--primary:hover {
+  opacity: 0.92;
+}
+
+.cs-aiden-btn--ghost {
+  color: #2563eb;
+}
+
+.cs-aiden-btn--ghost:hover {
+  background: #eef2ff;
+}
+
+.cs-aiden-btn--stop {
+  color: #fff;
+  background: #6b7280;
+}
+
+.cs-aiden-btn--stop:hover {
+  background: #4b5563;
+}
+
+.cs-aiden-btn--link {
+  color: #2563eb;
+  padding: 7px 8px;
+}
+
+.cs-aiden-btn--link:hover {
+  background: #eef2ff;
+}
+
+.cs-aiden-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #c026a8;
+  font-weight: 600;
+}
+
+.cs-aiden-spin {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(192, 38, 168, 0.25);
+  border-top-color: #c026a8;
+  border-radius: 50%;
+  animation: cs-aiden-spin 0.7s linear infinite;
+}
+
+@keyframes cs-aiden-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cs-aiden-flash {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* Adjust-tone popup — anchored above the action bar. */
+.cs-aiden-pop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 9997;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  width: 250px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid #ececf3;
+  border-radius: 10px;
+  box-shadow: 0 16px 36px rgba(20, 24, 60, 0.18);
+  font-size: 13px;
+  text-align: left;
+}
+
+.cs-aiden-pop.is-open {
+  display: flex;
+}
+
+.cs-aiden-pop__title {
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.cs-aiden-pop__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.cs-aiden-pop__foot {
+  display: flex;
+  justify-content: flex-end;
 }

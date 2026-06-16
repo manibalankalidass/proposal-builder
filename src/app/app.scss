@@ -115,6 +115,174 @@ button {
   font-size: 15px;
 }
 
+/* Zoom %% readout button — auto width so "100%" fits. */
+.zoom-readout {
+  width: auto;
+  min-width: 46px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.topbar__group--zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---------------------------- Brand Kit panel ----------------------------- */
+.brand-panel {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+}
+
+.brand-section__title {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #7b8198;
+}
+
+.brand-palette {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.brand-swatch-edit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.brand-swatch-edit input[type='color'] {
+  width: 38px;
+  height: 38px;
+  padding: 2px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.brand-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.brand-field select {
+  flex: 1;
+  max-width: 170px;
+  padding: 7px 9px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.brand-apply {
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 7px;
+  background: #248567;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.brand-apply:hover { opacity: 0.92; }
+
+.brand-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.brand-preset {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  color: #243047;
+}
+
+.brand-preset:hover { border-color: #248567; background: #f3faf7; }
+
+.brand-preset__dots {
+  display: inline-flex;
+}
+
+.brand-preset__dots i {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  margin-left: -3px;
+  border: 1.5px solid #fff;
+}
+
+.brand-preset__dots i:first-child { margin-left: 0; }
+
+.brand-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #9aa0b4;
+}
+
+.brand-intro {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.brand-applied {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #248567;
+}
+
+/* Brand quick-swatches under the Style-panel colour controls. */
+.brand-swatches {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.brand-swatches__dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  padding: 0;
+}
+
+.brand-swatches__dot:hover {
+  transform: scale(1.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
 .toolbar-action {
   display: inline-flex;
   align-items: center;
@@ -392,10 +560,14 @@ button {
 .canvas-stage {
   position: relative;
   flex: 1;
-  overflow-x: hidden;
+  /* Allow horizontal scroll too, so a zoomed-in canvas can be panned. `safe`
+     centring keeps the left edge reachable when the canvas is wider than the
+     viewport (plain `center` would clip the start and make it unscrollable). */
+  overflow-x: auto;
   overflow-y: auto;
   display: grid;
   place-items: start center;
+  justify-items: safe center;
   padding: 36px 48px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.18)),
@@ -1586,11 +1758,240 @@ button {
 // Properties and Style panels with scrolling
 .properties-panel,
 .style-panel,
-.data-binding-panel {
+.data-binding-panel,
+.layers-panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
   flex: 1;
+}
+
+// ---- Layers panel (Cover Page layer tree, Photoshop-style dark UI) ----
+.layers-panel {
+  overflow: hidden;
+  background: #323232;
+  color: #e6e6e6;
+}
+
+.layers-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  padding: 10px;
+  background: #3a3a3a;
+  border-bottom: 1px solid #262626;
+}
+
+.layers-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #4a4a4a;
+  color: #e6e6e6;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: #565656;
+    border-color: #6a6a6a;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.layers-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  background: #323232;
+
+  &::-webkit-scrollbar { width: 8px; }
+  &::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+}
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 8px 0 6px;
+  font-size: 13px;
+  color: #e6e6e6;
+  cursor: pointer;
+  user-select: none;
+  border-top: 2px solid transparent;
+  border-bottom: 1px solid #2c2c2c;
+  transition: background 120ms ease;
+
+  &:hover {
+    background: #3c3c3c;
+    .layer-actions { opacity: 1; }
+  }
+
+  &--active {
+    background: #3d4a66;
+    color: #fff;
+    box-shadow: inset 2px 0 0 #5c9bff;
+  }
+
+  &--hidden {
+    .layer-row__thumb,
+    .layer-row__label { opacity: 0.4; }
+  }
+
+  &--locked {
+    .layer-row__label { color: #b9b9b9; }
+  }
+
+  &--drop-before { border-top-color: #5c9bff; }
+  &--drop-after { border-bottom: 1px solid #5c9bff; }
+
+  &__thumb {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid #545454;
+    border-radius: 3px;
+    background:
+      linear-gradient(45deg, #3a3a3a 25%, transparent 25%, transparent 75%, #3a3a3a 75%) 0 0 / 10px 10px,
+      linear-gradient(45deg, #3a3a3a 25%, #2c2c2c 25%, #2c2c2c 75%, #3a3a3a 75%) 5px 5px / 10px 10px,
+      #2c2c2c;
+    color: #d8d8d8;
+    font-size: 14px;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  }
+
+  &__glyph { line-height: 1; }
+
+  &__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+    height: 24px;
+    padding: 0 6px;
+    border: 1px solid #5c9bff;
+    border-radius: 3px;
+    background: #1f1f1f;
+    color: #fff;
+    font-size: 13px;
+    outline: none;
+  }
+}
+
+.layer-eye {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #e6e6e6;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease;
+
+  &:hover { background: rgba(255, 255, 255, 0.14); }
+
+  &--off {
+    border: 1px solid #4a4a4a;
+    background: #262626;
+  }
+}
+
+.layer-indent { flex-shrink: 0; }
+
+.layer-caret {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #9a9a9a;
+  font-size: 11px;
+  cursor: pointer;
+  transition: transform 150ms ease, color 120ms ease;
+  transform: rotate(0deg);
+
+  &:hover { color: #fff; }
+  &--open { transform: rotate(90deg); }
+  &--spacer { cursor: default; pointer-events: none; }
+}
+
+.layer-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.layer-act {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #d0d0d0;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+
+  &:hover { background: rgba(255, 255, 255, 0.16); }
+  &--on { color: #ffd479; opacity: 1; }
+  &--danger:hover { background: #b13a3a; color: #fff; }
+}
+
+// Keep the lock indicator visible even when not hovering a locked row.
+.layer-row--locked .layer-actions { opacity: 1; }
+
+.layers-empty {
+  padding: 24px 16px;
+  color: #9a9a9a;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
 }
 
 .properties-body {
@@ -1783,6 +2184,12 @@ button {
   height: 100%;
   border: 0;
   background: transparent;
+  /* Global canvas zoom. CSS `zoom` (not transform) grows the layout box so the
+     outer .canvas-stage gets real scrollbars to pan. Zooming the iframe element
+     scales its rendered content; the iframe DOCUMENT isn't transformed, so all
+     in-iframe pointer/drag/getBoundingClientRect math stays consistent. */
+  zoom: var(--editor-zoom, 1);
+  transform-origin: top center;
 }
 
 /* ---------- Import button (templates / designs / components tabs) ---------- */
@@ -1901,3 +2308,102 @@ button {
 }
 
 .saveas-modal__btn--primary:hover { background: #1e6f57; }
+
+/* ---------------------------------------------------------------------------
+   Preview modal — full-screen, read-only render of all pages (scaled)
+   --------------------------------------------------------------------------- */
+.preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: grid;
+  place-items: center;
+}
+
+.preview-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 24, 48, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.preview-modal__card {
+  position: relative;
+  z-index: 1;
+  width: min(980px, calc(100% - 48px));
+  height: min(90vh, calc(100% - 48px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #2b2d31;
+  box-shadow: 0 24px 60px rgba(14, 20, 48, 0.45);
+}
+
+.preview-modal__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #1f2023;
+  color: #f3f4f6;
+}
+
+.preview-modal__title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.preview-modal__zoom {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-modal__zoom-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: #3a3c41;
+  color: #f3f4f6;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.preview-modal__zoom-btn:hover { background: #4a4d52; }
+
+.preview-modal__zoom-val {
+  min-width: 40px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.preview-modal__close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #f3f4f6;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.preview-modal__close:hover { background: #3a3c41; }
+
+.preview-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #525659;
+}
+
+.preview-modal__frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #525659;
+}

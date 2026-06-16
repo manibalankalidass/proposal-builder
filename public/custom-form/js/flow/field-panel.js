@@ -122,7 +122,7 @@
           alias: cur.dataset.repeatAlias || 'item'
         });
       }
-      if (cur.matches?.('.cs-doc, .cs-flow-canvas') || cur.tagName === 'BODY') break;
+      if (cur.matches?.('.cs_margin, .cs-flow-canvas') || cur.tagName === 'BODY') break;
       cur = cur.parentElement;
     }
     // chain is currently innermost-first; reverse to outermost-first, then

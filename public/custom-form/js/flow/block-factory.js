@@ -228,6 +228,7 @@
     'pen-shape':   () => window.PenShape?.createBlock() || null,
     'table':       () => window.TableBlock?.createBlock() || null,
     'sync-list':   () => window.SyncList?.createBlock() || null,
+    'aiden':       () => window.Aiden?.createBlock() || null,
   };
   // Expose so other modules / future plugins can register builders.
   window.FlowCanvas.BLOCK_BUILDERS = BUILDERS;

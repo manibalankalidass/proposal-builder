@@ -11,15 +11,15 @@ This document is a **plan, not code**. Review it, mark up anything you disagree 
 | Piece | Where | Status |
 |---|---|---|
 | Two **separate iframes** rendering `custom-form.html` | [src/app/canvas/canvas.html](src/app/canvas/canvas.html), `pages = [1, 2]` | Working but each iframe is a separate world — no JS access between them |
-| `.cs-doc` flex column with header + footer | [public/custom-form/css/custom-form.css:831-844](public/custom-form/css/custom-form.css#L831) | Header + footer render correctly inside one `.cs-doc` |
-| `flow-canvas.js` bootstraps `.cs-doc` and inserts header/footer | [public/custom-form/js/flow-canvas.js:47-107](public/custom-form/js/flow-canvas.js#L47) | Works for one iframe |
+| `.cs_margin` flex column with header + footer | [public/custom-form/css/custom-form.css:831-844](public/custom-form/css/custom-form.css#L831) | Header + footer render correctly inside one `.cs_margin` |
+| `flow-canvas.js` bootstraps `.cs_margin` and inserts header/footer | [public/custom-form/js/flow-canvas.js:47-107](public/custom-form/js/flow-canvas.js#L47) | Works for one iframe |
 | Body block placement (drag/drop) | `flow/drop-zones.js`, `flow/row-col-builder.js` | Existing, untouched |
 | Twig generator (drives PDF export) | `js/common-twig-generator.js` | Reads from canvas → posts to parent |
 | PDF export (Puppeteer) | [scripts/generate_pdf_puppeteer.js](scripts/generate_pdf_puppeteer.js), [src/server.ts](src/server.ts) | Already paginates content across PDF pages |
 
 ### Why two iframes is wrong for auto-pagination
 
-JS in iframe 1 cannot read/write DOM in iframe 2 (same-origin, but they're separate `window` contexts). To detect overflow on page 1 and **move a block to page 2**, the script must access both pages. We need to collapse to **one iframe (or no iframe) containing N stacked `.cs-doc` elements**.
+JS in iframe 1 cannot read/write DOM in iframe 2 (same-origin, but they're separate `window` contexts). To detect overflow on page 1 and **move a block to page 2**, the script must access both pages. We need to collapse to **one iframe (or no iframe) containing N stacked `.cs_margin` elements**.
 
 ---
 
@@ -29,18 +29,18 @@ JS in iframe 1 cannot read/write DOM in iframe 2 (same-origin, but they're separ
 ┌─ <iframe custom-form.html> (just ONE iframe) ──────────────────┐
 │   <body>                                                        │
 │     <div class="custom-form-design">                            │
-│       <div class="cs-doc" data-page="1">                        │
-│         <div class="cs-row cs-page-header">…header…</div>       │
-│         <div class="cs-row">…body…</div>                        │
-│         <div class="cs-row">…body…</div>                        │
-│         <div class="cs-row cs-page-footer">…footer…</div>       │
+│       <div class="cs_margin" data-page="1">                        │
+│         <div class="row-item cs-page-header">…header…</div>       │
+│         <div class="row-item">…body…</div>                        │
+│         <div class="row-item">…body…</div>                        │
+│         <div class="row-item cs-page-footer">…footer…</div>       │
 │       </div>                                                    │
-│       <div class="cs-doc" data-page="2">                        │
-│         <div class="cs-row cs-page-header">…header (mirrored)…</│
-│         <div class="cs-row">…overflowed body…</div>             │
-│         <div class="cs-row cs-page-footer">…footer (mirrored)…</│
+│       <div class="cs_margin" data-page="2">                        │
+│         <div class="row-item cs-page-header">…header (mirrored)…</│
+│         <div class="row-item">…overflowed body…</div>             │
+│         <div class="row-item cs-page-footer">…footer (mirrored)…</│
 │       </div>                                                    │
-│       …more .cs-doc as needed…                                  │
+│       …more .cs_margin as needed…                                  │
 │     </div>                                                      │
 │   </body>                                                       │
 └─────────────────────────────────────────────────────────────────┘
@@ -50,7 +50,7 @@ JS in iframe 1 cannot read/write DOM in iframe 2 (same-origin, but they're separ
 
 | Concept | Behavior |
 |---|---|
-| **Master page** | Always `.cs-doc[data-page="1"]`. User edits the header/footer here. Body blocks added/removed here too. |
+| **Master page** | Always `.cs_margin[data-page="1"]`. User edits the header/footer here. Body blocks added/removed here too. |
 | **Continuation pages** | `data-page="2"`, `3`, … created automatically when body of master page overflows. |
 | **Header/footer mirroring** | Every continuation page's header/footer is a **read-only clone** of the master's. Edit master → mirrors update via `MutationObserver`. |
 | **Overflow detection** | After each DOM mutation in any page's body, measure `body.scrollHeight` vs available height. If overflowing → move the last body row to the next page. If underflowing → pull the first body row from the next page back into this page. |
@@ -61,7 +61,7 @@ JS in iframe 1 cannot read/write DOM in iframe 2 (same-origin, but they're separ
 
 ## 3. Pagination algorithm
 
-After every mutation observed in any `.cs-doc`'s body (between header and footer):
+After every mutation observed in any `.cs_margin`'s body (between header and footer):
 
 ```
 function balance() {
@@ -108,7 +108,7 @@ function balance() {
 ```js
 const master = doc1.querySelector('.cs-page-header');
 const observer = new MutationObserver(() => {
-  document.querySelectorAll('.cs-doc:not([data-page="1"]) .cs-page-header')
+  document.querySelectorAll('.cs_margin:not([data-page="1"]) .cs-page-header')
     .forEach(mirror => {
       mirror.innerHTML = master.innerHTML;
       mirror.setAttribute('aria-readonly', 'true');
@@ -132,7 +132,7 @@ observer.observe(master, { childList: true, subtree: true, characterData: true }
 | [src/app/canvas/canvas.html](src/app/canvas/canvas.html) | Drop the `@for` loop; render single iframe. | Low |
 | [src/app/canvas/canvas.scss](src/app/canvas/canvas.scss) | Let `.canvas-frame` grow tall enough to show all pages stacked. Use `height: auto`, lift `overflow: hidden`. | Low |
 | [public/custom-form/custom-form.html](public/custom-form/custom-form.html) | No change — same iframe loads. | None |
-| [public/custom-form/css/custom-form.css](public/custom-form/css/custom-form.css) | New rules: `.cs-doc + .cs-doc { margin-top: 28px }` so stacked pages have a visual gap. Lift body `overflow: hidden` so multiple `.cs-doc` can show. | Low |
+| [public/custom-form/css/custom-form.css](public/custom-form/css/custom-form.css) | New rules: `.cs_margin + .cs_margin { margin-top: 28px }` so stacked pages have a visual gap. Lift body `overflow: hidden` so multiple `.cs_margin` can show. | Low |
 | [public/custom-form/js/flow-canvas.js](public/custom-form/js/flow-canvas.js) | New `pagination.js` companion module. Replaces single `ensureRegion` with `createPage(n)` factory. | **High** — central change |
 | New [public/custom-form/js/flow/pagination.js](public/custom-form/js/flow/pagination.js) | The whole `balance()` + mirror logic. | High |
 | [public/custom-form/js/common-twig-generator.js](public/custom-form/js/common-twig-generator.js) | When generating Twig, **only emit page 1** (master). Continuation pages are presentation-only — Puppeteer will re-paginate from the original body. | Medium |
@@ -143,8 +143,8 @@ observer.observe(master, { childList: true, subtree: true, characterData: true }
 
 | Phase | Deliverable | Time estimate |
 |---|---|---|
-| **A. Collapse to one iframe** | Editor renders one iframe with one `.cs-doc`. Header/footer still work. Drop the placeholder page 2. | 1 hr |
-| **B. Multiple `.cs-doc` stacked** | Inside the iframe, support 1+ `.cs-doc` elements stacked vertically. Adjust CSS so they each look like an A4 page with a gap between. | 1 hr |
+| **A. Collapse to one iframe** | Editor renders one iframe with one `.cs_margin`. Header/footer still work. Drop the placeholder page 2. | 1 hr |
+| **B. Multiple `.cs_margin` stacked** | Inside the iframe, support 1+ `.cs_margin` elements stacked vertically. Adjust CSS so they each look like an A4 page with a gap between. | 1 hr |
 | **C. Master/mirror header & footer** | Master is page 1. Pages 2+ get cloned header/footer that update via MutationObserver. Mirrors are read-only. | 1.5 hr |
 | **D. Overflow detection + block migration** | `balance()` function. Add blocks to page 1 → overflow pushes to page 2. Delete → page 2 content migrates back. Empty page 2 gets removed. | 2 hr |
 | **E. Page numbering** | `<span class="cs-page-num"></span>` / `<span class="cs-page-total"></span>` populated after balance. | 30 min |
@@ -171,7 +171,7 @@ observer.observe(master, { childList: true, subtree: true, characterData: true }
 | Performance: `balance()` runs on every keystroke | Debounce 150ms. Memoize page heights. |
 | Block reorder + balance fighting each other | Reorder operations set a `reordering` lock; balance skips while lock is held. |
 | Mirror DOM gets out of sync if master mutation skips a beat | After each pagination cycle, force a one-shot resync of all mirrors. |
-| `cs-doc` height is fixed (1123px) but content needs to know how much room it has after header/footer | `availableBodyHeight = 1123 - paddingY*2 - header.offsetHeight - footer.offsetHeight - margins` — measure at runtime. |
+| `cs_margin` height is fixed (1123px) but content needs to know how much room it has after header/footer | `availableBodyHeight = 1123 - paddingY*2 - header.offsetHeight - footer.offsetHeight - margins` — measure at runtime. |
 | Existing inline-editor.js / Froala features may interfere with mirrors | Mirrors set `contenteditable=false` and explicitly skip Froala init. |
 
 ---

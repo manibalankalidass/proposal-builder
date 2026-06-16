@@ -14,6 +14,13 @@
       </button>
     </div>
 
+    <div class="topbar__group topbar__group--zoom">
+      <button class="icon-button icon-button--plain" title="Zoom out" type="button" (click)="zoomOut()">−</button>
+      <button class="icon-button icon-button--plain zoom-readout" title="Reset to 100%" type="button"
+        (click)="zoomReset()">{{ zoomPercent }}%</button>
+      <button class="icon-button icon-button--plain" title="Zoom in" type="button" (click)="zoomIn()">＋</button>
+    </div>
+
     <!-- <div class="topbar__group topbar__group--tools">
       @for (action of toolbarActions; track action.label) {
       <button class="toolbar-action" type="button">
@@ -59,6 +66,10 @@
       <button class="utility-action utility-action--outline" type="button" (click)="openSaveAs()">
         <span class="utility-action__icon">💾</span>
         <span>Save as</span>
+      </button>
+      <button class="utility-action utility-action--outline" type="button" (click)="openPreview()">
+        <span class="utility-action__icon">◉</span>
+        <span>Preview</span>
       </button>
       @for (action of utilityActions; track action.label) {
       <button class="utility-action" [class.utility-action--primary]="action.variant === 'primary'"
@@ -218,6 +229,7 @@
           <div class="library-list">
             @for (comp of savedComponents; track comp.id) {
             <div class="library-item" draggable="true" (dragstart)="handleComponentDragStart($event, comp)"
+              (dragend)="handleLibraryDragEnd()"
               (click)="insertComponent(comp.id)" title="Click to insert · drag onto canvas"
               style="position: relative; cursor: grab; padding-right: 44px;">
               <span class="library-item__icon">{{ comp.kind === 'group' ? '▦' : '◼' }}</span>
@@ -396,6 +408,24 @@
               </label>
             </div>
 
+            <div class="pdf-settings-row"
+              style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px;">
+              <label for="pdf-inline-toolbar" style="margin-bottom: 0;">Inline text toolbar
+                <span style="display: block; font-weight: normal; font-size: 11px; color: #9ca3af; margin-top: 2px;">Off
+                  docks it to the top of the canvas</span></label>
+              <label class="switch-toggle"
+                style="position: relative; display: inline-block; width: 34px; height: 20px; flex: none;">
+                <input type="checkbox" id="pdf-inline-toolbar" [ngModel]="pdfSettings.inlineTextToolbar"
+                  (ngModelChange)="onInlineTextToolbarToggle($event)" style="opacity: 0; width: 0; height: 0;">
+                <span class="slider round" [style.background]="pdfSettings.inlineTextToolbar ? '#5c5cff' : '#e2e5f4'"
+                  style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; transition: .2s; border-radius: 20px;">
+                  <span
+                    style="position: absolute; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .2s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"
+                    [style.transform]="pdfSettings.inlineTextToolbar ? 'translateX(14px)' : 'translateX(0)'"></span>
+                </span>
+              </label>
+            </div>
+
             <!-- <div class="pdf-settings-row"
               style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px;">
               <label for="pdf-comments" style="margin-bottom: 0;">Enable comments</label>
@@ -471,6 +501,26 @@
               <button type="button"
                 (click)="pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 20; onMarginChange()">Document
                 (20mm)</button>
+            </div>
+
+            <div class="pdf-settings-section">
+              <div class="pdf-settings-section__title">Pages</div>
+              <button type="button" (click)="clearCurrentPage()"
+                style="display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 9px 12px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; font-size: 13px; color: #374151; box-sizing: border-box;">
+                <i class="fa fa-eraser" style="font-size: 12px;"></i>
+                Clear current page
+              </button>
+              <button type="button" (click)="deleteCurrentPage()" [disabled]="pageCount <= 1"
+                style="display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 9px 12px; margin-top: 8px; background: #fff; border: 1px solid #fecaca; border-radius: 6px; font-size: 13px; color: #ef4444; box-sizing: border-box;"
+                [style.opacity]="pageCount <= 1 ? 0.5 : 1"
+                [style.cursor]="pageCount <= 1 ? 'not-allowed' : 'pointer'">
+                <i class="fa fa-trash-can" style="font-size: 12px;"></i>
+                Delete current page
+              </button>
+              <p style="font-size: 11px; color: #9ca3af; margin: 8px 0 0; line-height: 1.4;">
+                Acting on page {{ currentPage }} of {{ pageCount }}. <strong>Clear</strong> empties the page but keeps it;
+                <strong>Delete</strong> removes it. At least one page always stays.
+              </p>
             </div>
           </div>
         </ng-template>
@@ -639,6 +689,12 @@
                   <button type="button" (click)="onStyleChange('color', '')" title="Clear text color"
                     style="padding: 6px 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 500;">✕</button>
                 </div>
+                <div class="brand-swatches">
+                  @for (c of brandKit.colors; track $index) {
+                  <button type="button" class="brand-swatches__dot" [style.background]="c"
+                    [title]="'Brand ' + brandColorLabels[$index]" (click)="onStyleChange('color', c)"></button>
+                  }
+                </div>
               </div>
               <div class="style-row" *ngIf="hasProp('fontSize')">
                 <label>Font Size</label>
@@ -676,6 +732,12 @@
                     style="flex: 1; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px; font-family: monospace; font-size: 12px;" />
                   <button type="button" (click)="onStyleChange('backgroundColor', '')" title="Clear background color"
                     style="padding: 6px 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; font-size: 12px; color: #6b7280; font-weight: 500;">✕</button>
+                </div>
+                <div class="brand-swatches">
+                  @for (c of brandKit.colors; track $index) {
+                  <button type="button" class="brand-swatches__dot" [style.background]="c"
+                    [title]="'Brand ' + brandColorLabels[$index]" (click)="onStyleChange('backgroundColor', c)"></button>
+                  }
                 </div>
               </div>
             </div>
@@ -889,8 +951,8 @@
               <input type="file" accept="image/*" (change)="onPageBgImageUpload($event)" style="display: none;" />
             </label>
 
-            <p style="font-size: 11px; color: #9ca3af; margin: 8px 0 0; line-height: 1.4;">Applies to all pages. Covers
-              the full page area.</p>
+            <p style="font-size: 11px; color: #9ca3af; margin: 8px 0 0; line-height: 1.4;">Applies to the page you're
+              viewing (content or cover). Crop it after upload — free or to a ratio.</p>
 
             <!-- Page background SHAPE (pen-tool designed, full-page) -->
             <span
@@ -905,21 +967,149 @@
             <button type="button" (click)="removePageShape()"
               style="display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 8px 12px; margin-top: 8px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; font-size: 12px; color: #ef4444; box-sizing: border-box;">
               <i class="fa fa-trash-can" style="font-size: 12px;"></i>
-              Remove Shape
+              Remove Shape (current page)
             </button>
 
             <p style="font-size: 11px; color: #9ca3af; margin: 8px 0 0; line-height: 1.4;">Draw a vector shape that sits
-              behind page content on every page.</p>
+              behind content. Shapes are per-page — pick the page inside the designer to add, edit, or remove each
+              page's shape independently.</p>
           </div>
         </ng-template>
       </div>
+
+      <!-- Layers (Cover Page Photoshop-style layer tree) -->
+      <div class="layers-panel" *ngIf="activeRightTab === 'Layers'">
+        <div class="layers-toolbar">
+          <button type="button" class="layers-btn" title="Bring to Front"
+            [disabled]="!activeLayerId" (click)="layerOp('front')">⤒ Front</button>
+          <button type="button" class="layers-btn" title="Bring Forward"
+            [disabled]="!activeLayerId" (click)="layerOp('forward')">↑ Forward</button>
+          <button type="button" class="layers-btn" title="Send Backward"
+            [disabled]="!activeLayerId" (click)="layerOp('backward')">↓ Backward</button>
+          <button type="button" class="layers-btn" title="Send to Back"
+            [disabled]="!activeLayerId" (click)="layerOp('back')">⤓ Back</button>
+        </div>
+
+        <div class="layers-tree" *ngIf="layerRows.length; else noLayers">
+          <div *ngFor="let row of layerRows"
+            class="layer-row"
+            [class.layer-row--active]="row.id === activeLayerId"
+            [class.layer-row--hidden]="row.hidden"
+            [class.layer-row--locked]="row.locked"
+            [class.layer-row--drop-before]="row.id === layerDropTargetId && layerDropPosition === 'before'"
+            [class.layer-row--drop-after]="row.id === layerDropTargetId && layerDropPosition === 'after'"
+            [draggable]="!row.locked"
+            (click)="selectLayer(row.id)"
+            (dragstart)="onLayerDragStart(row.id)"
+            (dragover)="onLayerDragOver($event, row.id)"
+            (drop)="onLayerDrop(row.id)"
+            (dragend)="clearLayerDrag()">
+
+            <button type="button" class="layer-eye" [class.layer-eye--off]="row.hidden"
+              [title]="row.hidden ? 'Show layer' : 'Hide layer'"
+              (click)="toggleLayerVisibility($event, row.id)">
+              <span *ngIf="!row.hidden">👁</span>
+            </button>
+
+            <span class="layer-indent" [style.width.px]="row.depth * 14"></span>
+
+            <button type="button" class="layer-caret" *ngIf="row.hasChildren"
+              [class.layer-caret--open]="!row.collapsed"
+              (click)="toggleLayerCollapse($event, row.id)" title="Expand / collapse">▸</button>
+            <span class="layer-caret layer-caret--spacer" *ngIf="!row.hasChildren"></span>
+
+            <span class="layer-row__thumb" [class.layer-row__thumb--img]="!!row.thumb">
+              <img *ngIf="row.thumb" [src]="row.thumb" alt="" />
+              <span *ngIf="!row.thumb" class="layer-row__glyph">{{ row.type === 'group' ? '▣' : row.type === 'section' ? '▤' : row.type === 'list' || row.type === 'list-repeater' || row.type === 'sync-list' ? '☰' : row.type === 'heading' || row.type === 'heading-two' || row.type === 'body-text' || row.type === 'data-field' ? 'T' : row.type === 'button' ? '⬚' : row.type === 'pen-shape' || row.type === 'shape' ? '✦' : row.type === 'table' || row.type === 'table-repeater' ? '⊞' : row.type === 'divider' ? '―' : row.type === 'fa-icon' ? '★' : '◻' }}</span>
+            </span>
+
+            <input *ngIf="editingLayerId === row.id" class="layer-row__input"
+              [value]="row.label"
+              (click)="$event.stopPropagation()"
+              (keydown.enter)="commitLayerRename($event)"
+              (keydown.escape)="cancelLayerRename()"
+              (blur)="commitLayerRename($event)" />
+            <span *ngIf="editingLayerId !== row.id" class="layer-row__label"
+              (dblclick)="startLayerRename($event, row.id)">{{ row.label }}</span>
+
+            <span class="layer-actions">
+              <button type="button" class="layer-act" [class.layer-act--on]="row.locked"
+                [title]="row.locked ? 'Unlock' : 'Lock'" (click)="lockLayer($event, row.id)">{{ row.locked ? '🔒' : '🔓' }}</button>
+              <button type="button" class="layer-act" title="Duplicate"
+                (click)="duplicateLayer($event, row.id)">⧉</button>
+              <button type="button" class="layer-act layer-act--danger" title="Delete"
+                (click)="deleteLayer($event, row.id)">🗑</button>
+            </span>
+          </div>
+        </div>
+        <ng-template #noLayers>
+          <div class="layers-empty">Add or select a block on a <strong>Cover Page</strong> to manage its layers.</div>
+        </ng-template>
+      </div>
+
+      <div class="brand-panel" *ngIf="activeRightTab === 'Brand'">
+        <p class="brand-intro">Set your brand colours &amp; fonts once. Colours show as quick swatches in the
+          <strong>Style</strong> tab (select a block, click a swatch). Fonts apply to the whole document with the
+          button below.</p>
+        <div class="brand-section">
+          <h4 class="brand-section__title">PALETTE</h4>
+          <div class="brand-palette">
+            @for (c of brandKit.colors; track $index) {
+            <label class="brand-swatch-edit" [title]="brandColorLabels[$index]">
+              <input type="color" [value]="c" (change)="onBrandColorChange($index, $any($event.target).value)" />
+              <span>{{ brandColorLabels[$index] }}</span>
+            </label>
+            }
+          </div>
+        </div>
+
+        <div class="brand-section">
+          <h4 class="brand-section__title">FONTS</h4>
+          <label class="brand-field">
+            <span>Headings</span>
+            <select [value]="brandKit.headingFont" (change)="onBrandFontChange('headingFont', $any($event.target).value)">
+              @for (f of brandFontOptions; track f.value) { <option [value]="f.value">{{ f.label }}</option> }
+            </select>
+          </label>
+          <label class="brand-field">
+            <span>Body</span>
+            <select [value]="brandKit.bodyFont" (change)="onBrandFontChange('bodyFont', $any($event.target).value)">
+              @for (f of brandFontOptions; track f.value) { <option [value]="f.value">{{ f.label }}</option> }
+            </select>
+          </label>
+          <button type="button" class="brand-apply" (click)="applyBrandFonts()">Apply fonts to document</button>
+          <span class="brand-applied" *ngIf="brandApplied">✓ Fonts applied to all text</span>
+        </div>
+
+        <div class="brand-section">
+          <h4 class="brand-section__title">PRESETS</h4>
+          <div class="brand-presets">
+            @for (p of brandPresets; track p.name) {
+            <button type="button" class="brand-preset" (click)="applyBrandPreset(p)">
+              <span class="brand-preset__dots">
+                @for (c of p.colors; track $index) { <i [style.background]="c"></i> }
+              </span>
+              <span>{{ p.name }}</span>
+            </button>
+            }
+          </div>
+        </div>
+
+        <p class="brand-hint">Your palette appears as quick swatches in the <strong>Style</strong> panel's colour
+          controls. “Apply fonts” restyles all text now; colours apply per selected block from the swatches.</p>
+      </div>
+
     </aside>
   </div>
 
   <footer class="statusbar">
     <span>No selection</span>
-    <span>Page 1 of 1</span>
+    <span>Page {{ currentPage }} of {{ pageCount }}</span>
   </footer>
+
+  <!-- Background-image cropper (free + ratio) — opened after a page-bg upload -->
+  <app-image-cropper *ngIf="cropperOpen" [src]="cropperSrc" [pageRatio]="cropperRatio"
+    (applied)="onCropApplied($event)" (cancelled)="onCropCancelled()"></app-image-cropper>
 
   <!-- Binding modal (full-page) — opened when a repeater block is dropped -->
   <div class="binding-modal" *ngIf="bindingModalOpen">
@@ -1009,6 +1199,28 @@
           (click)="applyBinding()">
           Apply Binding
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Read-only design preview (all pages, scaled) -->
+  <div class="preview-modal" *ngIf="previewOpen">
+    <div class="preview-modal__backdrop" (click)="closePreview()"></div>
+    <div class="preview-modal__card">
+      <div class="preview-modal__head">
+        <span class="preview-modal__title">◉ Preview</span>
+        <div class="preview-modal__zoom">
+          <button type="button" class="preview-modal__zoom-btn" title="Zoom out"
+            (click)="setPreviewZoom(previewZoom - 0.1)">−</button>
+          <span class="preview-modal__zoom-val">{{ (previewZoom * 100) | number:'1.0-0' }}%</span>
+          <button type="button" class="preview-modal__zoom-btn" title="Zoom in"
+            (click)="setPreviewZoom(previewZoom + 0.1)">+</button>
+        </div>
+        <button type="button" class="preview-modal__close" title="Close" (click)="closePreview()">✕</button>
+      </div>
+      <div class="preview-modal__body">
+        <iframe class="preview-modal__frame" [srcdoc]="previewSrcdoc" title="Design preview"
+          sandbox="allow-same-origin"></iframe>
       </div>
     </div>
   </div>

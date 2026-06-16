@@ -48,7 +48,7 @@
   const saveUser = () => localStorage.setItem(USER_KEY, JSON.stringify(me));
 
   /* ------------------------------- transport ------------------------------- */
-  let send = () => {};
+  let send = () => { };
   const listeners = [];
   const onMsg = (fn) => listeners.push(fn);
   const dispatch = (msg) => { if (msg) listeners.forEach((fn) => { try { fn(msg); } catch (e) { /* */ } }); };
@@ -79,7 +79,7 @@
   /* --------------------------- coordinate mapping -------------------------- */
   // Cursors are shared in page-relative fractions so they line up regardless of
   // each peer's scroll position / window size.
-  const docs = () => Array.from(document.querySelectorAll('.cs-doc'));
+  const docs = () => Array.from(document.querySelectorAll('.cs_margin'));
   const docAt = (cx, cy) => docs().find((d) => { const r = d.getBoundingClientRect(); return cy >= r.top && cy <= r.bottom && cx >= r.left && cx <= r.right; });
   const toPageFrac = (cx, cy) => {
     const all = docs(); const d = docAt(cx, cy) || all[0]; if (!d) return null;
@@ -233,16 +233,16 @@
   const persistComments = () => {
     try { localStorage.setItem(COMMENTS_KEY, JSON.stringify(comments)); } catch (e) { /* */ }
     // Best-effort server persistence (no-op under ng serve).
-    try { fetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ doc: DOC_ID, comments }) }).catch(() => {}); } catch (e) { /* */ }
+    try { fetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ doc: DOC_ID, comments }) }).catch(() => { }); } catch (e) { /* */ }
   };
   const fetchServerComments = () => {
     try {
       fetch('/api/comments?doc=' + encodeURIComponent(DOC_ID)).then((r) => r.json()).then((d) => {
         if (Array.isArray(d.comments) && d.comments.length) { comments = mergeComments(comments, d.comments); renderPins(); }
-      }).catch(() => {});
+      }).catch(() => { });
     } catch (e) { /* */ }
   };
-  const mergeComments = (a, b) => { const m = new Map(); [...a, ...b].forEach((c) => m.set(c.id, c)); return Array.from(m.values()); };
+  const mergeComments = (a, b) => { const m = new Map();[...a, ...b].forEach((c) => m.set(c.id, c)); return Array.from(m.values()); };
 
   const fmtTime = (ts) => { const d = (new Date(ts)).getTime?.() ? new Date(ts) : new Date(); const diff = Date.now() - ts; const mn = Math.floor(diff / 60000); if (mn < 1) return 'just now'; if (mn < 60) return mn + 'm'; const h = Math.floor(mn / 60); if (h < 24) return h + 'h'; return Math.floor(h / 24) + 'd'; };
   const escapeHtml = (s) => (s || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));

@@ -50,7 +50,7 @@ body {
 .cs_paper {
   min-height: 100%;
   height: auto;
-  background: #f4f5fb;
+  /* background: #f4f5fb; */
   padding: 24px 0;
 }
 
@@ -58,7 +58,7 @@ body {
   position: relative;
   height: 100%;
   overflow: hidden;
-  border-radius: 8px;
+  /* border-radius: 8px; */
   background: #ffffff;
 }
 
@@ -835,7 +835,7 @@ body {
 }
 
 .cs_paper {
-  /* Multi-page container — holds one or more .cs-doc pages stacked
+  /* Multi-page container — holds one or more .cs_margin pages stacked
      vertically. Each page is an A4 sheet (794 × 1123 px). */
   display: flex;
   flex-direction: column;
@@ -844,7 +844,7 @@ body {
   width: 100%;
 }
 
-.cs-doc {
+.cs_margin {
   width: var(--cs-page-width, 794px);
   max-width: 100%;
   min-height: var(--cs-page-min-height, 1123px);
@@ -867,20 +867,55 @@ body {
    designer): z-index:0 keeps it above the page background; page content is
    lifted to z-index:1 so it always paints on top. This pure-z-index approach
    (no negative z / isolation) renders consistently in wkhtmltopdf + puppeteer. */
-.cs-doc > .cs-page-shape-bg {
+.cs_margin>.cs-page-shape-bg,
+.cs-cover-canvas>.cs-page-shape-bg {
   z-index: 0;
 }
 
-.cs-doc > .cs-row,
-.cs-doc > .body-main-content,
-.cs-doc > .cs-page-header,
-.cs-doc > .cs-page-footer {
+/* Smart alignment guides shown while dragging / resizing a free-move block
+   (cover or section). Editor-only chrome (data-cs-chrome → stripped on export). */
+.cs-align-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+}
+
+.cs-align-guide {
+  position: absolute;
+  background: #f43f7e;
+}
+
+.cs-align-guide--v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.cs-align-guide--h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+/* Active-page highlight (set by active-page.js on the in-view .cs_page).
+   Uses box-shadow so it never shifts layout. cs_selected = cover page,
+   cs_selected_border = content page. Stripped from exported markup. */
+.cs_page.cs_selected,
+.cs_page.cs_selected_border {
+  box-shadow: 0 0 0 0px #248567, 0 6px 18px rgba(36, 133, 103, 0.18);
+}
+
+.cs_margin>.row-item,
+.cs_margin>.body-main-content,
+.cs_margin>.cs-page-header,
+.cs_margin>.cs-page-footer {
   position: relative;
   z-index: 1;
 }
 
 /* A4 boundary indicator — a real DOM element injected by JS into any
-   .cs-doc whose content overflows past the configured A4 height. The
+   .cs_margin whose content overflows past the configured A4 height. The
    line spans the full doc width, with a centered pill label that has
    a solid background so it's readable on top of the dashed line. */
 .cs-overflow-mark {
@@ -910,7 +945,7 @@ body {
 }
 
 /* Page number badge (top-right corner of each page) */
-.cs-doc::before {
+.cs_margin::before {
   /* content: "Page " attr(data-page); */
   position: absolute;
   top: 8px;
@@ -923,12 +958,12 @@ body {
   pointer-events: none;
 }
 
-.cs-row {
+.row-item {
   display: flex;
   gap: 0;
-  /* margin-bottom: var(--cs-row-margin-bottom, 8px); */
+  /* margin-bottom: var(--row-item-margin-bottom, 8px); */
   position: relative;
-  /* min-height: var(--cs-row-min-height, 40px); */
+  /* min-height: var(--row-item-min-height, 40px); */
   flex: 0 0 auto;
   /* padding: 5px; */
 }
@@ -940,8 +975,8 @@ body {
    the bottom of the flex column — empty space sits between the
    body and the footer.
    ============================================================ */
-.cs-doc>.cs-page-header,
-.cs-doc>.cs-page-footer {
+.cs_margin>.cs-page-header,
+.cs_margin>.cs-page-footer {
   flex: 0 0 auto;
   position: relative;
   min-height: 70px;
@@ -954,14 +989,14 @@ body {
   cursor: pointer;
 }
 
-.cs-doc>.cs-page-header {
+.cs_margin>.cs-page-header {
   margin-top: 0;
   margin-bottom: 0px;
   border-bottom: 1px solid #e1e1e1;
   align-items: center;
 }
 
-.cs-doc>.cs-page-footer {
+.cs_margin>.cs-page-footer {
   margin-top: auto;
   align-items: center;
   /* push to bottom of the flex column */
@@ -970,8 +1005,8 @@ body {
 }
 
 /* Placeholder hint shown when the region is empty (no nested blocks) */
-.cs-page-header>.cs-col:empty::before,
-.cs-page-footer>.cs-col:empty::before {
+.cs-page-header>.col-item:empty::before,
+.cs-page-footer>.col-item:empty::before {
   content: attr(data-cs-placeholder);
   display: flex;
   align-items: center;
@@ -986,36 +1021,36 @@ body {
   pointer-events: none;
 }
 
-.cs-page-header>.cs-col:empty,
-.cs-page-footer>.cs-col:empty {
+.cs-page-header>.col-item:empty,
+.cs-page-footer>.col-item:empty {
   position: relative;
 }
 
 /* Mirror the placeholder text from the row to its inner col so the
    :empty selector still has access to the attribute. */
-.cs-page-header>.cs-col,
-.cs-page-footer>.cs-col {
+.cs-page-header>.col-item,
+.cs-page-footer>.col-item {
   background: transparent;
 }
 
 /* Hover hint: faint blue suggests "click here" */
-.cs-doc>.cs-page-header:not(.is-active):hover,
-.cs-doc>.cs-page-footer:not(.is-active):hover {
+.cs_margin>.cs-page-header:not(.is-active):hover,
+.cs_margin>.cs-page-footer:not(.is-active):hover {
   background: rgba(99, 102, 241, 0.04);
   border-color: rgba(99, 102, 241, 0.3);
 }
 
 /* Active state — bright outline + corner label, drop-zone ready */
-.cs-doc>.cs-page-header.is-active,
-.cs-doc>.cs-page-footer.is-active {
+.cs_margin>.cs-page-header.is-active,
+.cs_margin>.cs-page-footer.is-active {
   color: inherit;
   background: rgba(99, 102, 241, 0.06);
   border-color: rgba(99, 102, 241, 0.6);
   cursor: auto;
 }
 
-.cs-doc>.cs-page-header.is-active::before,
-.cs-doc>.cs-page-footer.is-active::before {
+.cs_margin>.cs-page-header.is-active::before,
+.cs_margin>.cs-page-footer.is-active::before {
   content: attr(data-cs-region-label);
   position: absolute;
   top: -8px;
@@ -1033,28 +1068,28 @@ body {
 }
 
 /* When a region is active, dim the inactive areas */
-.cs-doc.editing-header>.cs-row:not(.cs-page-header):not(.cs-page-footer),
-.cs-doc.editing-footer>.cs-row:not(.cs-page-header):not(.cs-page-footer) {
+.cs_margin.editing-header>.row-item:not(.cs-page-header):not(.cs-page-footer),
+.cs_margin.editing-footer>.row-item:not(.cs-page-header):not(.cs-page-footer) {
   opacity: 0.5;
 }
 
-.cs-doc.editing-header>.cs-page-footer,
-.cs-doc.editing-footer>.cs-page-header {
+.cs_margin.editing-header>.cs-page-footer,
+.cs_margin.editing-footer>.cs-page-header {
   opacity: 0.5;
 }
 
-.cs-col {
+.col-item {
   flex: 1 1 0;
-  min-width: var(--cs-col-min-width, 60px);
-  /* min-height: var(--cs-col-min-height, 40px); */
+  min-width: var(--col-item-min-width, 60px);
+  /* min-height: var(--col-item-min-height, 40px); */
   position: relative;
   display: flex;
   flex-direction: column;
-  /* padding: var(--cs-col-padding, 4px); */
+  /* padding: var(--col-item-padding, 4px); */
 }
 
 /* Show placeholder only when column is truly empty (no block content) */
-.cs-col:empty::before {
+.col-item:empty::before {
   content: 'Drop block here';
   display: block;
   color: var(--muted);
@@ -1067,8 +1102,8 @@ body {
 }
 
 /* Hide placeholder if column has any block content */
-.cs-col:has(> .cs_block_s)::before,
-.cs-col:has(> .canvas-block)::before {
+.col-item:has(> .cs_block_s)::before,
+.col-item:has(> .canvas-block)::before {
   content: '';
   display: none;
 }
@@ -1076,7 +1111,7 @@ body {
 /* Column divider (resize handle between columns) — a 10px-wide draggable
    strip with a visible 1px line in the middle. The whole strip is the hit
    area so it's easy to grab. */
-.cs-col-divider {
+.cs-line-divider {
   flex: 0 0 10px;
   background: transparent;
   cursor: col-resize;
@@ -1086,7 +1121,7 @@ body {
   z-index: 5;
 }
 
-.cs-col-divider::before {
+.cs-line-divider::before {
   content: '';
   position: absolute;
   top: 0;
@@ -1098,17 +1133,17 @@ body {
   pointer-events: none;
 }
 
-.cs-row:hover .cs-col-divider::before {
+.row-item:hover .cs-line-divider::before {
   background: rgba(92, 92, 255, 0.25);
 }
 
-.cs-col-divider:hover,
-.cs-col-divider.cs-col-divider--active {
+.cs-line-divider:hover,
+.cs-line-divider.cs-line-divider--active {
   background: rgba(92, 92, 255, 0.12);
 }
 
-.cs-col-divider:hover::before,
-.cs-col-divider.cs-col-divider--active::before {
+.cs-line-divider:hover::before,
+.cs-line-divider.cs-line-divider--active::before {
   background: var(--accent);
   width: 2px;
 }
@@ -1348,7 +1383,7 @@ body {
 }
 
 
-.cs-inline-insert-menu{
+.cs-inline-insert-menu {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1375,16 +1410,16 @@ body {
 
 /* Add a premium pop animation when a new block is dropped on canvas */
 .custom-form-design>.cs_paper .cs_block_s,
-.cs-doc .cs_block_s {
+.cs_margin .cs_block_s {
   animation: scaleInDrop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Top-level blocks inside flow canvas (direct children of cs-col) — strip
+/* Top-level blocks inside flow canvas (direct children of col-item) — strip
    absolute positioning. In-section blocks keep absolute positioning.
    Width is auto by default (block elements fill their column); inline width
    set via resize wins because we don't !important it. */
-.cs-flow-canvas .cs-col>.cs_block_s,
-.cs-flow-canvas .cs-col>.canvas-block {
+.cs-flow-canvas .col-item>.cs_block_s,
+.cs-flow-canvas .col-item>.canvas-block {
   position: relative !important;
   top: auto !important;
   left: auto !important;
@@ -1395,8 +1430,8 @@ body {
   padding: 2px;
 }
 
-.cs-flow-canvas .cs-col>.cs_block_s:last-child,
-.cs-flow-canvas .cs-col>.canvas-block:last-child {
+.cs-flow-canvas .col-item>.cs_block_s:last-child,
+.cs-flow-canvas .col-item>.canvas-block:last-child {
   margin-bottom: 0;
 }
 
@@ -1423,7 +1458,7 @@ body {
 }
 
 /* Rows inside a section behave like rows in the doc root. */
-.cs-flow-canvas .section-container-content>.cs-row {
+.cs-flow-canvas .section-container-content>.row-item {
   flex: 0 0 auto;
 }
 
@@ -1437,6 +1472,27 @@ body {
   /* background: #fafbfe; */
 }
 
+/* Cover page: the .cs_page itself IS the free-move canvas sheet. No .cs_margin
+   and no .cs-flexible-content wrapper — blocks are absolutely-positioned DIRECT
+   children. Give it A4 page dimensions and make it the positioning context. */
+.cs-cover-canvas.cs_page {
+  width: var(--cs-page-width, 794px);
+  min-height: var(--cs-page-min-height, 1123px);
+  height: auto;
+  margin: 24px auto;
+  background: var(--cs-page-bg, #ffffff);
+  border: 1px solid #e1e1e1;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.cs-cover-canvas>.cs_block_s[data-cs-in-section="1"] {
+  position: absolute !important;
+  display: block !important;
+  margin: 0 !important;
+  z-index: 1;
+}
+
 /* Blocks inside flexible use absolute positioning for free movement */
 .cs-flow-canvas .cs-flexible-content>.cs_block_s[data-cs-in-section="1"] {
   position: absolute !important;
@@ -1447,7 +1503,7 @@ body {
 }
 
 /* Drop surface highlight while dragging from sidebar */
-.cs-flow-canvas.drop-surface--active .cs-col:empty::before {
+.cs-flow-canvas.drop-surface--active .col-item:empty::before {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -1458,10 +1514,10 @@ body {
    In absolute canvas mode the user controls width via drag-resize,
    so we don't force anything there.
    ============================================================ */
-.cs-doc>.cs_block_s,
-.cs-doc>.canvas-block,
-.cs-col>.cs_block_s,
-.cs-col>.canvas-block {
+.cs_margin>.cs_block_s,
+.cs_margin>.canvas-block,
+.col-item>.cs_block_s,
+.col-item>.canvas-block {
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box;
@@ -1501,8 +1557,8 @@ body {
 }
 
 /* Show the grip when the block (or grip itself) is hovered */
-.cs-flow-canvas .cs-col>.cs_block_s:hover>.cs-block-grip,
-.cs-flow-canvas .cs-col>.canvas-block:hover>.cs-block-grip,
+.cs-flow-canvas .col-item>.cs_block_s:hover>.cs-block-grip,
+.cs-flow-canvas .col-item>.canvas-block:hover>.cs-block-grip,
 .cs-block-grip:hover {
   opacity: 1;
 }
@@ -1522,8 +1578,8 @@ body {
 /* The host block needs position:relative so the grip's absolute placement
    anchors correctly. Top-level flow blocks already have position:relative
    from the normalize step. */
-.cs-flow-canvas .cs-col>.cs_block_s,
-.cs-flow-canvas .cs-col>.canvas-block {
+.cs-flow-canvas .col-item>.cs_block_s,
+.cs-flow-canvas .col-item>.canvas-block {
   position: relative;
 }
 
@@ -1548,7 +1604,7 @@ body {
 }
 
 @media print {
-  .cs-doc {
+  .cs_margin {
     height: var(--cs-page-min-height, 1123px) !important;
   }
 

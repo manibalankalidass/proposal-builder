@@ -194,13 +194,13 @@
   <text x="40" y="1450" class="h" fill="#0f172a">5. Document Model (DOM structure)</text>
   <rect x="40" y="1465" width="600" height="210" rx="10" fill="#0f172a"/>
   <text x="60" y="1495" class="mono" fill="#7dd3fc">.custom-form-design          </text><text x="430" y="1495" class="mono" fill="#94a3b8"># canvas (page wrapper)</text>
-  <text x="80" y="1518" class="mono" fill="#a5b4fc">└─ .cs-doc[data-page="1"]    </text><text x="430" y="1518" class="mono" fill="#94a3b8"># ORU A4 PAGE</text>
-  <text x="110" y="1541" class="mono" fill="#6ee7b7">├─ .cs-row                 </text><text x="430" y="1541" class="mono" fill="#94a3b8"># horizontal row</text>
-  <text x="140" y="1564" class="mono" fill="#fcd34d">│  ├─ .cs-col              </text><text x="430" y="1564" class="mono" fill="#94a3b8"># column (flex)</text>
+  <text x="80" y="1518" class="mono" fill="#a5b4fc">└─ .cs_margin[data-page="1"]    </text><text x="430" y="1518" class="mono" fill="#94a3b8"># ORU A4 PAGE</text>
+  <text x="110" y="1541" class="mono" fill="#6ee7b7">├─ .row-item                 </text><text x="430" y="1541" class="mono" fill="#94a3b8"># horizontal row</text>
+  <text x="140" y="1564" class="mono" fill="#fcd34d">│  ├─ .col-item              </text><text x="430" y="1564" class="mono" fill="#94a3b8"># column (flex)</text>
   <text x="170" y="1587" class="mono" fill="#fda4af">│  │   └─ .cs_block_s      </text><text x="430" y="1587" class="mono" fill="#94a3b8"># BLOCK (heading/text..)</text>
-  <text x="140" y="1610" class="mono" fill="#cbd5e1">│  ├─ .cs-col-divider      </text><text x="430" y="1610" class="mono" fill="#94a3b8"># resize handle</text>
-  <text x="140" y="1633" class="mono" fill="#fcd34d">│  └─ .cs-col              </text><text x="430" y="1633" class="mono" fill="#94a3b8"># innoru column</text>
-  <text x="110" y="1656" class="mono" fill="#6ee7b7">└─ .cs-row ...</text>
+  <text x="140" y="1610" class="mono" fill="#cbd5e1">│  ├─ .col-item-divider      </text><text x="430" y="1610" class="mono" fill="#94a3b8"># resize handle</text>
+  <text x="140" y="1633" class="mono" fill="#fcd34d">│  └─ .col-item              </text><text x="430" y="1633" class="mono" fill="#94a3b8"># innoru column</text>
+  <text x="110" y="1656" class="mono" fill="#6ee7b7">└─ .row-item ...</text>
 
   <!-- legend -->
   <rect x="660" y="1465" width="580" height="210" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>

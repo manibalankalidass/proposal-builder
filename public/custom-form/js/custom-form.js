@@ -547,13 +547,13 @@ const collectSiblingBoundPaths = (block) => {
   let cur = block.parentElement || null;
   while (cur) {
     if (cur.dataset?.repeatPath) { searchRoot = cur; break; }
-    if (cur.classList?.contains('cs-doc') || cur.tagName === 'BODY') {
+    if (cur.classList?.contains('cs_margin') || cur.tagName === 'BODY') {
       searchRoot = cur;
       break;
     }
     cur = cur.parentElement;
   }
-  if (!searchRoot) searchRoot = document.querySelector('.cs-doc') || document.body;
+  if (!searchRoot) searchRoot = document.querySelector('.cs_margin') || document.body;
 
   searchRoot.querySelectorAll('[data-repeat-path]').forEach((el) => {
     if (el === block) return;
@@ -601,8 +601,8 @@ const showSectionBindingModal = (block) => {
   const disabledPaths = [];
 
   const blockType = block.dataset.blockType ||
-                    block.getAttribute('data') ||
-                    'block';
+    block.getAttribute('data') ||
+    'block';
 
   // No arrays available → modal skip pannidu, block mattum drop aagattum.
   if (!arrays.length) {
@@ -627,9 +627,9 @@ const showSectionBindingModal = (block) => {
 
 const updateModalWithArrays = (modal, bindingData) => {
   const arrays = bindingData ? buildBindingArrays(bindingData) : [];
-  
+
   console.log('updateModalWithArrays: arrays =', arrays, 'count =', arrays.length);
-  
+
   const badge = modal.querySelector('.section-binding-badge');
   badge.textContent = `${arrays.length} found`;
   const aliasInput = modal.querySelector('.section-binding-input');
@@ -758,7 +758,7 @@ const createBlockElement = (payload) => {
 
 const addBlockAtPosition = (payload, clientX, clientY, targetElement) => {
   const block = createBlockElement(payload);
-  
+
   // Find if we are dropping inside a section container
   const containerContent = targetElement ? targetElement.closest('.section-container-content') : null;
   const targetParent = containerContent || dropSurface;
@@ -771,12 +771,12 @@ const addBlockAtPosition = (payload, clientX, clientY, targetElement) => {
   const top = clientY - surfaceRect.top - 36;
 
   constrainBlockToSurface(block, left, top);
-  
+
   // Legacy canvas-block selection only — cs_block_s blocks are handled by inline-editor.js
   if (block.classList.contains('canvas-block') && !block.classList.contains('cs_block_s')) {
     selectBlock(block);
   }
-  
+
   setEmptyStateVisibility();
 
   if (payload.blockType === 'section-container') {

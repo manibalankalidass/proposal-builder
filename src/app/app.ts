@@ -1,9 +1,10 @@
-import { AfterViewInit, Component, HostListener } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CanvasComponent } from './canvas/canvas';
 import { IconPickerComponent } from './icon-picker.component';
 import { ConditionEditorComponent } from './condition-editor.component';
+import { ImageCropperComponent } from './image-cropper.component';
 import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 import { buildExportFile, downloadJson, sanitizeFilename, parseImportFile, readFileText, type ExportFile } from './template-io';
 
@@ -16,6 +17,10 @@ type ToolbarAction = {
 type DragPayload = {
   blockType: string;
   label: string;
+  // Reusable-component drags carry the saved cs_block_s HTML; the canvas builds
+  // the block from this instead of the block factory.
+  kind?: string;
+  componentHtml?: string;
 };
 
 type LibrarySection = {
@@ -81,7 +86,7 @@ type HistoryControl = {
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule, CanvasComponent, IconPickerComponent, ConditionEditorComponent],
+  imports: [CommonModule, FormsModule, CanvasComponent, IconPickerComponent, ConditionEditorComponent, ImageCropperComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   // The block palette / style config are built from window.FormBlockRegistry,
@@ -96,9 +101,22 @@ export class App implements AfterViewInit {
   protected readonly leftTabs = ['Components', 'Templates', 'History', 'Saved templates', 'My Components'];
   protected activeLeftTab = 'Components';
   // protected readonly leftTabs = ['Components', 'Layers', 'Pages'];
-  protected readonly rightTabs = ['Properties', 'Data Binding', 'Style'];
+  protected readonly rightTabs = ['Properties', 'Data Binding', 'Style', 'Brand', 'Layers'];
   protected activeRightTab = 'Properties';
   protected activeBlock: any = null;
+
+  // -------- Layers panel (Cover Page Photoshop-style layer tree) --------
+  // Flattened (depth-tagged) rows of the active cover page's layer tree, top
+  // layer first. Built from the iframe's `layers:tree` broadcast.
+  protected layerTreeNodes: any[] = [];
+  protected layerRows: Array<{ id: string; label: string; type: string; depth: number; selected: boolean; hidden: boolean; locked: boolean; thumb: string | null; hasChildren: boolean; collapsed: boolean }> = [];
+  protected layersPageId: string | null = null;
+  protected activeLayerId: string | null = null;
+  protected collapsedLayerIds = new Set<string>();
+  protected layerDragId: string | null = null;
+  protected layerDropTargetId: string | null = null;
+  protected layerDropPosition: 'before' | 'after' | null = null;
+  protected editingLayerId: string | null = null;
   protected blockStyleValues: Record<string, string> = {};
   // The clicked table cell + its row, surfaced when a Table block is selected
   // so each can carry its own show-condition (data-twig-if).
@@ -126,10 +144,48 @@ export class App implements AfterViewInit {
   protected saveAsOpen = false;
   protected saveAsName = '';
 
+  // Read-only design preview (all pages, scaled down, rendered in an iframe
+  // with the editor's own stylesheets so it looks exactly like the design).
+  protected previewOpen = false;
+  protected previewZoom = 0.5;
+  protected previewSrcdoc: SafeHtml | null = null;
+
   // Reusable component library.
   private readonly COMPONENTS_KEY = 'brochureflow:components:v1';
   protected savedComponents: SavedComponent[] = [];
   protected componentModalOpen = false;
+
+  // -------- Brand Kit (global palette + fonts) --------
+  // A saved brand: 5 palette colours + heading/body fonts. Surfaced as quick
+  // swatches in the Style panel (concrete colours, export-safe) and an "Apply
+  // fonts" sweep. Persisted to localStorage.
+  private readonly BRAND_KIT_KEY = 'brochureflow:brand-kit:v1';
+  protected brandKit: { colors: string[]; headingFont: string; bodyFont: string } = {
+    colors: ['#248567', '#1b2030', '#e0852f', '#1f2937', '#f4f5fb'],
+    headingFont: "'Poppins', sans-serif",
+    bodyFont: "'Poppins', sans-serif",
+  };
+  protected readonly brandColorLabels = ['Primary', 'Dark', 'Accent', 'Text', 'Light'];
+  protected readonly brandFontOptions: { value: string; label: string }[] = [
+    { value: "'Poppins', sans-serif", label: 'Poppins' },
+    { value: "'Inter', sans-serif", label: 'Inter' },
+    { value: "'Roboto', sans-serif", label: 'Roboto' },
+    { value: "'Montserrat', sans-serif", label: 'Montserrat' },
+    { value: "'Lato', sans-serif", label: 'Lato' },
+    { value: "'Open Sans', sans-serif", label: 'Open Sans' },
+    { value: "'Raleway', sans-serif", label: 'Raleway' },
+    { value: "'Nunito', sans-serif", label: 'Nunito' },
+    { value: "'Sora', sans-serif", label: 'Sora' },
+    { value: "'Playfair Display', serif", label: 'Playfair Display' },
+    { value: 'Georgia, serif', label: 'Georgia' },
+    { value: 'Arial, sans-serif', label: 'Arial' },
+  ];
+  protected readonly brandPresets: { name: string; colors: string[]; headingFont: string; bodyFont: string }[] = [
+    { name: 'Emerald', colors: ['#248567', '#0f2e25', '#e0852f', '#1f2937', '#f3faf7'], headingFont: "'Poppins', sans-serif", bodyFont: "'Poppins', sans-serif" },
+    { name: 'Indigo', colors: ['#5c5cff', '#1b2030', '#f59e0b', '#1f2937', '#eef0ff'], headingFont: "'Montserrat', sans-serif", bodyFont: "'Inter', sans-serif" },
+    { name: 'Ocean', colors: ['#0ea5e9', '#0f172a', '#f43f5e', '#0f172a', '#f1f5f9'], headingFont: "'Sora', sans-serif", bodyFont: "'Open Sans', sans-serif" },
+    { name: 'Classic', colors: ['#8a6d3b', '#3b2f2f', '#b91c1c', '#222222', '#faf7f0'], headingFont: "'Playfair Display', serif", bodyFont: "'Lato', sans-serif" },
+  ];
   protected componentName = '';
   private pendingComponent: { html: string; kind: 'single' | 'group'; thumbnail: string } | null = null;
 
@@ -152,7 +208,7 @@ export class App implements AfterViewInit {
 
   // PDF page settings — shown in the Properties panel when no block is
   // selected. Values are sent to /api/save-twig-puppeteer. The same
-  // pageSize value drives the editor canvas (.cs-doc) live via
+  // pageSize value drives the editor canvas (.cs_margin) live via
   // window.setCanvasPageSize().
   protected readonly pageSizes = [
     'A4',
@@ -174,6 +230,7 @@ export class App implements AfterViewInit {
     marginLeft: 0,
     enableHeaderFooter: true,
     enableInlineInsert: true,
+    inlineTextToolbar: true, // ON → rich-text toolbar floats above the block; OFF → docks to canvas top
     enableComments: false,   // collab: show comment button + pins
     enablePresence: false,   // collab: live cursors + avatars
     pageBackgroundImage: '',
@@ -185,6 +242,10 @@ export class App implements AfterViewInit {
   // to frameUrl when the global is absent (normal dev app behaviour).
   protected readonly frameSrcdoc: SafeHtml | null = null;
   protected iframeHeight = 1123;
+  // Page counter for the status-bar footer + Delete-page button. Driven by
+  // 'page:count' / 'page:active' messages from the editor iframe.
+  protected pageCount = 1;
+  protected currentPage = 1;
   protected latestTwigCode: string = '';
   protected availableFields: { key: string; kind: string; expr: string }[] = [];
   // Loop-alias relative paths (e.g. 'item.price') for the active scope, fed as
@@ -220,7 +281,7 @@ export class App implements AfterViewInit {
   protected bindingModalAncestorAlias: string = '';
   protected bindingModalDisabledPaths: string[] = [];
 
-  constructor(private readonly sanitizer: DomSanitizer) {
+  constructor(private readonly sanitizer: DomSanitizer, private readonly cdr: ChangeDetectorRef) {
     this.frameUrl = this.sanitizer.bypassSecurityTrustResourceUrl('/custom-form/custom-form.html');
     const injected =
       typeof window !== 'undefined' ? (window as any).__PS_CANVAS_SRCDOC__ : null;
@@ -249,6 +310,24 @@ export class App implements AfterViewInit {
     if (msg.type === 'twig:updated') {
       this.latestTwigCode = msg.data.twig;
     }
+    if (msg.type === 'page:count' && typeof msg.count === 'number') {
+      this.pageCount = Math.max(1, msg.count);
+    }
+    if (msg.type === 'page:active') {
+      if (typeof msg.index === 'number' && msg.index > 0) this.currentPage = msg.index;
+      if (typeof msg.total === 'number') this.pageCount = Math.max(1, msg.total);
+      // Reflect THIS page's own background image in the panel preview.
+      if ('bgImage' in msg) this.pdfSettings.pageBackgroundImage = msg.bgImage || '';
+    }
+    if (msg.type === 'page:removed') {
+      if (typeof msg.count === 'number') this.pageCount = Math.max(1, msg.count);
+      if (!msg.ok) {
+        const reason = msg.reason === 'last'
+          ? 'At least one page is required.'
+          : 'No page selected to delete. Scroll to the page you want to remove first.';
+        alert(reason);
+      }
+    }
     if (msg.type === 'selection:changed') {
       this.activeBlock = msg.data;
       this.blockStyleValues = msg.data.styles || {};
@@ -266,7 +345,15 @@ export class App implements AfterViewInit {
       this.activeBlock = null;
       this.blockStyleValues = {};
       this.activeTableTarget = null;
-      this.activeRightTab = 'Properties';
+      this.activeLayerId = null;
+      // Keep the Layers tab open if the user is working in it.
+      if (this.activeRightTab !== 'Layers') this.activeRightTab = 'Properties';
+    }
+    if (msg.type === 'layers:tree') {
+      this.layersPageId = msg.data?.pageId || null;
+      this.activeLayerId = msg.data?.selectedId || null;
+      this.layerTreeNodes = msg.data?.nodes || [];
+      this.rebuildLayerRows();
     }
     if (msg.type === 'table-target:changed') {
       this.activeTableTarget = msg.data;
@@ -398,16 +485,55 @@ export class App implements AfterViewInit {
     }, '*');
   }
 
+  // Rich-text (CustomRichEditor) toolbar placement.
+  //   ON  → inline: bar floats above the block being edited (default).
+  //   OFF → docked: bar pins to the top of the canvas viewport.
+  protected onInlineTextToolbarToggle(enabled: boolean): void {
+    this.pdfSettings.inlineTextToolbar = enabled;
+    const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
+    iframe?.contentWindow?.postMessage({
+      target: 'custom-form-twig',
+      type: 'rich-toolbar:dock',
+      docked: !enabled
+    }, '*');
+  }
+
+  // --- Per-page background image (with crop) -------------------------------
+  // The image is applied to the page the user is currently viewing (content OR
+  // cover), not globally. Upload → crop modal → apply to the active page.
+  protected cropperOpen = false;
+  protected cropperSrc = '';
+  protected cropperRatio: number | null = null;
+
   protected onPageBgImageUpload(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      this.pdfSettings.pageBackgroundImage = dataUrl;
-      this.sendPageBgToIframe(dataUrl);
+      // Open the cropper; the page only changes once the user applies a crop.
+      this.cropperSrc = e.target?.result as string;
+      this.cropperRatio = this.pageAspect();
+      this.cropperOpen = true;
+      // FileReader.onload is a raw async callback — in this zoneless app it does
+      // NOT trigger change detection, so without this nudge the modal wouldn't
+      // appear until the next click. markForCheck schedules a CD tick.
+      this.cdr.markForCheck();
     };
     reader.readAsDataURL(file);
+    input.value = ''; // allow re-selecting the same file later
+  }
+
+  protected onCropApplied(dataUrl: string): void {
+    this.cropperOpen = false;
+    this.cropperSrc = '';
+    this.pdfSettings.pageBackgroundImage = dataUrl; // panel preview
+    this.sendPageBgToIframe(dataUrl);               // apply to the active page
+  }
+
+  protected onCropCancelled(): void {
+    this.cropperOpen = false;
+    this.cropperSrc = '';
   }
 
   protected removePageBgImage(): void {
@@ -415,11 +541,46 @@ export class App implements AfterViewInit {
     this.sendPageBgToIframe('');
   }
 
+  // Page width/height ratio for the cropper's "Page" preset.
+  private pageAspect(): number {
+    const portrait = 794 / 1123, letter = 816 / 1056;
+    switch (this.pdfSettings.pageSize) {
+      case 'A4-Landscape': return 1 / portrait;
+      case 'Letter': return letter;
+      case 'Letter-Landscape': return 1 / letter;
+      default: return portrait; // A4 portrait
+    }
+  }
+
+  // Delete the page the user is currently viewing. The iframe resolves which
+  // page is active (scroll-tracked) and enforces the guards (page 1 + last page
+  // can't be removed), replying via a 'page:removed' message handled in onMessage.
+  protected deleteCurrentPage(): void {
+    if (this.pageCount <= 1) return;
+    if (!confirm(`Delete page ${this.currentPage}? This can’t be undone.`)) return;
+    const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
+    iframe?.contentWindow?.postMessage({
+      target: 'custom-form-twig',
+      type: 'page:remove-active',
+    }, '*');
+  }
+
+  // Clear the content of the current page but keep the page itself. The iframe
+  // removes the dropped blocks/rows while preserving header/footer + background.
+  protected clearCurrentPage(): void {
+    if (!confirm(`Clear all content on page ${this.currentPage}? The blocks will be removed but the page stays.`)) return;
+    const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
+    iframe?.contentWindow?.postMessage({
+      target: 'custom-form-twig',
+      type: 'page:clear-active',
+    }, '*');
+  }
+
   private sendPageBgToIframe(imageUrl: string): void {
     const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
     iframe?.contentWindow?.postMessage({
       target: 'custom-form-twig',
-      type: 'page-bg:change',
+      type: 'page-bg:set-active', // applies to the active page (content OR cover)
       imageUrl
     }, '*');
   }
@@ -578,6 +739,26 @@ export class App implements AfterViewInit {
         target: 'custom-form-twig',
         type: 'page:add',
         headerFooter: withHF,
+      }, '*');
+      return;
+    }
+
+    if (label === 'Delete Page') {
+      this.deleteCurrentPage();
+      return;
+    }
+
+    if (label === 'Clear Page') {
+      this.clearCurrentPage();
+      return;
+    }
+
+    if (label === 'Add Cover Page') {
+      // Cover page is a free-move canvas (no header/footer prompt).
+      const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
+      iframe?.contentWindow?.postMessage({
+        target: 'custom-form-twig',
+        type: 'page:add-cover',
       }, '*');
       return;
     }
@@ -1189,14 +1370,26 @@ export class App implements AfterViewInit {
       this.applyCanvasPageSize(this.pdfSettings.pageSize);
       this.loadBackupHistory();
       this.loadSavedItems();
+      this.loadBrandKit();
       this.startAutoBackup();
+
+      // Ctrl/Cmd + wheel over the canvas zooms (like design tools).
+      const stage = document.querySelector('.canvas-stage');
+      if (stage) {
+        stage.addEventListener('wheel', (e: Event) => {
+          const we = e as WheelEvent;
+          if (!we.ctrlKey && !we.metaKey) return;
+          we.preventDefault();
+          this.setZoom(this.canvasZoom * (we.deltaY < 0 ? 1.1 : 1 / 1.1));
+        }, { passive: false });
+      }
     }
   }
 
   /**
    * Switch the editor canvas to the selected paper size. Called from the
    * toolbar dropdown via ngModelChange. Existing block widths are kept
-   * intact — only the .cs-doc page boundary resizes.
+   * intact — only the .cs_margin page boundary resizes.
    */
   protected onPageSizeChange(value: string): void {
     this.pdfSettings.pageSize = value as typeof this.pageSizes[number];
@@ -1209,7 +1402,7 @@ export class App implements AfterViewInit {
 
   // Width/height for each editor canvas size. Mirrors PageSizes in
   // public/custom-form/js/canvas-config.js so the outer iframe wrapper
-  // can resize alongside the inner .cs-doc.
+  // can resize alongside the inner .cs_margin.
   private readonly canvasSizeDimensions: Record<string, { width: number; height: number }> = {
     'A4': { width: 794, height: 1123 },
     'A4-Landscape': { width: 1123, height: 794 },
@@ -1225,7 +1418,7 @@ export class App implements AfterViewInit {
     document.documentElement.style.setProperty('--editor-canvas-height', `${dims.height}px`);
 
     // 2. Tell the iframe to re-apply the same size internally so the
-    //    .cs-doc inside the iframe matches. flow-canvas.js listens for
+    //    .cs_margin inside the iframe matches. flow-canvas.js listens for
     //    'page-size:change' and calls window.setCanvasPageSize.
     const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
     const send = () => {
@@ -1243,7 +1436,7 @@ export class App implements AfterViewInit {
   }
 
   private applyCanvasPageMargins(): void {
-    // Tell the iframe to apply page margins to the .cs-doc element
+    // Tell the iframe to apply page margins to the .cs_margin element
     const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
     const send = () => {
       iframe?.contentWindow?.postMessage({
@@ -1278,6 +1471,7 @@ export class App implements AfterViewInit {
     // { label: 'New', icon: '✦', variant: 'ghost' },
     // { label: 'Preview', icon: '◉', variant: 'ghost' },
     { label: 'Add Page', icon: '＋', variant: 'ghost' },
+    { label: 'Add Cover Page', icon: '▭', variant: 'ghost' },
     // { label: 'Generate Twig Code', icon: '⬇', variant: 'primary' },
     { label: 'Generate PDF (Puppeteer)', icon: '⤓', variant: 'primary' },
     // { label: 'Load Template', icon: '', variant: 'ghost' },
@@ -1604,11 +1798,19 @@ export class App implements AfterViewInit {
 
   // Drag a saved component into the canvas (same DnD channel as the palette).
   protected handleComponentDragStart(event: DragEvent, comp: SavedComponent): void {
-    const payload = { blockType: 'component', kind: 'component', componentHtml: comp.html, label: comp.name };
+    const payload: DragPayload = { blockType: 'component', kind: 'component', componentHtml: comp.html, label: comp.name };
     const serialized = JSON.stringify(payload);
     event.dataTransfer?.setData('application/x-brochure-block', serialized);
     event.dataTransfer?.setData('text/plain', serialized);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy';
+
+    // Fallback for the dragover phase: browsers block dataTransfer.getData()
+    // while a drag is in progress, so the canvas + synclist read the payload
+    // from here to show the live drop indicator and resolve the pending target.
+    // Without this a component dragged like a normal block but showed no
+    // indicator and couldn't be dropped into a List. Cleared on dragend (the
+    // template reuses handleLibraryDragEnd). Mirrors handleLibraryDragStart.
+    (window as Window & { __BROCHURE_FLOW_DRAG__?: DragPayload }).__BROCHURE_FLOW_DRAG__ = payload;
   }
 
   private persistSaved(): void {
@@ -1661,6 +1863,69 @@ export class App implements AfterViewInit {
 
   protected cancelSaveAs(): void {
     this.saveAsOpen = false;
+  }
+
+  // ----- Read-only preview of the whole design -----
+
+  // Open a scaled, read-only view of every page. The editor already stacks all
+  // pages inside `.cs_paper`, so we clone that, strip editor-only chrome, and
+  // render it in a sandbox iframe that reuses the iframe's own stylesheets — so
+  // the preview matches the design exactly. Pages show one below another.
+  protected openPreview(): void {
+    const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
+    const doc = iframe?.contentDocument;
+    const paper = doc?.querySelector('.cs_paper');
+    if (!doc || !paper) {
+      alert('Nothing to preview yet — add some content to the canvas first.');
+      return;
+    }
+
+    const clone = paper.cloneNode(true) as HTMLElement;
+    this.cleanForPreview(clone);
+
+    // Reuse every stylesheet (links + injected <style>) the editor iframe loaded
+    // so fonts, page sizing and block styling render identically.
+    const head: string[] = [];
+    doc.querySelectorAll('link[rel="stylesheet"]').forEach((l) => head.push(`<link rel="stylesheet" href="${(l as HTMLLinkElement).href}">`));
+    doc.querySelectorAll('style').forEach((s) => head.push(`<style>${s.textContent || ''}</style>`));
+
+    const previewCss = `
+      html, body { margin: 0; padding: 0; background: #525659; }
+      body { padding: 28px 0; }
+      /* Static preview — never react to the pointer (no hover borders, no edit). */
+      * { pointer-events: none !important; cursor: default !important; }
+      .cs-block-badge, [data-cs-chrome] { display: none !important; }
+      /* Scale the whole multi-page board down; pages stay stacked one by one. */
+      .cs_paper { zoom: ${this.previewZoom}; margin: 0 auto; }
+    `;
+    const html = `<!doctype html><html><head><meta charset="utf-8">${head.join('')}<style>${previewCss}</style></head><body>${clone.outerHTML}</body></html>`;
+    this.previewSrcdoc = this.sanitizer.bypassSecurityTrustHtml(html);
+    this.previewOpen = true;
+  }
+
+  protected closePreview(): void {
+    this.previewOpen = false;
+    this.previewSrcdoc = null;
+  }
+
+  // Live zoom without rebuilding the iframe: the srcdoc is same-origin, so we
+  // can set `.cs_paper`'s zoom directly.
+  protected setPreviewZoom(z: number): void {
+    this.previewZoom = Math.min(1.5, Math.max(0.2, Math.round(z * 10) / 10));
+    const frame = document.querySelector('.preview-modal__frame') as HTMLIFrameElement | null;
+    const paper = frame?.contentDocument?.querySelector('.cs_paper') as HTMLElement | null;
+    paper?.style.setProperty('zoom', String(this.previewZoom));
+  }
+
+  // Remove editor-only chrome from a cloned board (mirrors stripChrome() in
+  // common-twig-generator.js) so the preview shows just the design.
+  private cleanForPreview(root: HTMLElement): void {
+    root.querySelectorAll('[data-cs-chrome], .section-binding-info, .cs-block-badge').forEach((el) => el.remove());
+    const stateClasses = ['cs-selected', 'cs-editing', 'canvas-block--selected', 'cs_selected', 'cs_selected_border', 'cs-aiden--active', 'cs-aiden--loading', 'drop-surface--active'];
+    [root, ...Array.from(root.querySelectorAll(stateClasses.map((c) => '.' + c).join(',')))].forEach((el) => {
+      el.classList?.remove(...stateClasses);
+    });
+    root.querySelectorAll('[contenteditable]').forEach((el) => el.removeAttribute('contenteditable'));
   }
 
   // Save the current canvas as a Template, then jump to the Saved templates list.
@@ -1723,6 +1988,75 @@ export class App implements AfterViewInit {
     this.postToCanvas(`history:${action}`);
   }
 
+  /* ----------------------------- canvas zoom -------------------------------
+   * Host-side CSS `zoom` on the app-canvas wrapper (see canvas.scss). Purely a
+   * host concern — the iframe needs no message; its internal coordinate math is
+   * unaffected because the iframe document itself isn't transformed. */
+  protected canvasZoom = 1;
+  private readonly ZOOM_MIN = 0.25;
+  private readonly ZOOM_MAX = 3;
+
+  protected get zoomPercent(): number {
+    return Math.round(this.canvasZoom * 100);
+  }
+
+  protected setZoom(z: number): void {
+    this.canvasZoom = Math.min(this.ZOOM_MAX, Math.max(this.ZOOM_MIN, Math.round(z * 100) / 100));
+    document.documentElement.style.setProperty('--editor-zoom', String(this.canvasZoom));
+  }
+
+  protected zoomIn(): void { this.setZoom(this.canvasZoom + 0.1); }
+  protected zoomOut(): void { this.setZoom(this.canvasZoom - 0.1); }
+  protected zoomReset(): void { this.setZoom(1); }
+
+  /* ------------------------------- brand kit -------------------------------- */
+  private loadBrandKit(): void {
+    try {
+      const raw = localStorage.getItem(this.BRAND_KIT_KEY);
+      if (!raw) return;
+      const k = JSON.parse(raw);
+      if (k && Array.isArray(k.colors) && k.colors.length) {
+        this.brandKit = {
+          colors: k.colors.slice(0, 5),
+          headingFont: k.headingFont || this.brandKit.headingFont,
+          bodyFont: k.bodyFont || this.brandKit.bodyFont,
+        };
+      }
+    } catch (e) { /* ignore corrupt entry */ }
+  }
+
+  private persistBrandKit(): void {
+    try { localStorage.setItem(this.BRAND_KIT_KEY, JSON.stringify(this.brandKit)); } catch (e) { /* */ }
+  }
+
+  protected onBrandColorChange(i: number, value: string): void {
+    this.brandKit.colors[i] = value;
+    this.persistBrandKit();
+  }
+
+  protected onBrandFontChange(which: 'headingFont' | 'bodyFont', value: string): void {
+    this.brandKit[which] = value;
+    this.persistBrandKit();
+  }
+
+  protected applyBrandPreset(p: { colors: string[]; headingFont: string; bodyFont: string }): void {
+    this.brandKit = { colors: [...p.colors], headingFont: p.headingFont, bodyFont: p.bodyFont };
+    this.persistBrandKit();
+  }
+
+  // Restyle ALL text in the document to the brand fonts (concrete inline, so it
+  // survives export). Heading blocks get the heading font; everything else the
+  // body font.
+  protected brandApplied = false;
+  protected applyBrandFonts(): void {
+    this.postToCanvas('brand:apply-fonts', {
+      headingFont: this.brandKit.headingFont,
+      bodyFont: this.brandKit.bodyFont,
+    });
+    this.brandApplied = true;
+    setTimeout(() => { this.brandApplied = false; }, 2200);
+  }
+
   private postToCanvas(type: string, extra: Record<string, unknown> = {}): void {
     const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
     if (iframe && iframe.contentWindow) {
@@ -1740,6 +2074,123 @@ export class App implements AfterViewInit {
 
   protected selectRightTab(tab: string): void {
     this.activeRightTab = tab;
+    if (tab === 'Layers') this.postToIframe({ type: 'layers:request' });
+  }
+
+  // -------- Layers panel helpers --------
+  private postToIframe(msg: Record<string, unknown>): void {
+    const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
+    iframe?.contentWindow?.postMessage({ target: 'custom-form-twig', ...msg }, '*');
+  }
+
+  // Flatten the nested layer tree (top-first) into depth-tagged rows for @for,
+  // skipping the children of any collapsed node.
+  private rebuildLayerRows(): void {
+    const rows: typeof this.layerRows = [];
+    const walk = (nodes: any[], depth: number) => {
+      for (const n of nodes) {
+        const collapsed = this.collapsedLayerIds.has(n.id);
+        rows.push({
+          id: n.id, label: n.label, type: n.type, depth,
+          selected: !!n.selected, hidden: !!n.hidden, locked: !!n.locked,
+          thumb: n.thumb || null, hasChildren: !!n.hasChildren, collapsed,
+        });
+        if (n.hasChildren && n.children?.length && !collapsed) {
+          walk(n.children, depth + 1);
+        }
+      }
+    };
+    walk(this.layerTreeNodes, 0);
+    this.layerRows = rows;
+  }
+
+  protected toggleLayerCollapse(event: Event, id: string): void {
+    event.stopPropagation();
+    if (this.collapsedLayerIds.has(id)) this.collapsedLayerIds.delete(id);
+    else this.collapsedLayerIds.add(id);
+    this.rebuildLayerRows();
+  }
+
+  protected lockLayer(event: Event, id: string): void {
+    event.stopPropagation();
+    if (id) this.postToIframe({ type: 'layers:lock', blockId: id });
+  }
+
+  protected duplicateLayer(event: Event, id: string): void {
+    event.stopPropagation();
+    if (id) this.postToIframe({ type: 'layers:duplicate', blockId: id });
+  }
+
+  protected deleteLayer(event: Event, id: string): void {
+    event.stopPropagation();
+    if (id) this.postToIframe({ type: 'layers:delete', blockId: id });
+  }
+
+  protected toggleLayerVisibility(event: Event, id: string): void {
+    event.stopPropagation();
+    if (!id) return;
+    this.postToIframe({ type: 'layers:visibility', blockId: id });
+  }
+
+  protected startLayerRename(event: Event, id: string): void {
+    event.stopPropagation();
+    this.editingLayerId = id;
+    // Focus + select the input once Angular has rendered it.
+    setTimeout(() => {
+      const input = document.querySelector('.layer-row__input') as HTMLInputElement | null;
+      input?.focus();
+      input?.select();
+    });
+  }
+
+  protected commitLayerRename(event: Event): void {
+    const id = this.editingLayerId;
+    this.editingLayerId = null;
+    if (!id) return;
+    const name = ((event.target as HTMLInputElement)?.value || '').trim();
+    if (name) this.postToIframe({ type: 'layers:rename', blockId: id, name });
+  }
+
+  protected cancelLayerRename(): void {
+    this.editingLayerId = null;
+  }
+
+  protected selectLayer(id: string): void {
+    if (!id) return;
+    this.activeLayerId = id;
+    this.postToIframe({ type: 'block:select', blockId: id });
+  }
+
+  protected layerOp(opName: 'front' | 'forward' | 'backward' | 'back'): void {
+    if (!this.activeLayerId) return;
+    this.postToIframe({ type: 'layers:op', blockId: this.activeLayerId, op: opName });
+  }
+
+  protected onLayerDragStart(id: string): void {
+    this.layerDragId = id;
+  }
+
+  protected onLayerDragOver(event: DragEvent, id: string): void {
+    if (!this.layerDragId || this.layerDragId === id) return;
+    event.preventDefault();
+    const row = event.currentTarget as HTMLElement;
+    const rect = row.getBoundingClientRect();
+    this.layerDropTargetId = id;
+    this.layerDropPosition = (event.clientY - rect.top) < rect.height / 2 ? 'before' : 'after';
+  }
+
+  protected onLayerDrop(id: string): void {
+    const dragId = this.layerDragId;
+    const position = this.layerDropPosition || 'before';
+    this.clearLayerDrag();
+    if (!dragId || dragId === id) return;
+    this.postToIframe({ type: 'layers:reorder', blockId: dragId, targetId: id, position });
+  }
+
+  protected clearLayerDrag(): void {
+    this.layerDragId = null;
+    this.layerDropTargetId = null;
+    this.layerDropPosition = null;
   }
 
   protected openBindingModalForBlock(block: any): void {

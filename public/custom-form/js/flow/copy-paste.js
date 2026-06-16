@@ -25,6 +25,10 @@
   // each paste is an independent, fully-detached copy.
   let clipboardHtml = null;
 
+  // The page the user last interacted with (content page or cover page). Used so
+  // a paste with no selected block lands on the ACTIVE page — not always page 1.
+  let activePage = null;
+
   const hash = () => (window.FlowCanvas.generateHash
     ? window.FlowCanvas.generateHash()
     : Math.random().toString(16).slice(2));
@@ -61,20 +65,34 @@
     root.querySelectorAll('[id]').forEach(reassign);
   };
 
+  // The whole multi-page board. Pages (content pages AND cover pages) live in
+  // separate `.custom-form-design` wrappers under one `.cs_paper`, so a single
+  // page's canvas does NOT contain blocks on the other pages. Containment checks
+  // must use the board, or copy/paste from a cover page falls back to page 1.
+  const boardOf = (canvas) =>
+    canvas?.closest?.('.cs_paper') || document.querySelector('.cs_paper') || canvas;
+
   const isFlowBlock = (el, canvas) => (
     el && el.matches?.('.cs_block_s, .canvas-block') &&
-    canvas.contains(el) &&
+    boardOf(canvas).contains(el) &&
     !el.dataset.csInSection &&
-    el.parentElement?.matches?.('.cs-col')
+    el.parentElement?.matches?.('.col-item')
   );
 
-  // A block that lives INSIDE a flexible container (absolutely positioned). Its
-  // paste/duplicate should land back inside the same flexible box.
-  const isFlexibleChild = (el, canvas) => (
-    el && el.matches?.('.cs_block_s, .canvas-block') &&
-    canvas.contains(el) &&
-    !!el.closest?.('.cs-flexible-content')
-  );
+  // Containers that hold absolutely-positioned ("free") children: a flexible
+  // box, a cover page, or a group. A block's free parent is its IMMEDIATE such
+  // container — so paste/duplicate lands back in the SAME place (same cover
+  // page, same group, same flexible box).
+  const FREE_PARENT_SEL = '.cs-flexible-content, .cs-group-block, [data-cs-cover="1"]';
+  const freeParentOf = (el, canvas) => {
+    if (!el || !boardOf(canvas).contains(el)) return null;
+    const p = el.parentElement;
+    return p && p.matches?.(FREE_PARENT_SEL) ? p : null;
+  };
+
+  // A block that lives inside any free-positioning container (flexible / cover /
+  // group). Its paste/duplicate should land back inside that same container.
+  const isFlexibleChild = (el, canvas) => !!freeParentOf(el, canvas);
 
   const copySelected = () => {
     const EM = window.EditorManager;
@@ -91,7 +109,7 @@
     // Best-effort: if clipboard-write isn't permitted we still have clipboardHtml.
     try {
       const text = (block.innerText || '').trim() || ' ';
-      navigator.clipboard?.writeText?.(text)?.catch?.(() => {});
+      navigator.clipboard?.writeText?.(text)?.catch?.(() => { });
     } catch (e) { /* clipboard API unavailable — ignore */ }
     return true;
   };
@@ -108,7 +126,7 @@
   };
 
   const colsOfRow = (row) => (
-    row ? Array.from(row.children).filter((c) => c.matches?.('.cs-col')) : []
+    row ? Array.from(row.children).filter((c) => c.matches?.('.col-item')) : []
   );
 
   // Where should a new block land, relative to an anchor block?
@@ -118,17 +136,17 @@
   //     the current one (like adding a fresh block to a row).
   // Fall back to a new row at the end of the doc when there is no anchor.
   const resolvePasteTarget = (canvas, anchor) => {
-    // Anchor inside a flexible container → paste back into that flexible box.
-    const flexContent = anchor?.closest?.('.cs-flexible-content');
-    if (flexContent && canvas.contains(flexContent)) {
-      const doc = anchor.closest('.cs-doc') || canvas.querySelector('.cs-doc');
-      return { doc, flexContent, target: { kind: 'in-flexible', parent: flexContent } };
+    // Anchor inside a free-positioning container (flexible / cover / group) →
+    // paste back into that SAME container as an absolute child.
+    const freeParent = freeParentOf(anchor, canvas);
+    if (freeParent) {
+      return { freeParent, target: { kind: 'in-free', parent: freeParent } };
     }
 
     if (isFlowBlock(anchor, canvas)) {
-      const col = anchor.closest('.cs-col');
-      const row = anchor.closest('.cs-row');
-      const doc = anchor.closest('.cs-doc');
+      const col = anchor.closest('.col-item');
+      const row = anchor.closest('.row-item');
+      const doc = anchor.closest('.cs_margin');
       if (col && row && doc) {
         if (colsOfRow(row).length > 1) {
           return { doc, target: { kind: 'in-col', col, beforeBlock: anchor.nextElementSibling || null } };
@@ -140,7 +158,14 @@
       }
     }
 
-    const doc = canvas.querySelector('.cs-doc');
+    // No usable anchor: drop onto the ACTIVE page (the last page the user
+    // touched), honouring cover pages (absolute) vs content pages (flow).
+    const board = boardOf(canvas);
+    const page = activePage && board.contains(activePage) ? activePage : null;
+    if (page && page.matches('[data-cs-cover="1"]')) {
+      return { freeParent: page, target: { kind: 'in-free', parent: page } };
+    }
+    const doc = (page && page.matches('.cs_margin') ? page : null) || board.querySelector('.cs_margin');
     if (!doc) return null;
     return { doc, target: { kind: 'between-rows', parent: doc, beforeRow: null } };
   };
@@ -161,7 +186,7 @@
       const placed = fn && fn(anchor, newBlock);
       if (placed) {
         requestAnimationFrame(() => {
-          if (!canvas.contains(placed)) return;
+          if (!boardOf(canvas).contains(placed)) return;
           placed.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
           placed.click();
         });
@@ -172,25 +197,29 @@
     const placement = resolvePasteTarget(canvas, anchor);
     if (!placement) return null;
 
-    if (placement.flexContent) {
-      // Append directly as an absolutely-positioned flexible child, offset a
-      // little from the original so the copy is visible (not exactly stacked).
-      const flex = placement.flexContent;
+    if (placement.freeParent) {
+      // Append as an absolutely-positioned child of the SAME container (cover
+      // page / group / flexible box), offset 10px so the copy is visible.
+      const parent = placement.freeParent;
       newBlock.dataset.csInSection = '1';
       newBlock.style.position = 'absolute';
       const left = parseFloat(newBlock.style.left) || 0;
       const top = parseFloat(newBlock.style.top) || 0;
-      newBlock.style.left = `${left + 24}px`;
-      newBlock.style.top = `${top + 24}px`;
-      flex.appendChild(newBlock);
-      const wrapper = flex.closest('.cs-flexible-block') || flex.parentElement;
+      newBlock.style.left = `${left + 10}px`;
+      newBlock.style.top = `${top + 10}px`;
+      parent.appendChild(newBlock);
+      const wrapper = parent.closest('.cs-flexible-block') || parent;
       window.FlowCanvas?.syncFlexibleContentBounds?.(wrapper);
+      // Pasted into a group → grow the group so it wraps the new child.
+      if (parent.classList.contains('cs-group-block')) {
+        window.FlowCanvas?.refitGroupToChildren?.(parent);
+      }
     } else {
       window.FlowCanvas?.placeBlock?.(placement.doc, newBlock, placement.target);
     }
 
     requestAnimationFrame(() => {
-      if (!canvas.contains(newBlock)) return;
+      if (!boardOf(canvas).contains(newBlock)) return;
       newBlock.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       newBlock.click();
     });
@@ -325,7 +354,7 @@
     const block = window.EditorManager?.getSelected?.();
     if (!block) return null;
     const clone = cleanClone(block.cloneNode(true));
-    const isGroup = !!clone.querySelector('.cs_block_s, .canvas-block, .cs-row');
+    const isGroup = !!clone.querySelector('.cs_block_s, .canvas-block, .row-item');
     const thumbnail = (block.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 40)
       || block.getAttribute('custom-name') || block.dataset.blockType || 'Component';
     return { html: clone.outerHTML, kind: isGroup ? 'group' : 'single', thumbnail };
@@ -345,21 +374,43 @@
     if (!canvas || canvas.dataset.copyPasteInit === '1') return;
     canvas.dataset.copyPasteInit = '1';
 
+    // Track the page the user last pressed on, so a paste with no selection
+    // lands on the active page (cover or content) instead of always page 1.
+    document.addEventListener('pointerdown', (e) => {
+      const p = e.target?.closest?.('.cs_margin, .cs_page[data-cs-cover="1"]');
+      if (p) activePage = p;
+    }, true);
+
+    // Expose the active page so other features (e.g. the per-page background
+    // shape designer) can target the page the user is currently working on.
+    window.FlowCanvas.getActivePage = () =>
+      (activePage && document.contains(activePage) ? activePage : null);
+
     document.addEventListener('keydown', (event) => {
       const ctrl = event.ctrlKey || event.metaKey;
       if (!ctrl) return;
 
       const key = event.key.toLowerCase();
-      if (key !== 'c' && key !== 'v') return;
+      if (key !== 'c' && key !== 'v' && key !== 'd') return;
 
       // While editing text inside a block, defer to native copy/paste.
       if (window.EditorManager?.getEditing?.()) return;
 
       const target = event.target;
       const inEditable = target?.isContentEditable ||
-                         target?.tagName === 'INPUT' ||
-                         target?.tagName === 'TEXTAREA';
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA';
       if (inEditable) return;
+
+      // Ctrl/Cmd+D → duplicate the selected block in place.
+      if (key === 'd') {
+        const sel = window.EditorManager?.getSelected?.();
+        if (sel) {
+          event.preventDefault();
+          window.FlowCanvas.duplicateBlock?.(sel);
+        }
+        return;
+      }
 
       // Only handle COPY here. Paste (Ctrl+V) is deliberately left to the native
       // `paste` listener below, so it can inspect the REAL system clipboard.
@@ -391,8 +442,8 @@
       const clipboardData = event.clipboardData;
 
       const inEditable = target?.isContentEditable ||
-                         target?.tagName === 'INPUT' ||
-                         target?.tagName === 'TEXTAREA';
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA';
 
       // --- text-editing context: keep images out of text blocks ---
       if (window.EditorManager?.getEditing?.() || inEditable) {
@@ -428,8 +479,9 @@
         // Anchor the new Image block next to this text block so it lands right
         // in the parent (column / row), not somewhere unrelated.
         const editingBlock = window.EditorManager?.getEditing?.();
-        const onCanvas = canvas.contains(target) ||
-                         (editingBlock && canvas.contains(editingBlock));
+        const board = boardOf(canvas);
+        const onCanvas = board.contains(target) ||
+          (editingBlock && board.contains(editingBlock));
         if (onCanvas) {
           const anchor = currentAnchor(canvas) ||
             ((editingBlock && (isFlowBlock(editingBlock, canvas) || isFlexibleChild(editingBlock, canvas)))

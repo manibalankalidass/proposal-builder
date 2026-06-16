@@ -51,12 +51,16 @@
     const badge = document.createElement('div');
     badge.className = 'cs-block-badge';
     badge.setAttribute('data-cs-chrome', '');
+    // Up/Down reorder is meaningless for free-move blocks (cover page /
+    // flexible) — their position is absolute, not a flow order — so omit those
+    // buttons there and keep just the move handle, duplicate and delete.
+    const reorderBtns = isFreeFormBlock(block) ? '' : `
+        <button type="button" class="cs-block-badge__btn" data-cs-action="move-up" title="Move up">&#x25B2;</button>
+        <button type="button" class="cs-block-badge__btn" data-cs-action="move-down" title="Move down">&#x25BC;</button>`;
     badge.innerHTML = `
       <span class="cs-block-badge__handle" data-cs-move title="Drag to move">&#x2725;</span>
       <span class="cs-block-badge__label">${label}</span>
-      <span class="cs-block-badge__actions">
-        <button type="button" class="cs-block-badge__btn" data-cs-action="move-up" title="Move up">&#x25B2;</button>
-        <button type="button" class="cs-block-badge__btn" data-cs-action="move-down" title="Move down">&#x25BC;</button>
+      <span class="cs-block-badge__actions">${reorderBtns}
         <button type="button" class="cs-block-badge__btn" data-cs-action="duplicate" title="Duplicate">&#x2398;</button>
         <button type="button" class="cs-block-badge__btn cs-block-badge__btn--danger" data-cs-action="delete" title="Delete">&#x2715;</button>
       </span>
@@ -159,6 +163,10 @@
       // overlay data-cs-chrome only so export/insert logic treats it as chrome).
       // Leave it alone — otherwise the editing UI gets wiped on attachChrome.
       if (el.classList.contains('cs-pen-overlay')) return;
+      // Aiden's in-block action bar / tone popup own their own lifecycle too
+      // (removed when the AI session ends) — don't let chrome teardown wipe them
+      // mid-session.
+      if (el.classList.contains('cs-aiden-bar') || el.classList.contains('cs-aiden-pop')) return;
       el.remove();
     });
   };
@@ -267,6 +275,17 @@
           events: {
             initialized: function () {
               this.events.focus();
+            },
+            contentChanged: function () {
+              // Froala's built-in table insert column/row creates bare <td>s
+              // that lack our `cs-cell` class (→ no border) and a junk
+              // `style="null;…"`. Re-stamp any static-table cells it touched.
+              try {
+                const root = this.el;
+                if (root && window.TableBlock && typeof window.TableBlock.normalizeCells === 'function') {
+                  root.querySelectorAll('table.cs-table').forEach((t) => window.TableBlock.normalizeCells(t));
+                }
+              } catch (err) { /* normalization is best-effort */ }
             }
           }
         });
@@ -403,9 +422,43 @@
     block.classList.add('cs-selected');
     block.appendChild(buildBadge(block));
     selectedBlock = block;
+    // On a cover page the inline "+" line only shows while idle, so hide it the
+    // instant a block is selected instead of waiting for the next pointermove
+    // (refreshHover also guards on .cs-selected, but only on the next move).
+    if (block.closest?.('[data-cs-cover="1"]')) {
+      window.FlowCanvas?.hideInlineInsert?.();
+    }
   };
 
-  const enterEditing = (block) => {
+  // Drop the caret at viewport coords (x, y) inside the block's edit target.
+  // Entering editing makes the element contenteditable only AFTER the click was
+  // dispatched, so the browser never placed a native caret from that click and
+  // the editor's focus() leaves it at the very start. We re-create the caret the
+  // user aimed at from the click coordinates. No-op if the point misses the
+  // editable text (e.g. the click landed on padding).
+  const placeCaretFromPoint = (block, x, y) => {
+    const target = findEditTarget(block);
+    if (!target) return;
+
+    let range = null;
+    if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(x, y); // WebKit / Blink
+    } else if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(x, y); // Firefox
+      if (pos) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+      }
+    }
+    if (!range || !target.contains(range.startContainer)) return;
+
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  const enterEditing = (block, caretPoint = null) => {
     if (editingBlock === block) return;
     // Re-use the selected chrome; just upgrade it
     if (selectedBlock && selectedBlock !== block) {
@@ -430,6 +483,11 @@
     // post-init DOM work can wipe siblings on the second edit cycle.
     startFroala(block);
 
+    // The editor focuses the target and parks the caret at the start. If the
+    // user clicked into existing text, move it to where they clicked. Runs after
+    // startFroala so the element is already contenteditable + focused.
+    if (caretPoint) placeCaretFromPoint(block, caretPoint.x, caretPoint.y);
+
     const attachChrome = () => {
       if (editingBlock !== block) return; // user already moved on
       removeChrome(block);
@@ -441,7 +499,13 @@
 
   /* ----------------------------- drag / move (selected only) ----------------------------- */
 
-  const dropSurface = () => document.querySelector('.custom-form-design');
+  // The editor surface hosts the click / move / resize listeners. Prefer the
+  // multi-page board (.cs_paper) so EVERY page is covered — including added
+  // pages and cover pages, which live in their own `.custom-form-design`
+  // siblings rather than under page 1's wrapper. Falls back to the single
+  // canvas when there's no multi-page board (e.g. embedded web component).
+  const dropSurface = () =>
+    document.querySelector('.cs_paper') || document.querySelector('.custom-form-design');
 
   const syncFlexibleContentBounds = (block) => {
     window.FlowCanvas?.syncFlexibleContentBounds?.(block);
@@ -475,6 +539,115 @@
   let move = null;
   let wasDragged = false;
 
+  /* --------- live position / size readout (free-move blocks only) ---------
+   * While dragging or resizing a free-positioned block (cover page or flexible
+   * container), show the live X/Y (move) or W/H (resize) right where the title
+   * badge sits, then restore the title on release. */
+  const metricState = { label: null, orig: null };
+
+  const isFreeFormBlock = (block) =>
+    !!block && (block.dataset.csInSection === '1'
+      || block.classList.contains('cs-flexible-block')
+      || !!block.closest?.('[data-cs-cover="1"]'));
+
+  const showMetric = (block, text) => {
+    const badge = block.querySelector(':scope > .cs-block-badge');
+    const label = badge && badge.querySelector('.cs-block-badge__label');
+    if (!label) return;
+    // New gesture / different block: restore the previous one and snapshot this
+    // label's real title so we can put it back when the gesture ends.
+    if (metricState.label !== label) {
+      restoreMetric();
+      metricState.label = label;
+      metricState.orig = label.textContent;
+    }
+    label.textContent = text;
+    label.classList.add('cs-block-badge__label--metric');
+  };
+
+  const restoreMetric = () => {
+    if (metricState.label && metricState.orig != null) {
+      metricState.label.textContent = metricState.orig;
+      metricState.label.classList.remove('cs-block-badge__label--metric');
+    }
+    metricState.label = null;
+    metricState.orig = null;
+  };
+
+  /* --------- smart alignment guides for free-move (cover / section) blocks ----
+   * While dragging or resizing a free block we snap its edges/centre to the
+   * page edges/centre and to other blocks' edges/centres (within a few px) and
+   * draw pink guide lines — so blocks line up straight, at equal heights, and
+   * share widths without guesswork. The guide overlay is editor-only chrome. */
+  const ALIGN_TOL = 3; // px
+
+  // Candidate snap lines in the parent: page edges + centre, and every sibling
+  // block's left/centre/right (vx) and top/middle/bottom (hy).
+  const alignLines = (parent, block) => {
+    const vx = [0, parent.clientWidth / 2, parent.clientWidth];
+    const hy = [0, parent.clientHeight / 2, parent.clientHeight];
+    Array.from(parent.children).forEach((c) => {
+      if (c === block || !c.matches || !c.matches('.cs_block_s')) return;
+      const l = c.offsetLeft, t = c.offsetTop, w = c.offsetWidth, h = c.offsetHeight;
+      vx.push(l, l + w / 2, l + w);
+      hy.push(t, t + h / 2, t + h);
+    });
+    return { vx, hy };
+  };
+
+  // Best snap for the moving box [left,top,w,h]; returns adjusted left/top plus
+  // the guide coordinates to draw (or null). `edges` limits which of the box's
+  // own anchors may snap (used by resize so only the dragged edge snaps).
+  const snapAlign = (parent, block, left, top, w, h, edges) => {
+    const { vx, hy } = alignLines(parent, block);
+    const ex = edges || { l: true, c: true, r: true, t: true, m: true, b: true };
+    let bV = null, bH = null;
+    const vAnchors = [];
+    if (ex.l) vAnchors.push(0); if (ex.c) vAnchors.push(w / 2); if (ex.r) vAnchors.push(w);
+    const hAnchors = [];
+    if (ex.t) hAnchors.push(0); if (ex.m) hAnchors.push(h / 2); if (ex.b) hAnchors.push(h);
+    vAnchors.forEach((off) => vx.forEach((gx) => {
+      const d = Math.abs((left + off) - gx);
+      if (d <= ALIGN_TOL && (!bV || d < bV.d)) bV = { d, guide: gx, newLeft: gx - off };
+    }));
+    hAnchors.forEach((off) => hy.forEach((gy) => {
+      const d = Math.abs((top + off) - gy);
+      if (d <= ALIGN_TOL && (!bH || d < bH.d)) bH = { d, guide: gy, newTop: gy - off };
+    }));
+    return {
+      left: bV ? bV.newLeft : left,
+      top: bH ? bH.newTop : top,
+      vGuide: bV ? bV.guide : null,
+      hGuide: bH ? bH.guide : null,
+    };
+  };
+
+  let alignGuideEl = null;
+  const showAlignGuides = (parent, vGuide, hGuide) => {
+    if (vGuide == null && hGuide == null) { clearAlignGuides(); return; }
+    if (!alignGuideEl || alignGuideEl.parentElement !== parent) {
+      clearAlignGuides();
+      alignGuideEl = document.createElement('div');
+      alignGuideEl.className = 'cs-align-guides';
+      alignGuideEl.setAttribute('data-cs-chrome', '');
+      parent.appendChild(alignGuideEl);
+    }
+    alignGuideEl.innerHTML = '';
+    if (vGuide != null) {
+      const v = document.createElement('div');
+      v.className = 'cs-align-guide cs-align-guide--v';
+      v.style.left = `${vGuide}px`;
+      alignGuideEl.appendChild(v);
+    }
+    if (hGuide != null) {
+      const hl = document.createElement('div');
+      hl.className = 'cs-align-guide cs-align-guide--h';
+      hl.style.top = `${hGuide}px`;
+      alignGuideEl.appendChild(hl);
+    }
+  };
+  const clearAlignGuides = () => { if (alignGuideEl) { alignGuideEl.remove(); alignGuideEl = null; } };
+
   const onMoveDown = (event) => {
     wasDragged = false;
     // Let resize handles operate freely
@@ -486,6 +659,15 @@
 
     const block = event.target.closest('.cs_block_s');
     if (!block) return;
+
+    // Locked layers (set from the Layers panel) can't be moved.
+    if (block.closest('[data-cs-locked="1"]')) return;
+
+    // Group containers (and dragging the whole multi-selection) are owned by
+    // group.js — it manages those drags with a movement threshold so a clean
+    // click can still drill into a child. Inline-editor must not start a move
+    // or capture the pointer for a group, or it hijacks that click.
+    if (block.classList.contains('cs-group-block')) return;
 
     // Flow canvas owns layout for top-level blocks (in a row/col). Only
     // in-section children use absolute drag.
@@ -531,14 +713,33 @@
       wasDragged = true;
     }
 
-    const left = Math.min(Math.max(event.clientX - parentRect.left - offsetX, minLeft), maxLeft);
-    const top = Math.min(Math.max(event.clientY - parentRect.top - offsetY, minTop), maxTop);
+    let left = Math.min(Math.max(event.clientX - parentRect.left - offsetX, minLeft), maxLeft);
+    let top = Math.min(Math.max(event.clientY - parentRect.top - offsetY, minTop), maxTop);
+
+    // Smart-guide snapping (free blocks): align edges/centre to page + siblings.
+    if (isFreeFormBlock(block)) {
+      const a = snapAlign(parent, block, left, top, block.offsetWidth, block.offsetHeight);
+      left = a.left; top = a.top;
+      showAlignGuides(parent, a.vGuide, a.hGuide);
+    }
+
     block.style.left = `${left}px`;
     block.style.top = `${top}px`;
+
+    // Live X/Y readout in the title badge for free-move blocks.
+    if (isFreeFormBlock(block)) {
+      showMetric(block, `X: ${Math.round(left)}  Y: ${Math.round(top)}`);
+    }
   };
 
   const onMoveUp = () => {
+    restoreMetric();
+    clearAlignGuides();
+    const moved = move?.block;
     move = null;
+    // A child moved inside a group → grow/shrink the group to wrap its children.
+    const group = moved?.closest?.('.cs-group-block');
+    if (group && group !== moved) window.FlowCanvas?.refitGroupToChildren?.(group);
     // Decay the drag flag after a split second so future regular clicks are guaranteed clean
     setTimeout(() => { wasDragged = false; }, 100);
   };
@@ -554,6 +755,8 @@
     // Trust the DOM class, not the in-memory ref (which can drift after a
     // destroy race).
     if (!block || !block.classList.contains('cs-editing')) return;
+    // Locked layers can't be resized.
+    if (block.closest('[data-cs-locked="1"]')) return;
 
     // Flow canvas owns block width for top-level blocks. Section containers
     // and in-section blocks still allow pixel resize (height adjust for sections,
@@ -633,11 +836,20 @@
       newTop = startTop + (startH - newH);
     }
 
+    // A vertical resize must PIN the height as a min-height floor, not just set
+    // `height`. Both the editor's auto-grow (_onInputGrow) and edit-entry
+    // (startFroala) force `height:auto`, which would otherwise collapse a
+    // manually-enlarged but empty/short block back to its content height the
+    // next time it's edited. min-height survives `height:auto` while still
+    // letting the box grow when the content is taller.
+    const pinHeight = dir.includes('n') || dir.includes('s');
+
     // Flow-mode blocks (sections in a column) aren't absolutely positioned —
     // skip left/top, cap width to parent column.
     const isFlowBlock = block.closest('.cs-flow-canvas') && !block.dataset.csInSection;
     if (isFlowBlock) {
       block.style.height = `${newH}px`;
+      if (pinHeight) block.style.minHeight = `${newH}px`;
 
       // Section containers and Flexible blocks rely on their inner content wrapper for visual height.
       // We must explicitly stretch the wrapper's minimum height to match the manual resize.
@@ -653,8 +865,21 @@
       }
       syncFlexibleContentBounds(block);
     } else {
+      // Smart-guide snapping for the dragged edge(s): line up with the page or
+      // sibling blocks, keeping the opposite edge fixed.
+      if (isFreeForm && block.offsetParent) {
+        const { vx, hy } = alignLines(block.offsetParent, block);
+        const near = (val, cands) => { let b = null; cands.forEach((g) => { const d = Math.abs(val - g); if (d <= ALIGN_TOL && (!b || d < b.d)) b = { d, g }; }); return b; };
+        let vG = null, hG = null;
+        if (dir.includes('e')) { const s = near(newLeft + newW, vx); if (s && (s.g - newLeft) >= MIN_W) { newW = s.g - newLeft; vG = s.g; } }
+        else if (dir.includes('w')) { const s = near(newLeft, vx); if (s && ((newLeft + newW) - s.g) >= MIN_W) { newW = (newLeft + newW) - s.g; newLeft = s.g; vG = s.g; } }
+        if (dir.includes('s')) { const s = near(newTop + newH, hy); if (s && (s.g - newTop) >= MIN_H) { newH = s.g - newTop; hG = s.g; } }
+        else if (dir.includes('n')) { const s = near(newTop, hy); if (s && ((newTop + newH) - s.g) >= MIN_H) { newH = (newTop + newH) - s.g; newTop = s.g; hG = s.g; } }
+        showAlignGuides(block.offsetParent, vG, hG);
+      }
       block.style.width = `${newW}px`;
       block.style.height = `${newH}px`;
+      if (pinHeight) block.style.minHeight = `${newH}px`;
       // Only update left/top if the resize direction includes that corner
       // This preserves position for non-corner resizes
       if (dir.includes('w') || dir.includes('e')) {
@@ -673,10 +898,21 @@
     }
     // Drop the max-width cap so the block actually grows
     block.style.maxWidth = 'none';
+
+    // Live W/H readout in the title badge for free-form blocks.
+    if (isFreeForm) {
+      showMetric(block, `W: ${Math.round(newW)}  H: ${Math.round(newH)}`);
+    }
   };
 
   const onResizeUp = () => {
+    restoreMetric();
+    clearAlignGuides();
+    const resized = resize?.block;
     resize = null;
+    // A child resized inside a group → grow the group so it wraps all children.
+    const group = resized?.closest?.('.cs-group-block');
+    if (group && group !== resized) window.FlowCanvas?.refitGroupToChildren?.(group);
   };
 
   /* ----------------------------- click routing ----------------------------- */
@@ -690,16 +926,20 @@
     // Ignore clicks on our own chrome (handled by their own listeners)
     if (event.target.closest('[data-cs-chrome]')) return;
 
+    // Innermost block under the click selects directly — a child inside a group
+    // selects the child, clicking the group's own area selects the group.
     const block = event.target.closest('.cs_block_s');
 
     if (!block) {
       // No block under the click. If this is the tail of a drag that began
-      // inside the active block (text selection released on empty page area),
-      // the user never meant to click away — keep editing + the selection.
-      // A real click on empty canvas has its press start outside the block, so
-      // the flag is false and we tear down as normal.
+      // inside the active block (text selection released on empty page area or
+      // the .cs_paper gutter outside the page), the user never meant to click
+      // away — keep editing + the selection. A real click on empty canvas has
+      // its press start outside the block, so the flag is false and we tear
+      // down as normal. Do NOT reset the flag here: onDocumentClick fires for
+      // this same click and must read the same value — onCaptureMouseDown is
+      // the sole owner and re-sets it on the next press.
       if (pressStartedInActive) {
-        pressStartedInActive = false;
         return;
       }
       clearAll();
@@ -719,7 +959,10 @@
 
     if (domSaysEditing) return;
     if (domSaysSelected) {
-      enterEditing(block);
+      // A group is a move-only container — never enter text editing on it.
+      if (block.classList.contains('cs-group-block')) return;
+      // Pass the click point so the caret lands where the user clicked.
+      enterEditing(block, { x: event.clientX, y: event.clientY });
       return;
     }
     enterSelected(block);
@@ -787,9 +1030,11 @@
 
     // Tail of a text-selection drag that began inside the block and released
     // fully outside the page: the browser fires `click` on a common ancestor
-    // outside the canvas. The user never meant to click away, so keep editing.
+    // (e.g. .cs_paper) outside the canvas. The user never meant to click away,
+    // so keep editing. Read-only: onSurfaceClick may have already handled this
+    // same click — the flag is owned by onCaptureMouseDown, which re-sets it on
+    // the next press, so neither click handler must consume it here.
     if (pressStartedInActive) {
-      pressStartedInActive = false;
       return;
     }
 

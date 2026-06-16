@@ -16,8 +16,8 @@ window.FlowCanvas = window.FlowCanvas || {};
 window.FlowCanvas.TEMPLATE_HTML = {
   1: `
 
-   <div class="cs-row cs-page-header" id="row_header_d1" data-cs-page-region="header" style="padding: 0px; min-height: 90px; border: 0px; background: linear-gradient(90deg, #f97316 0%, #f97316 100%); display: flex; align-items: center;">
-      <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; padding: 20px;">
+   <div class="row-item cs-page-header" id="row_header_d1" data-cs-page-region="header" style="padding: 0px; min-height: 90px; border: 0px; background: linear-gradient(90deg, #f97316 0%, #f97316 100%); display: flex; align-items: center;">
+      <div class="col-item" style="flex: 1 1 0px; max-width: 100%; padding: 20px;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Company Header" id="block_header_d1" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me resize" id="dynamic_header_d1" placeholder="" style="font-size: 24px; font-weight: bold; color: #ffffff; margin: 0;">
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -35,8 +35,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
     <div class="body-main-content" style="flex: 1 1 0%; display: flex; flex-direction: column; gap: 0px; padding: 25px;">
 
       <!-- Invoice Title -->
-      <div class="cs-row" id="row_title_d1" style="margin-bottom: 20px; min-height: 0px;">
-        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%;">
+      <div class="row-item" id="row_title_d1" style="margin-bottom: 20px; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 0px; max-width: 100%;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Title" id="block_title_d1" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_title_d1" placeholder="" style="font-size: 28px; font-weight: bold; color: #f97316; margin: 0;">INVOICE</div>
           </div>
@@ -44,9 +44,9 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Invoice Details Section -->
-      <div class="cs-row invoice-row invoice-row--intro" id="row_intro_d1" style="margin-bottom: 25px; min-height: 0px; gap: 20px;">
+      <div class="row-item invoice-row invoice-row--intro" id="row_intro_d1" style="margin-bottom: 25px; min-height: 0px; gap: 20px;">
         <!-- Invoice To -->
-        <div class="cs-col" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Bill To" id="block_bill_to_d1" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_bill_to_d1" placeholder="" style="font-size: 13px; color: #333;">
               <div style="font-weight: bold; color: #f97316; margin-bottom: 8px; font-size: 11px; text-transform: uppercase;">Bill To:</div>
@@ -59,7 +59,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
         </div>
 
         <!-- Invoice Meta Info -->
-        <div class="cs-col" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Details" id="block_details_d1" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: #fff8f0; padding: 15px; border-left: 4px solid #f97316; border-radius: 2px;">
             <div class="edit_me resize" id="dynamic_details_d1" placeholder="" style="font-size: 12px; color: #333; margin: 0;">
               <div style="display: grid; grid-template-columns: 80px 1fr; gap: 8px; margin-bottom: 8px;">
@@ -76,8 +76,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Items Table -->
-      <div class="cs-row invoice-row invoice-row--items" id="row_items_d1" style="margin-bottom: 25px; min-height: 0px;">
-        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+      <div class="row-item invoice-row invoice-row--items" id="row_items_d1" style="margin-bottom: 25px; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Items Table" id="block_items_d1" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me fr-element fr-view resize" id="dynamic_items_d1" placeholder="" style="font-size: 12px; width: 100%; padding: 0px; margin: 0px; color: #333; overflow: visible;">
               <table style="width: 100%; border-collapse: collapse;">
@@ -134,9 +134,9 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Summary Section -->
-      <div class="cs-row invoice-row invoice-row--summary" id="row_summary_d1" style="margin-bottom: 25px; min-height: 0px; gap: 20px;">
+      <div class="row-item invoice-row invoice-row--summary" id="row_summary_d1" style="margin-bottom: 25px; min-height: 0px; gap: 20px;">
         <!-- Notes -->
-        <div class="cs-col" style="flex: 1 1 55%; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 55%; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Notes" id="block_notes_d1" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_notes_d1" placeholder="" style="font-size: 12px; color: #333;">
               <div style="margin-bottom: 15px;">
@@ -150,7 +150,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
         </div>
 
         <!-- Totals -->
-        <div class="cs-col" style="flex: 0 0 45%; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 0 0 45%; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Totals" id="block_totals_d1" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: #fff8f0; padding: 15px; border: 1px solid #f97316; border-radius: 2px;">
             <div class="edit_me resize" id="dynamic_totals_d1" placeholder="" style="font-size: 12px; color: #333; margin: 0;">
               <div style="display: grid; grid-template-columns: 100px 90px; gap: 8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ffc699;">
@@ -171,8 +171,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Footer -->
-      <div class="cs-row" id="row_footer_d1" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; min-height: 0px;">
-        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%;">
+      <div class="row-item" id="row_footer_d1" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 0px; max-width: 100%;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Footer" id="block_footer_d1" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_footer_d1" placeholder="" style="font-size: 10px; color: #999; text-align: center;">
               <div>Thank you for choosing FLEX CORP! | support@flexcorp.com | (555) 987-6543</div>
@@ -186,9 +186,9 @@ window.FlowCanvas.TEMPLATE_HTML = {
     `,
   2: `
 
-  <div class="cs-row cs-page-header" id="row_header_d2" data-cs-page-region="header" style="padding: 0px; min-height: 100px; border: 0px; display: flex;">
+  <div class="row-item cs-page-header" id="row_header_d2" data-cs-page-region="header" style="padding: 0px; min-height: 100px; border: 0px; display: flex;">
       <!-- Dark Left Side -->
-      <div class="cs-col" style="flex: 0 0 40%; max-width: 100%; background: #1a1a1a; padding: 20px; display: flex; align-items: center;">
+      <div class="col-item" style="flex: 0 0 40%; max-width: 100%; background: #1a1a1a; padding: 20px; display: flex; align-items: center;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Company Info" id="block_header_left_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me resize" id="dynamic_header_left_d2" placeholder="" style="font-size: 22px; font-weight: bold; color: #ffffff; margin: 0;">
             <div style="color: #f97316; font-size: 26px; margin-bottom: 4px;">●●●</div>
@@ -198,7 +198,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
         </div>
       </div>
       <!-- Orange Right Side -->
-      <div class="cs-col" style="flex: 0 0 60%; max-width: 100%; background: #f97316; padding: 20px; display: flex; align-items: center; justify-content: flex-end;">
+      <div class="col-item" style="flex: 0 0 60%; max-width: 100%; background: #f97316; padding: 20px; display: flex; align-items: center; justify-content: flex-end;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Header Title" id="block_header_right_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me resize" id="dynamic_header_right_d2" placeholder="" style="font-size: 32px; font-weight: bold; color: #ffffff; margin: 0; text-align: right;">INVOICE</div>
         </div>
@@ -209,9 +209,9 @@ window.FlowCanvas.TEMPLATE_HTML = {
     <div class="body-main-content" style="flex: 1 1 0%; display: flex; flex-direction: column; gap: 0px; padding: 30px;">
 
       <!-- Invoice Details -->
-      <div class="cs-row invoice-row invoice-row--intro" id="row_intro_d2" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
+      <div class="row-item invoice-row invoice-row--intro" id="row_intro_d2" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
         <!-- Invoice To -->
-        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Bill To" id="block_bill_to_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_bill_to_d2" placeholder="" style="font-size: 13px; color: #333;">
               <div style="font-weight: bold; color: #f97316; margin-bottom: 10px; font-size: 12px; text-transform: uppercase;">Invoice To:</div>
@@ -225,7 +225,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
         </div>
 
         <!-- Invoice Meta -->
-        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Meta" id="block_meta_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: #f5f5f5; padding: 15px; border-radius: 4px;">
             <div class="edit_me resize" id="dynamic_meta_d2" placeholder="" style="font-size: 13px; color: #333; margin: 0;">
               <div style="display: grid; grid-template-columns: 100px 1fr; gap: 12px;">
@@ -244,8 +244,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Items Table -->
-      <div class="cs-row invoice-row invoice-row--items" id="row_items_d2" style="margin-bottom: 30px; min-height: 0px;">
-        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+      <div class="row-item invoice-row invoice-row--items" id="row_items_d2" style="margin-bottom: 30px; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Items Table" id="block_items_d2" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me fr-element fr-view resize" id="dynamic_items_d2" placeholder="" style="font-size: 12px; width: 100%; padding: 0px; margin: 0px; color: #333; overflow: visible;">
               <table style="width: 100%; border-collapse: collapse;">
@@ -302,9 +302,9 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Summary Section -->
-      <div class="cs-row invoice-row invoice-row--summary" id="row_summary_d2" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
+      <div class="row-item invoice-row invoice-row--summary" id="row_summary_d2" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
         <!-- Notes -->
-        <div class="cs-col" style="flex: 1 1 50%; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 50%; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Notes" id="block_notes_d2" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_notes_d2" placeholder="" style="font-size: 12px; color: #333;">
               <div style="margin-bottom: 15px;">
@@ -318,7 +318,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
         </div>
 
         <!-- Payment & Totals -->
-        <div class="cs-col" style="flex: 0 0 50%; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 0 0 50%; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Payment Info" id="block_payment_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: #f97316; padding: 20px; border-radius: 4px; color: white;">
             <div class="edit_me resize" id="dynamic_payment_d2" placeholder="" style="font-size: 12px; color: #ffffff; margin: 0;">
               <div style="margin-bottom: 15px;">
@@ -349,8 +349,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Footer -->
-      <div class="cs-row" id="row_footer_d2" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #f97316; min-height: 0px;">
-        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%;">
+      <div class="row-item" id="row_footer_d2" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #f97316; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 0px; max-width: 100%;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Footer" id="block_footer_d2" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_footer_d2" placeholder="" style="font-size: 11px; color: #999; text-align: center;">
               <div>Modern Creative Agency | hello@modernagency.com | 1-800-MODERN-1</div>
@@ -363,8 +363,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
     </div>`,
   3: `
 
-   <div class="cs-row cs-page-header" id="row_header_d3" data-cs-page-region="header" style="padding: 0px; min-height: 100px; border: 0px; background: linear-gradient(135deg, #1a2a47 0%, #1a2a47 100%); display: flex; align-items: center;">
-      <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; padding: 20px;">
+   <div class="row-item cs-page-header" id="row_header_d3" data-cs-page-region="header" style="padding: 0px; min-height: 100px; border: 0px; background: linear-gradient(135deg, #1a2a47 0%, #1a2a47 100%); display: flex; align-items: center;">
+      <div class="col-item" style="flex: 1 1 0px; max-width: 100%; padding: 20px;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Company Header" id="block_header_d3" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me resize" id="dynamic_header_d3" placeholder="" style="font-size: 28px; font-weight: bold; color: #ffffff; margin: 0;">
             <div style="display: flex; align-items: center; gap: 15px;">
@@ -383,8 +383,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
     <div class="body-main-content" style="flex: 1 1 0%; display: flex; flex-direction: column; gap: 0px; padding: 30px;">
 
       <!-- Invoice Title -->
-      <div class="cs-row" id="row_title_d3" style="margin-bottom: 20px; min-height: 0px;">
-        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%;">
+      <div class="row-item" id="row_title_d3" style="margin-bottom: 20px; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 0px; max-width: 100%;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Title" id="block_title_d3" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_title_d3" placeholder="" style="font-size: 32px; font-weight: bold; color: #1a2a47; margin: 0;">INVOICE</div>
           </div>
@@ -392,9 +392,9 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Invoice To / From Section -->
-      <div class="cs-row invoice-row invoice-row--intro" id="row_intro_d3" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
+      <div class="row-item invoice-row invoice-row--intro" id="row_intro_d3" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
         <!-- Invoice To -->
-        <div class="cs-col" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice To" id="block_invoice_to_d3" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_invoice_to_d3" placeholder="" style="font-size: 13px; color: #1a2a47;">
               <div style="font-weight: bold; color: #c41e3a; margin-bottom: 8px; font-size: 12px; text-transform: uppercase;">Bill To:</div>
@@ -408,7 +408,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
         </div>
 
         <!-- Invoice Meta Info -->
-        <div class="cs-col" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 0 0 48%; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Info" id="block_invoice_info_d3" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: #f5f5f5; padding: 15px; border-radius: 4px; border-left: 4px solid #c41e3a;">
             <div class="edit_me resize" id="dynamic_invoice_info_d3" placeholder="" style="font-size: 13px; color: #1a2a47; margin: 0;">
               <div style="display: grid; grid-template-columns: 100px 1fr; gap: 10px;">
@@ -427,8 +427,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Items Table -->
-      <div class="cs-row invoice-row invoice-row--items" id="row_items_d3" style="margin-bottom: 30px; min-height: 0px;">
-        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+      <div class="row-item invoice-row invoice-row--items" id="row_items_d3" style="margin-bottom: 30px; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Items Table" id="block_items_d3" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me fr-element fr-view resize" id="dynamic_items_d3" placeholder="" style="font-size: 13px; width: 100%; padding: 0px; margin: 0px; color: #1a2a47; overflow: visible;">
               <table style="width: 100%; border-collapse: collapse;">
@@ -485,9 +485,9 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Summary Section -->
-      <div class="cs-row invoice-row invoice-row--summary" id="row_summary_d3" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
+      <div class="row-item invoice-row invoice-row--summary" id="row_summary_d3" style="margin-bottom: 30px; min-height: 0px; gap: 30px;">
         <!-- Notes Section -->
-        <div class="cs-col" style="flex: 1 1 60%; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 60%; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Notes & Payment" id="block_notes_d3" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_notes_d3" placeholder="" style="font-size: 13px; color: #1a2a47;">
               <div style="margin-bottom: 20px;">
@@ -511,7 +511,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
         </div>
 
         <!-- Totals Section -->
-        <div class="cs-col" style="flex: 0 0 40%; max-width: 100%; min-height: 0px;">
+        <div class="col-item" style="flex: 0 0 40%; max-width: 100%; min-height: 0px;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Totals" id="block_totals_d3" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: #f5f5f5; padding: 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(196, 30, 58, 0.1);">
             <div class="edit_me resize" id="dynamic_totals_d3" placeholder="" style="font-size: 13px; color: #1a2a47; margin: 0;">
               <div style="display: grid; grid-template-columns: 120px 80px; gap: 10px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ddd;">
@@ -532,8 +532,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
       </div>
 
       <!-- Footer Section -->
-      <div class="cs-row" id="row_footer_d3" style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #1a2a47; min-height: 0px;">
-        <div class="cs-col" style="flex: 1 1 0px; max-width: 100%;">
+      <div class="row-item" id="row_footer_d3" style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #1a2a47; min-height: 0px;">
+        <div class="col-item" style="flex: 1 1 0px; max-width: 100%;">
           <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Footer" id="block_footer_d3" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
             <div class="edit_me resize" id="dynamic_footer_d3" placeholder="" style="font-size: 11px; color: #666; text-align: center;">
               <div>Thank you for your business! For questions, contact support@acmecorp.com | Phone: (555) 123-4567</div>
@@ -546,8 +546,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
     </div>`,
   4: `
 
-    <div class="cs-row cs-page-header" id="row_header_d4" data-cs-page-region="header" style="padding: 30px 36px; border: 0px; background: #1a2649; display: flex; justify-content: space-between; align-items: flex-start; position: relative;">
-      <div class="cs-col" style="flex: 0 0 auto; max-width: 50%;">
+    <div class="row-item cs-page-header" id="row_header_d4" data-cs-page-region="header" style="padding: 30px 36px; border: 0px; background: #1a2649; display: flex; justify-content: space-between; align-items: flex-start; position: relative;">
+      <div class="col-item" style="flex: 0 0 auto; max-width: 50%;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Company Logo & Info" id="block_logo_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me resize" id="dynamic_logo_d4" placeholder="" style="color: #ffffff;">
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
@@ -563,7 +563,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
         </div>
       </div>
 
-      <div class="cs-col" style="flex: 0 0 auto; max-width: 50%; text-align: right;">
+      <div class="col-item" style="flex: 0 0 auto; max-width: 50%; text-align: right;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Invoice Meta" id="block_meta_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me resize" id="dynamic_meta_d4" placeholder="" style="color: #ffffff;">
             <div style="font-size: 52px; font-weight: 900; letter-spacing: 2px; color: #f5c100; line-height: 1; margin-bottom: 18px;">INVOICE</div>
@@ -581,7 +581,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
     </div>
 
     <!-- Address Banner -->
-    <div class="cs-row" id="row_address_d4" style="background: #f5c100; padding: 13px 36px; display: flex; align-items: center; gap: 10px; position: relative;">
+    <div class="row-item" id="row_address_d4" style="background: #f5c100; padding: 13px 36px; display: flex; align-items: center; gap: 10px; position: relative;">
       <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Address" id="block_address_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none; flex: 1;">
         <div class="edit_me resize" id="dynamic_address_d4" placeholder="" style="color: #1a2649; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
           <span style="display: inline-block; width: 28px; height: 28px; background: #1a2649; border-radius: 50%; text-align: center; line-height: 28px; color: #f5c100; font-size: 12px; flex-shrink: 0;">📍</span>
@@ -591,8 +591,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
     </div>
 
     <!-- Contact + Payment Info -->
-    <div class="cs-row" id="row_info_d4" style="display: flex; padding: 28px 36px; gap: 40px; border-bottom: 1px solid #f0f0f0; min-height: 0px;">
-      <div class="cs-col" style="flex: 1; max-width: 100%; min-height: 0px;">
+    <div class="row-item" id="row_info_d4" style="display: flex; padding: 28px 36px; gap: 40px; border-bottom: 1px solid #f0f0f0; min-height: 0px;">
+      <div class="col-item" style="flex: 1; max-width: 100%; min-height: 0px;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Contact Info" id="block_contact_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me resize" id="dynamic_contact_d4" placeholder="" style="font-size: 13px; color: #444;">
             <div style="margin-bottom: 6px;"><span style="color: #666; width: 60px; display: inline-block;">Phone:</span> {{phone}}</div>
@@ -602,7 +602,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
         </div>
       </div>
 
-      <div class="cs-col" style="flex: 1; max-width: 100%; min-height: 0px;">
+      <div class="col-item" style="flex: 1; max-width: 100%; min-height: 0px;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Payment Method" id="block_payment_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me resize" id="dynamic_payment_d4" placeholder="" style="font-size: 13px; color: #444;">
             <div style="font-size: 13px; font-weight: 800; color: #1a2649; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Payment Method</div>
@@ -615,8 +615,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
     </div>
 
     <!-- Items Table -->
-    <div class="cs-row" id="row_items_d4" style="padding: 0 36px 24px; min-height: 0px;">
-      <div class="cs-col" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
+    <div class="row-item" id="row_items_d4" style="padding: 0 36px 24px; min-height: 0px;">
+      <div class="col-item" style="flex: 1 1 0px; max-width: 100%; min-height: 0px;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Items Table" id="block_items_d4" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me fr-element fr-view resize" id="dynamic_items_d4" placeholder="" style="font-size: 13px; width: 100%; padding: 0px; margin: 0px; color: #333; overflow: visible;">
             <table style="width: 100%; border-collapse: collapse;">
@@ -667,8 +667,8 @@ window.FlowCanvas.TEMPLATE_HTML = {
     </div>
 
     <!-- Footer: Terms + Totals -->
-    <div class="cs-row" id="row_footer_d4" style="display: flex; padding: 16px 36px 28px; gap: 40px; align-items: flex-start; min-height: 0px;">
-      <div class="cs-col" style="flex: 1.2; max-width: 100%; min-height: 0px;">
+    <div class="row-item" id="row_footer_d4" style="display: flex; padding: 16px 36px 28px; gap: 40px; align-items: flex-start; min-height: 0px;">
+      <div class="col-item" style="flex: 1.2; max-width: 100%; min-height: 0px;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Terms" id="block_terms_d4" style="width: 100%; max-width: 100%; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me resize" id="dynamic_terms_d4" placeholder="" style="font-size: 12px; color: #555; line-height: 1.6;">
             <div style="font-size: 13px; font-weight: 800; color: #1a2649; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Terms and Conditions</div>
@@ -694,7 +694,7 @@ window.FlowCanvas.TEMPLATE_HTML = {
         </div>
       </div>
 
-      <div class="cs-col" style="flex: 0.8; max-width: 100%; min-height: 0px;">
+      <div class="col-item" style="flex: 0.8; max-width: 100%; min-height: 0px;">
         <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Textarea" custom-name="Totals" id="block_totals_d4" style="width: 100%; max-width: none; border: 0px; margin: 0px; background: transparent; box-shadow: none;">
           <div class="edit_me resize" id="dynamic_totals_d4" placeholder="" style="font-size: 13px; color: #555;">
             <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
@@ -725,6 +725,6 @@ window.FlowCanvas.TEMPLATE_HTML = {
     </div>
 
     <!-- Bottom Footer Bar -->
-    <div class="cs-row" id="row_bottom_d4" style="background: #f5c100; height: 22px; position: relative; overflow: hidden; min-height: 0px;"></div>
+    <div class="row-item" id="row_bottom_d4" style="background: #f5c100; height: 22px; position: relative; overflow: hidden; min-height: 0px;"></div>
     `,
 };

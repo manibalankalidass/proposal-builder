@@ -153,16 +153,20 @@
       pan = null;
     };
 
+    // Bind to the whole board (.cs_paper) — not just page 1's canvas — so image
+    // zoom/pan also works for images on added pages and cover pages, which live
+    // in their own sibling `.custom-form-design` wrappers.
+    const board = canvas.closest('.cs_paper') || canvas;
     // wheel must be non-passive so preventDefault can stop page scroll.
-    canvas.addEventListener('wheel', onWheel, { passive: false });
+    board.addEventListener('wheel', onWheel, { passive: false });
     // Capture phase so we claim the press before the block move/resize logic.
-    canvas.addEventListener('pointerdown', onPointerDown, true);
+    board.addEventListener('pointerdown', onPointerDown, true);
     document.addEventListener('pointermove', onPointerMove, true);
     document.addEventListener('pointerup', endPan, true);
     document.addEventListener('pointercancel', endPan, true);
     // Belt-and-braces: suppress the browser's native image drag inside an
     // editing image (otherwise a pan can start a ghost-drag of the picture).
-    canvas.addEventListener('dragstart', (event) => {
+    board.addEventListener('dragstart', (event) => {
       if (resolveEditingImg(event.target)) event.preventDefault();
     }, true);
   };

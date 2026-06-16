@@ -156,29 +156,29 @@ Canvas-oda DOM structure idhu. Idha purinja ellam puriyum 👇
 
 ```
 .custom-form-design          ← canvas (oru page wrapper). idhuku class 'cs-flow-canvas' add aaguthu
-  └─ .cs-doc[data-page="1"]   ← ORU PAGE (A4 size). page 2,3... extra docs.
-       ├─ .cs-row             ← oru horizontal row
-       │    ├─ .cs-col        ← row-kkulla oru column (flex width)
+  └─ .cs_margin[data-page="1"]   ← ORU PAGE (A4 size). page 2,3... extra docs.
+       ├─ .row-item             ← oru horizontal row
+       │    ├─ .col-item        ← row-kkulla oru column (flex width)
        │    │    └─ .cs_block_s   ← ACTUAL BLOCK (heading/text/image/table…)
-       │    ├─ .cs-col-divider ← rendu column naduvula resize handle
-       │    └─ .cs-col        ← innoru column
-       └─ .cs-row             ← innoru row
+       │    ├─ .cs-line-divider ← rendu column naduvula resize handle
+       │    └─ .col-item        ← innoru column
+       └─ .row-item             ← innoru row
 ```
 
 Multi-page-ku:
 ```
 .cs_paper                     ← ellaa pages-um idhukkulla (host HTML-la define aagiruku)
-  ├─ .cs_page > .cs-doc[data-page="1"]
-  ├─ .cs_page > .cs-doc[data-page="2"]
+  ├─ .cs_page > .cs_margin[data-page="1"]
+  ├─ .cs_page > .cs_margin[data-page="2"]
   └─ ...
 ```
 
 Header/footer ON aana (default OFF):
 ```
-.cs-doc
-  ├─ .cs-row.cs-page-header   ← header (ellaa page-layum same)
+.cs_margin
+  ├─ .row-item.cs-page-header   ← header (ellaa page-layum same)
   ├─ .body-main-content       ← naduvula main content (rows inga)
-  └─ .cs-row.cs-page-footer   ← footer
+  └─ .row-item.cs-page-footer   ← footer
 ```
 
 **Mukkiya class names:**
@@ -204,7 +204,7 @@ App load aagumbothu enna nadakkuthu, order-la:
 6. flow-canvas.js (KADAISI, ENTRY POINT) — idhu dhaan ellam start pannuthu:
       a. canvas-a kandupidi (.custom-form-design)
       b. double-init guard (renduvaati run aagaama)
-      c. page 1 (.cs-doc) bootstrap
+      c. page 1 (.cs_margin) bootstrap
       d. drag/drop listeners attach (paper mela)
       e. FC.initColResize, initFieldPanel, initHistory,
          initInlineInsert, initCopyPaste, initCleanupObserver,
@@ -387,7 +387,7 @@ Already canvas-la iruka block-a **grip handle (⋮⋮) vechi thookki வேற �
 Rendu column naduvula iruka **divider-a drag panni** column width maathuradhu.
 
 - File: `flow/col-resize.js`, init: `FC.initColResize(canvas)`.
-- `pointerdown` on `.cs-col-divider` → capture phase (inline-editor-kku munnaadi run aaganum).
+- `pointerdown` on `.cs-line-divider` → capture phase (inline-editor-kku munnaadi run aaganum).
 - Drag pannumbothu: `prevCol` + `nextCol`-oda combined width same-ah irukkum, divider நகர்ந்த அளவுக்கு width பகிரும்.
 - `COL_MIN_WIDTH = 60px` — idhuku keezha shrink aagaadhu.
 
@@ -456,7 +456,7 @@ Block delete aanaa, **empty column / row-a thaana** neekuthu.
 > ⚠️ **Default-la OFF.** `flow-canvas.js`-la `ENABLE_HEADER_FOOTER = false`. Parent
 > `header-footer:toggle` message anuppi ON pannalam.
 
-- ON aana ovvoru `.cs-doc`-kum `makeRegion('header')` + `makeRegion('footer')` create aagum (default-la image + text columns).
+- ON aana ovvoru `.cs_margin`-kum `makeRegion('header')` + `makeRegion('footer')` create aagum (default-la image + text columns).
 - Structure: `header` (top) → `body-main-content` (naduvula) → `footer` (kீழே). `wireRegionOrderObserver` idha order-la vச்சிkkum.
 - **Sync across pages:** oru page-la header/footer edit pannina, `syncRegion()` மற்ற ellaa page-kum copy pannum (400ms debounce, allathu focus poona udane). `rewriteIds()` — id duplicate aagaama ஒவ்வொரு page-kum unique.
 - Edit: header/footer-a **double-click** panna active aagum (`setRegionActive`).
@@ -469,7 +469,7 @@ Block delete aanaa, **empty column / row-a thaana** neekuthu.
 ## 16. Multi-page & Page Break
 
 ### Pages add/remove:
-- `FC.addPage({ headerFooter })` — புது `.cs-doc` create, `renumberPages()`.
+- `FC.addPage({ headerFooter })` — புது `.cs_margin` create, `renumberPages()`.
 - `FC.removePage(docEl)` — page 1-a remove panna mudiyaadhu.
 - Parent `page:add` / `page:remove` message anuppalam.
 
@@ -558,9 +558,9 @@ JSON data-va block-kooda connect pannrathu. Eg: `{% for item in invoice.items %}
 
 ### Output example:
 ```twig
-<div class="cs-row">
+<div class="row-item">
   {% for item in invoice.items %}
-  <div class="cs-col"><div class="cs_block_s">{{ item.name }}</div></div>
+  <div class="col-item"><div class="cs_block_s">{{ item.name }}</div></div>
   {% endfor %}
 </div>
 ```
@@ -765,8 +765,8 @@ Per-page feature-na `wireDocFeatures(docEl)`-la podu (புது page-kum appl
 | Class | Enna |
 |-------|------|
 | `.custom-form-design` | Canvas (page wrapper) |
-| `.cs-doc` | Oru A4 page |
-| `.cs-row` / `.cs-col` / `.cs-col-divider` | Layout |
+| `.cs_margin` | Oru A4 page |
+| `.row-item` / `.col-item` / `.cs-line-divider` | Layout |
 | `.cs_block_s` | Block (ellame idhu) |
 | `.edit_me` | Editable text |
 | `.section-container-content` / `.cs-flexible-content` | Section (nested canvas) |

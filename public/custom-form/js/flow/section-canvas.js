@@ -24,7 +24,7 @@
       return window.FlowCanvas.makeRow();
     }
     const row = document.createElement('div');
-    row.className = 'cs-row';
+    row.className = 'row-item';
     window.FlowCanvas.assignNodeId?.(row, 'row');
     return row;
   };
@@ -33,7 +33,7 @@
       return window.FlowCanvas.makeCol();
     }
     const col = document.createElement('div');
-    col.className = 'cs-col';
+    col.className = 'col-item';
     col.style.flex = '1 1 0';
     window.FlowCanvas.assignNodeId?.(col, 'col');
     return col;
@@ -72,7 +72,7 @@
       // as one block per row inside the section.
       const legacy = Array.from(section.children).filter((c) => {
         return c.classList?.contains('cs_block_s') &&
-               (c.dataset?.csInSection === '1' || c.style?.position === 'absolute');
+          (c.dataset?.csInSection === '1' || c.style?.position === 'absolute');
       });
       if (!legacy.length) return;
 

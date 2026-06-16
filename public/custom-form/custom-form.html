@@ -20,12 +20,12 @@
     <div class="page_container">
       <!--
         Canvas mount point. The outer .cs_paper is host-owned (rendered
-        by this HTML). flow-canvas.js will inject .cs-doc pages directly
+        by this HTML). flow-canvas.js will inject .cs_margin pages directly
         into this .cs_paper — it must NOT create a second one inside the
         canvas.
       -->
       <div dnddropzone="" class="cs_paper">
-        <div class="cs_page custom-form-design centercontent cs_selected" style="visibility: visible;">
+        <div class="cs_page custom-form-design centercontent" style="visibility: visible;">
         </div>
       </div>
     </div>
@@ -41,16 +41,24 @@
   <script src="./js/canvas-config.js"></script>
   <script src="./js/custom-form.js"></script>
 
+  <!-- Manager-facing feature flags (must load before the registry). -->
+  <script src="./js/feature-flags.js"></script>
   <!-- Single source of truth for block types (must load before factory/menus) -->
   <script src="./js/block-registry.js"></script>
 
   <!-- Flow canvas feature modules (must load before flow-canvas.js entry point) -->
   <script src="./js/flow/template-data.js"></script>
   <script src="./js/flow/block-factory.js"></script>
+  <script src="./js/flow/aiden.js"></script>
   <script src="./js/flow/pen-shape.js"></script>
   <script src="./js/flow/table-block.js"></script>
   <script src="./js/flow/synclist.js"></script>
   <script src="./js/flow/row-col-builder.js"></script>
+  <script src="./js/flow/group.js"></script>
+  <script src="./js/flow/context-menu.js"></script>
+  <script src="./js/flow/shortcuts-overlay.js"></script>
+  <script src="./js/flow/brand.js"></script>
+  <script src="./js/flow/layer-system.js"></script>
   <script src="./js/flow/drop-zones.js"></script>
   <script src="./js/flow/col-resize.js"></script>
   <script src="./js/flow/section-canvas.js"></script>
@@ -60,6 +68,7 @@
   <script src="./js/flow/history-manager.js"></script>
   <script src="./js/flow/inline-insert.js"></script>
   <script src="./js/flow/copy-paste.js"></script>
+  <script src="./js/flow/active-page.js"></script>
   <script src="./js/flow/image-zoom.js"></script>
   <script src="./js/flow/page-shape-designer.js"></script>
   <script src="./js/flow/collab.js"></script>

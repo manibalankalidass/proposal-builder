@@ -21,6 +21,12 @@
   const ROW_EDGE_GAP = cfg.rowEdgeGap ?? 12;
   const COL_EDGE_GAP = cfg.colEdgeGap ?? 24;
 
+  // A "free canvas" is any root that positions its children absolutely:
+  // a flexible container, or a cover page (`.cs_page[data-cs-cover]`). Drops
+  // into one are placed by cursor position, not woven into row/col flow.
+  const isFreeCanvas = (el) =>
+    !!el && (el.classList?.contains('cs-flexible-content') || el.matches?.('[data-cs-cover="1"]'));
+
   // ---------------------------------------------------------------------------
   // Section drop target — sections now act as nested row/col flow canvases
   // (same model as the document root). Returning null falls through to the
@@ -37,7 +43,7 @@
       const section = sections[i];
       const rect = section.getBoundingClientRect();
       if (clientX >= rect.left && clientX <= rect.right &&
-          clientY >= rect.top && clientY <= rect.bottom) {
+        clientY >= rect.top && clientY <= rect.bottom) {
         return section;
       }
     }
@@ -48,7 +54,7 @@
   // In-column target (between blocks or empty col)
   // ---------------------------------------------------------------------------
   const findInColTarget = (col, clientY) => {
-    const blocks = Array.from(col.children).filter(c => !c.matches('.cs-col-divider'));
+    const blocks = Array.from(col.children).filter(c => !c.matches('.cs-line-divider'));
     const rect = col.getBoundingClientRect();
 
     if (blocks.length === 0) {
@@ -80,7 +86,7 @@
   // Column-level routing inside a row
   // ---------------------------------------------------------------------------
   const findColTarget = (row, clientX, clientY) => {
-    const cols = Array.from(row.querySelectorAll(':scope > .cs-col'));
+    const cols = Array.from(row.querySelectorAll(':scope > .col-item'));
     if (cols.length === 0) {
       const rect = row.getBoundingClientRect();
       return {
@@ -138,7 +144,7 @@
     let root = section || doc;
     let isHeaderFooter = false;
 
-    if (!section && root.classList.contains('cs-doc')) {
+    if (!section && root.classList.contains('cs_margin')) {
       // Check if cursor is over header or footer
       const header = root.querySelector(':scope > .cs-page-header');
       const footer = root.querySelector(':scope > .cs-page-footer');
@@ -172,13 +178,13 @@
       // Header/footer is a single row, so use it directly for column targeting
       rows = [root];
     } else {
-      rows = Array.from(root.querySelectorAll(':scope > .cs-row'));
+      rows = Array.from(root.querySelectorAll(':scope > .row-item'));
     }
 
     if (rows.length === 0) {
       const rootRect = root.getBoundingClientRect();
       // Don't show indicator for flexible containers, but show flexible bounds highlight
-      const isFlexible = root.classList.contains('cs-flexible-content');
+      const isFlexible = isFreeCanvas(root);
       let indicator = null;
       if (!isFlexible) {
         indicator = { type: 'horizontal', top: rootRect.top + 4, left: rootRect.left, right: rootRect.right };
@@ -201,7 +207,7 @@
     }
 
     // For flexible containers, never show line indicator - only show bounds highlight
-    const isFlexible = root.classList.contains('cs-flexible-content');
+    const isFlexible = isFreeCanvas(root);
     const rootRect = root.getBoundingClientRect();
 
     const firstRect = rows[0].getBoundingClientRect();

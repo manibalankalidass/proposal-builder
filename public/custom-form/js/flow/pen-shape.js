@@ -227,6 +227,8 @@
   /* ------------------------------ edit session ------------------------------ */
   // Only one block edits at a time (mirrors EditorManager). `S` holds its state.
   let S = null;
+  // Module-level clip-path clipboard for copy/paste (persists across blocks).
+  let penClip = null;
 
   const innerRect = () => S.inner.getBoundingClientRect();
 
@@ -235,7 +237,14 @@
   const vbToPxR = (vx, vy, deg) => {
     const r = innerRect();
     const p = rot(vx, vy, deg);
-    return { x: p.x / VB * r.width, y: p.y / VB * r.height };
+    // Markers are drawn into the overlay SVG. In the page designer the overlay
+    // is enlarged BEYOND the block (so points can be placed off-page), so its
+    // top-left no longer matches the block's. Offset by that delta to keep the
+    // anchor/handle markers aligned with the rendered shape. (inline blocks:
+    // overlay === block → delta is 0, unchanged.)
+    let ox = 0, oy = 0;
+    if (S.overlay) { const o = S.overlay.getBoundingClientRect(); ox = r.left - o.left; oy = r.top - o.top; }
+    return { x: ox + p.x / VB * r.width, y: oy + p.y / VB * r.height };
   };
   const vbToPx = (vx, vy) => vbToPxR(vx, vy, S.rotate);
   // client px → viewBox coord (un-rotated to the active path's model space).
@@ -355,7 +364,12 @@
   };
 
   const setSmooth = (p, ox, oy) => { p.outX = ox; p.outY = oy; p.inX = 2 * p.x - ox; p.inY = 2 * p.y - oy; };
-  const clampVb = (v) => Math.max(0, Math.min(VB, v)); // keep anchors inside the block
+  // Keep anchors inside the block — EXCEPT in the page designer (freeDraw), where
+  // points may sit off-page (a one-page bleed margin each side) so the user can
+  // design past the page edge. Off-page geometry simply clips to the page on save.
+  const clampVb = (v) => (S && S.freeDraw)
+    ? Math.max(-VB, Math.min(2 * VB, v))
+    : Math.max(0, Math.min(VB, v));
 
   /* ------------------------------- pointer ops ------------------------------ */
 
@@ -375,37 +389,83 @@
     e.preventDefault(); e.stopPropagation();
     S.overlay.setPointerCapture?.(e.pointerId);
     const vb = clientToVb(e.clientX, e.clientY);
+    // Space held → "move whole clip-path" override: a drag anywhere relocates the
+    // active shape, even over an anchor/handle (works in pen AND edit mode).
+    if (S.spaceHeld) { startShapeDrag(vb); return; }
     const hit = pick(vb);
     const alt = e.altKey;
 
     if (S.mode === 'pen') {
       const ap = S.state.paths[S.activePath];
       const open = ap && !ap.closed;
-      // close the active open sub-path by clicking its first anchor
-      if (open && hit && hit.type === 'anchor' && hit.p === S.activePath && hit.i === 0 && ap.anchors.length > 2) {
-        snapshot(); ap.closed = true; S.sel = null; commit(); return;
+
+      if (open) {
+        // --- drawing ---
+        // close the active open sub-path by clicking its first anchor
+        if (hit && hit.type === 'anchor' && hit.p === S.activePath && hit.i === 0 && ap.anchors.length > 2) {
+          snapshot(); ap.closed = true; S.sel = null; S.penHover = null; commit(); return;
+        }
+        // grab an existing anchor/handle to tweak while drawing (drag = handle)
+        if (hit) { if (hit.type === 'anchor') S.sel = { p: hit.p, i: hit.i }; startDrag(hit, vb); return; }
+        // add the next point (smart-guide aligned)
+        snapshot();
+        { const s = alignSnap(snapV(vb.x), snapV(vb.y), null); ap.anchors.push({ x: clampVb(s.x), y: clampVb(s.y) }); }
+        S.sel = { p: S.activePath, i: ap.anchors.length - 1 };
+        S.drag = { kind: 'new', p: S.activePath, i: S.sel.i };
+        commit();
+        return;
       }
-      // grab an existing anchor/handle to tweak while drawing
-      if (hit) { if (hit.type === 'anchor') S.sel = { p: hit.p, i: hit.i }; startDrag(hit, vb); return; }
-      // When NOT mid-draw, clicking inside an existing closed shape selects it
-      // (so you can recolour any clip-path right away without switching to the
-      // ⬚ tool). Click empty space to start a brand-new shape.
-      if (!open) {
-        const overPath = pickPath(clientToVbRaw(e.clientX, e.clientY));
-        if (overPath >= 0) { S.selected?.clear(); selectPath(overPath); return; }
+
+      // --- editing a COMPLETED shape with the pen ---
+      // Drag a handle dot of the selected point → curve. Drag a point → MOVE it.
+      // Alt-click a point → remove it (delete is Alt-gated). Click outline → ADD.
+      if (ap && ap.closed) {
+        // A handle (in/out) of the currently-selected anchor → reshape the curve.
+        const hp = pick(vb);
+        if (hp && (hp.type === 'in' || hp.type === 'out')) {
+          S.sel = { p: hp.p, i: hp.i };
+          startDrag(hp, vb);
+          return;
+        }
+        const ai = hitAnchor(vb, ap);
+        if (ai >= 0) {
+          if (alt) {
+            // Alt-click a point → remove it (so a stray click can't drop a point).
+            snapshot();
+            const path = S.state.paths[S.activePath];
+            path.anchors.splice(ai, 1);
+            if (path.anchors.length < 3) path.closed = false;
+            S.sel = null; S.penHover = null; commit();
+            return;
+          }
+          // No Alt → select the point and drag to MOVE it (a clean click just
+          // selects, which reveals its handle dots — drag those to curve).
+          snapshot();
+          S.sel = { p: S.activePath, i: ai };
+          S.penHover = null;
+          S.drag = { kind: 'anchor', p: S.activePath, i: ai, ox: vb.x, oy: vb.y };
+          drawOverlay();
+          return;
+        }
+        const seg = findSegmentInsertion(vb, ap);
+        if (seg) {
+          snapshot();
+          ap.anchors.splice(seg.i + 1, 0, { x: seg.pt.x, y: seg.pt.y });
+          S.sel = { p: S.activePath, i: seg.i + 1 }; S.penHover = null; commit();
+          return;
+        }
       }
-      // empty click → add a point; start a NEW sub-path if none is open. A new
-      // sub-path gets its OWN copy of the current style so it can be recoloured
-      // independently of the others later.
+      // Over a DIFFERENT closed shape → select it (so its points become editable).
+      const overPath = pickPath(clientToVbRaw(e.clientX, e.clientY));
+      if (overPath >= 0) { S.selected?.clear(); selectPath(overPath); return; }
+      // Empty space → start a BRAND-NEW shape (its own style copy).
       snapshot();
-      let path = open ? ap : null;
-      if (!path) {
-        path = { anchors: [], closed: false, name: nextPathName(), style: Object.assign({}, readStyle(S.block)) };
-        S.state.paths.push(path); S.activePath = S.state.paths.length - 1;
-      }
-      path.anchors.push({ x: clampVb(snapV(vb.x)), y: clampVb(snapV(vb.y)) });
-      S.sel = { p: S.activePath, i: path.anchors.length - 1 };
-      S.drag = { kind: 'new', p: S.activePath, i: S.sel.i };
+      const fp = alignSnap(snapV(vb.x), snapV(vb.y), null);
+      const path = { anchors: [{ x: clampVb(fp.x), y: clampVb(fp.y) }], closed: false, name: nextPathName(), style: Object.assign({}, readStyle(S.block)) };
+      S.state.paths.push(path); S.activePath = S.state.paths.length - 1;
+      S.sel = { p: S.activePath, i: 0 };
+      S.drag = { kind: 'new', p: S.activePath, i: 0 };
+      S.penHover = null;
       commit();
       return;
     }
@@ -425,16 +485,15 @@
       startDrag(hit, vb);
       return;
     }
-    // Not on an anchor of the active path:
-    //   • over a DIFFERENT sub-path → select it (recolour/edit that clip-path)
-    //   • over the ACTIVE shape → insert a point if near its outline, else drag
-    //     the whole shape
+    // MOVE (hand) tool — move ONLY (no point inserting; that's the pen's job):
+    //   • over a DIFFERENT sub-path → select it
+    //   • over the ACTIVE shape → drag the whole shape
     //   • empty space → deselect
     const vbRaw = clientToVbRaw(e.clientX, e.clientY);
     const overPath = pickPath(vbRaw);
     if (overPath >= 0 && overPath !== S.activePath) { S.selected?.clear(); selectPath(overPath); return; }
     if (overPath === S.activePath && !activeLocked) {
-      if (!maybeInsertOnSegment(vb)) startShapeDrag(vb);
+      startShapeDrag(vb);
       return;
     }
     S.sel = null; drawOverlay();
@@ -447,7 +506,20 @@
     const vb = clientToVb(e.clientX, e.clientY);
     if (!S.drag) {
       const ap = S.state.paths[S.activePath];
-      if (S.mode === 'pen' && ap && !ap.closed && ap.anchors.length) S.cursor = vb; else S.cursor = null;
+      S.cursor = null; S.penHover = null; S.guides = null;
+      if (S.mode === 'pen' && ap) {
+        if (!ap.closed && ap.anchors.length) {
+          const snap = alignSnap(snapV(vb.x), snapV(vb.y), null); // smart-guide the next point
+          S.cursor = { x: clampVb(snap.x), y: clampVb(snap.y) };
+        } else if (ap.closed) {
+          // Hovering a completed shape: over a point, show the × REMOVE marker
+          // ONLY while Alt is held (delete is Alt-gated) — without Alt the point
+          // is draggable to curve it. Over the outline, show the + ADD marker.
+          const ai = hitAnchor(vb, ap);
+          if (ai >= 0) { if (e.altKey) S.penHover = { kind: 'remove', i: ai }; }
+          else { const seg = findSegmentInsertion(vb, ap); if (seg) S.penHover = { kind: 'add', x: seg.pt.x, y: seg.pt.y }; }
+        }
+      }
       drawOverlay();
       return;
     }
@@ -471,7 +543,8 @@
       const p = a[d.i];
       if (e.altKey) { p.outX = vb.x; p.outY = vb.y; } else setSmooth(p, vb.x, vb.y);
     } else if (d.kind === 'anchor') {
-      const p = a[d.i], nx = clampVb(snapV(vb.x)), nyv = clampVb(snapV(vb.y)), dx = nx - p.x, dy = nyv - p.y;
+      const snap = alignSnap(snapV(vb.x), snapV(vb.y), { p: d.p, i: d.i });
+      const p = a[d.i], nx = clampVb(snap.x), nyv = clampVb(snap.y), dx = nx - p.x, dy = nyv - p.y;
       p.x = nx; p.y = nyv;
       if (p.inX != null) { p.inX += dx; p.inY += dy; }
       if (p.outX != null) { p.outX += dx; p.outY += dy; }
@@ -483,7 +556,14 @@
     writeState(S.block, S.state); renderShape(S.block); drawOverlay();
   };
 
-  const onUp = () => { if (!S || !S.drag) return; S.drag = null; commit(); };
+  const onUp = () => {
+    if (!S || !S.drag) return;
+    // Pen-mode point delete is now immediate on Alt-click (onDown); a plain
+    // click/drag here either moved the point or just selected it.
+    S.drag = null;
+    S.guides = null;
+    commit();
+  };
 
   const sampleSeg = (p, c, t) => {
     const hasOut = p.outX != null, hasIn = c.inX != null;
@@ -496,10 +576,21 @@
     };
   };
 
-  // Returns true if a point was inserted on the active path's outline near `vb`.
-  const maybeInsertOnSegment = (vb) => {
-    const pi = S.activePath, path = S.state.paths[pi];
-    if (!path) return false;
+  // Index of an anchor of `path` under `vb`, or -1. Used by the pen tool's
+  // hover add/remove affordances.
+  const hitAnchor = (vb, path) => {
+    if (!path) return -1;
+    const t = hitVb();
+    for (let i = 0; i < path.anchors.length; i++) {
+      if (Math.hypot(path.anchors[i].x - vb.x, path.anchors[i].y - vb.y) <= t) return i;
+    }
+    return -1;
+  };
+
+  // The candidate insertion point on `path`'s outline nearest `vb` (within the
+  // hit tolerance), or null. { i, pt } — insert after anchor i.
+  const findSegmentInsertion = (vb, path) => {
+    if (!path) return null;
     let best = null;
     const a = path.anchors, n = a.length;
     for (let i = 0; i < n; i++) {
@@ -510,13 +601,7 @@
         if (!best || dist < best.dist) best = { dist, i, pt };
       }
     }
-    if (best && best.dist <= hitVb() * 1.8) {
-      snapshot();
-      path.anchors.splice(best.i + 1, 0, { x: best.pt.x, y: best.pt.y });
-      S.sel = { p: pi, i: best.i + 1 }; commit();
-      return true;
-    }
-    return false;
+    return (best && best.dist <= hitVb() * 1.8) ? best : null;
   };
 
   // Begin dragging the whole active shape (translate all its rings).
@@ -539,6 +624,21 @@
     if (S.resizeMode) return; // box-resize mode: anchors hidden, handles drive
     const paths = S.state.paths;
     const ap = paths[S.activePath];
+    // Hand / Move tool: hide the clip-path selection chrome (anchor squares +
+    // bézier handles) for a clean view. The Pen tool brings them back. Guides /
+    // rubber-band still draw (the former only during a whole-shape snap-drag).
+    const showMarks = S.mode !== 'edit';
+
+    // Smart alignment guides (full-bleed dashed lines through the snapped x / y).
+    // Span the FULL overlay, not just the block: in the page designer the overlay
+    // extends past the page, and vbToPx places markers relative to the overlay —
+    // so a line drawn only 0..blockWidth would land shifted into the bleed margin.
+    if (S.guides) {
+      const orect = S.overlay ? S.overlay.getBoundingClientRect() : r;
+      const ow = orect.width, oh = orect.height;
+      if (S.guides.gx != null) { const gx = vbToPx(S.guides.gx, 0).x; ov.appendChild(ns('line', { x1: gx, y1: 0, x2: gx, y2: oh, class: 'cs-pen-guide' })); }
+      if (S.guides.gy != null) { const gy = vbToPx(0, S.guides.gy).y; ov.appendChild(ns('line', { x1: 0, y1: gy, x2: ow, y2: gy, class: 'cs-pen-guide' })); }
+    }
 
     // rubber-band preview from the active open path's last anchor to the cursor
     if (S.cursor && S.mode === 'pen' && ap && !ap.closed && ap.anchors.length) {
@@ -546,7 +646,7 @@
       ov.appendChild(ns('line', { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, class: 'cs-pen-rubber' }));
     }
     // handles for the selected anchor
-    if (S.sel && paths[S.sel.p]?.anchors[S.sel.i]) {
+    if (showMarks && S.sel && paths[S.sel.p]?.anchors[S.sel.i]) {
       const p = paths[S.sel.p].anchors[S.sel.i], apx = vbToPx(p.x, p.y);
       [[p.inX, p.inY], [p.outX, p.outY]].forEach(([hx, hy]) => {
         if (hx == null) return;
@@ -557,7 +657,7 @@
     }
     // anchors for every sub-path — drawn at each path's OWN rotation. Non-active
     // paths are dimmed so it's clear which clip-path the toolbar edits.
-    paths.forEach((path, pi) => {
+    if (showMarks) paths.forEach((path, pi) => {
       const active = pi === S.activePath;
       if (path.hidden && !active) return; // hidden layers show no anchors
       const deg = (path.style && path.style.rotate) || 0;
@@ -572,6 +672,26 @@
         ov.appendChild(ns('rect', { x: pp.x - size / 2, y: pp.y - size / 2, width: size, height: size, class: cls }));
       });
     });
+
+    // Pen-tool hover affordances on a completed shape: + to add a point on the
+    // outline, × to remove the point under the cursor.
+    if (S.mode === 'pen' && S.penHover && !S.drag && ap) {
+      const deg = (ap.style && ap.style.rotate) || 0;
+      if (S.penHover.kind === 'add') {
+        const c = vbToPxR(S.penHover.x, S.penHover.y, deg);
+        ov.appendChild(ns('circle', { cx: c.x, cy: c.y, r: 8, class: 'cs-pen-add' }));
+        ov.appendChild(ns('line', { x1: c.x - 4, y1: c.y, x2: c.x + 4, y2: c.y, class: 'cs-pen-add-mark' }));
+        ov.appendChild(ns('line', { x1: c.x, y1: c.y - 4, x2: c.x, y2: c.y + 4, class: 'cs-pen-add-mark' }));
+      } else if (S.penHover.kind === 'remove') {
+        const an = ap.anchors[S.penHover.i];
+        if (an) {
+          const c = vbToPxR(an.x, an.y, deg);
+          ov.appendChild(ns('circle', { cx: c.x, cy: c.y, r: 8, class: 'cs-pen-remove' }));
+          ov.appendChild(ns('line', { x1: c.x - 4, y1: c.y - 4, x2: c.x + 4, y2: c.y + 4, class: 'cs-pen-remove-mark' }));
+          ov.appendChild(ns('line', { x1: c.x - 4, y1: c.y + 4, x2: c.x + 4, y2: c.y - 4, class: 'cs-pen-remove-mark' }));
+        }
+      }
+    }
   };
 
   /* ------------------------------- operations ------------------------------- */
@@ -765,11 +885,10 @@
   // Smooth / round corners on the ACTIVE sub-path: give every anchor symmetric
   // handles tangent to its neighbours (Catmull-Rom). Open-path endpoints stay
   // corners. Repeatable.
-  const smoothAll = () => {
-    if (!S) return;
-    const path = S.state.paths[S.activePath];
-    if (!path) return;
-    snapshot();
+  // Give every anchor of `path` symmetric handles tangent to its neighbours
+  // (Catmull-Rom). Open-path endpoints stay corners. No snapshot/commit — the
+  // caller owns those.
+  const smoothAnchors = (path) => {
     const k = 0.16;
     const a = path.anchors, n = a.length, closed = path.closed, next = [];
     for (let i = 0; i < n; i++) {
@@ -780,6 +899,15 @@
       next.push({ x: cur.x, y: cur.y, outX: cur.x + tx * k, outY: cur.y + ty * k, inX: cur.x - tx * k, inY: cur.y - ty * k });
     }
     path.anchors = next;
+  };
+
+  // Smooth / round corners on the ACTIVE sub-path. Repeatable.
+  const smoothAll = () => {
+    if (!S) return;
+    const path = S.state.paths[S.activePath];
+    if (!path) return;
+    snapshot();
+    smoothAnchors(path);
     commit();
   };
 
@@ -810,6 +938,12 @@
   };
 
   // Duplicate the active sub-path (offset a little so it's visible) and select it.
+  const offsetAnchors = (anchors, dx, dy) => anchors.forEach((a) => {
+    a.x += dx; a.y += dy;
+    if (a.inX != null) { a.inX += dx; a.inY += dy; }
+    if (a.outX != null) { a.outX += dx; a.outY += dy; }
+  });
+
   const duplicateActivePath = () => {
     if (!S) return;
     const p = S.state.paths[S.activePath];
@@ -817,14 +951,34 @@
     snapshot();
     const copy = clone(p);
     copy.name = `${p.name || 'Shape'} copy`;
-    copy.anchors.forEach((a) => {
-      a.x += 40; a.y += 40;
-      if (a.inX != null) { a.inX += 40; a.inY += 40; }
-      if (a.outX != null) { a.outX += 40; a.outY += 40; }
-    });
+    offsetAnchors(copy.anchors, 40, 40);
     S.state.paths.push(copy);
     S.activePath = S.state.paths.length - 1;
     S.sel = null; S.selected?.clear(); commit();
+  };
+
+  // Copy / paste the ACTIVE sub-path. The clipboard is module-level, so a shape
+  // copied in one block (or the page-shape designer) can be pasted into another.
+  // Pasting selects the copy in edit mode so it can be moved / flipped right
+  // away (e.g. copy the right-corner shape, paste, flip-H, drag to the left).
+  const copyActivePath = () => {
+    if (!S) return;
+    const p = S.state.paths[S.activePath];
+    if (p) penClip = clone(p);
+  };
+
+  const pastePath = () => {
+    if (!S || !penClip) return;
+    snapshot();
+    const copy = clone(penClip);
+    copy.name = `${penClip.name || 'Shape'} copy`;
+    if (Array.isArray(copy.anchors)) offsetAnchors(copy.anchors, 40, 40);
+    if (Array.isArray(copy.rings)) copy.rings.forEach((r) => offsetAnchors(r.anchors, 40, 40));
+    S.state.paths.push(copy);
+    S.activePath = S.state.paths.length - 1;
+    S.mode = 'edit';
+    S.sel = null; S.selected?.clear();
+    commit();
   };
 
   // Delete the whole active sub-path (not just one anchor).
@@ -859,6 +1013,25 @@
   };
   // Snap a translation delta to the grid (for whole-shape moves).
   const snapDelta = (d) => (S && S.snap ? Math.round(d / SNAP_GRID) * SNAP_GRID : d);
+
+  // Smart alignment guides: snap (x,y) to line up with ANY other anchor's x or
+  // y (so edges come out straight and left/right points sit at the same height,
+  // or share a width). Always on — it only engages within a small tolerance, so
+  // free placement isn't disturbed. Records the guide lines in S.guides for the
+  // overlay. `skip` = the anchor being moved (don't align to itself).
+  const ALIGN_TOL = 2; // vb units — smaller = less "sticky" snapping to other anchors
+  const alignSnap = (x, y, skip) => {
+    let gx = null, gy = null, dx = ALIGN_TOL, dy = ALIGN_TOL;
+    (S?.state.paths || []).forEach((path, pi) => {
+      path.anchors.forEach((a, i) => {
+        if (skip && skip.p === pi && skip.i === i) return;
+        const ax = Math.abs(a.x - x); if (ax < dx) { dx = ax; gx = a.x; }
+        const ay = Math.abs(a.y - y); if (ay < dy) { dy = ay; gy = a.y; }
+      });
+    });
+    if (S) S.guides = (gx != null || gy != null) ? { gx, gy } : null;
+    return { x: gx != null ? gx : x, y: gy != null ? gy : y };
+  };
 
   /* ------------------------------ layers ------------------------------------ */
 
@@ -1090,9 +1263,8 @@
     <div class="cs-pen-toolbar">
       <div class="cs-pen-layers" data-pen-layers title="Shapes — click to select"></div>
       <span class="cs-pen-sep"></span>
-      <button type="button" data-pen="pen"   title="Pen — add points / draw a new shape">✒</button>
-      <button type="button" data-pen="edit"  title="Direct select — move points / drag shape">⬚</button>
-      <button type="button" data-pen="resize" title="Resize box — drag the box handles">⤢</button>
+      <button type="button" data-pen="pen"   title="Pen — draw a shape; on a finished shape hover an edge to add a point (+) or a point to remove it (×)">✒</button>
+      <button type="button" data-pen="edit"  title="Move — drag points or the whole shape">✋</button>
       <button type="button" data-pen="snap"  title="Snap to grid / page edges">🧲</button>
       <button type="button" data-pen="smooth" title="Smooth / round corners">∿</button>
       <span class="cs-pen-sep"></span>
@@ -1337,10 +1509,21 @@
     // Don't hijack typing in form fields (rename input, stroke-width, etc.).
     const tag = e.target && e.target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return;
+    // Hold Space → temporary "move whole clip-path" mode (drag relocates the
+    // active shape). Swallow the key so the page/stage doesn't scroll.
+    if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault(); e.stopPropagation();
+      if (!S.spaceHeld) { S.spaceHeld = true; S.overlay?.classList.add('cs-pen-pan'); }
+      return;
+    }
     const z = (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z');
     const y = (e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y');
     if (z) { e.preventDefault(); e.stopPropagation(); (e.shiftKey ? redo : undo)(); syncToolbar(); return; }
     if (y) { e.preventDefault(); e.stopPropagation(); redo(); syncToolbar(); return; }
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && (e.key === 'c' || e.key === 'C')) { e.preventDefault(); e.stopPropagation(); copyActivePath(); return; }
+    if (mod && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); e.stopPropagation(); pastePath(); syncToolbar(); return; }
+    if (mod && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); e.stopPropagation(); duplicateActivePath(); syncToolbar(); return; }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault(); e.stopPropagation();
       // An anchor selected (or mid-draw) → delete just that point. Otherwise a
@@ -1373,6 +1556,15 @@
     }
   };
 
+  // Releasing Space ends the temporary "move clip-path" mode.
+  const onKeyUp = (e) => {
+    if (!S) return;
+    if (e.key === ' ' || e.code === 'Space') {
+      S.spaceHeld = false;
+      S.overlay?.classList.remove('cs-pen-pan');
+    }
+  };
+
   /* --------------------------- activate / deactivate ------------------------ */
 
   const activate = (block) => {
@@ -1398,9 +1590,11 @@
     const activeStyle = state.paths[activePath]?.style || readStyle(block);
     S = {
       block, inner, overlay, ovSvg, state, rotate: activeStyle.rotate || 0,
-      mode: (openIdx >= 0 || !state.paths.length) ? 'pen' : 'edit',
+      mode: 'pen',
+      // Page designer enlarges the overlay past the page → allow off-page points.
+      freeDraw: block.classList.contains('cs-page-shape-block'),
       activePath,
-      sel: null, drag: null, cursor: null, resizeMode: false, snap: false, layersEl: null, panelEl: null, propsEl: null, selected: new Set(), undo: [], redo: []
+      sel: null, drag: null, cursor: null, penHover: null, guides: null, resizeMode: false, snap: false, spaceHeld: false, layersEl: null, panelEl: null, propsEl: null, selected: new Set(), undo: [], redo: []
     };
     S.toolbar = buildToolbar();
     overlay.appendChild(S.toolbar);
@@ -1415,6 +1609,7 @@
     // the app root, outside this iframe).
     S.keyDoc = block.ownerDocument || document;
     S.keyDoc.addEventListener('keydown', onKey, true);
+    S.keyDoc.addEventListener('keyup', onKeyUp, true);
 
     // inline-editor.js's attachChrome() runs removeChrome() ~2 frames after edit
     // mode starts, which deletes every [data-cs-chrome] — including our overlay.
@@ -1436,6 +1631,7 @@
   const deactivate = () => {
     if (!S) return;
     (S.keyDoc || document).removeEventListener('keydown', onKey, true);
+    (S.keyDoc || document).removeEventListener('keyup', onKeyUp, true);
     S.guard?.disconnect();
     S.ro?.disconnect();
     S.overlay.remove();
@@ -1482,7 +1678,14 @@
 
   /* --------------------------------- wiring --------------------------------- */
   const init = () => {
-    const surface = document.querySelector('.custom-form-design');
+    // Watch the whole page board, not a single .custom-form-design: each cover
+    // page is its OWN .custom-form-design surface (a sibling under .cs_paper),
+    // so observing only the first one missed pen-shape blocks dropped on cover
+    // pages — their cs-editing class change was never seen and activate() never
+    // ran. .cs_paper contains every page (content wrappers + covers).
+    const surface = document.querySelector('.cs_paper')
+      || document.querySelector('.custom-form-design')
+      || document.body;
     if (!surface) return;
     const obs = new MutationObserver((muts) => {
       for (const m of muts) {

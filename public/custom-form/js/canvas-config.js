@@ -9,7 +9,7 @@
   // Page-size catalog. Keys are the IDs used everywhere (editor dropdown,
   // pdfSettings.pageSize, PDF_PAGE_SIZE env var). Width / height are in
   // CSS px at 96 dpi — these are the physical paper dimensions, so the
-  // canvas .cs-doc matches what the printed PDF page will be.
+  // canvas .cs_margin matches what the printed PDF page will be.
   const PageSizes = {
     'A4': { label: 'A4 Portrait', width: 794, height: 1123, format: 'A4', landscape: false },
     'A4-Landscape': { label: 'A4 Landscape', width: 1123, height: 794, format: 'A4', landscape: true },
@@ -20,7 +20,7 @@
   const DEFAULT_PAGE_KEY = 'A4';
 
   const Config = {
-    /** Page dimensions — controls the visible .cs-doc box. */
+    /** Page dimensions — controls the visible .cs_margin box. */
     page: {
       sizeKey: DEFAULT_PAGE_KEY,
       width: PageSizes[DEFAULT_PAGE_KEY].width,
@@ -91,7 +91,16 @@
      *                      engine is turned off (Froala-era behaviour).
      */
     editor: {
-      useFroala: true
+      useFroala: false,
+      // Placement of the CustomRichEditor (useFroala:false) toolbar while a text
+      // block is being edited:
+      //   dockRichToolbar: false → INLINE — bar floats above the active block
+      //                            (default; follows the caret's block).
+      //   dockRichToolbar: true  → DOCKED — bar pins to the top of the canvas
+      //                            viewport as a full-width sticky strip.
+      // Toggled live from the Angular "Page Settings" panel (Inline text
+      // toolbar switch) via the 'rich-toolbar:dock' postMessage.
+      dockRichToolbar: false
     }
   };
 
@@ -103,8 +112,20 @@
   // which editor engine to run. Reads the live config each call.
   window.isFroalaEditor = () => !!(window.CanvasConfig && window.CanvasConfig.editor && window.CanvasConfig.editor.useFroala);
 
+  // True when the CustomRichEditor toolbar should dock to the top of the canvas
+  // (vs. float inline above the active block). Read live by rich-text-editor.js.
+  window.isRichToolbarDocked = () => !!(window.CanvasConfig && window.CanvasConfig.editor && window.CanvasConfig.editor.dockRichToolbar);
+
+  // Flip the toolbar placement at runtime and notify any open editor so the live
+  // toolbar re-positions immediately (without needing to re-open the block).
+  window.setRichToolbarDocked = function (docked) {
+    if (!window.CanvasConfig || !window.CanvasConfig.editor) return;
+    window.CanvasConfig.editor.dockRichToolbar = !!docked;
+    document.dispatchEvent(new CustomEvent('canvas:rich-toolbar-mode', { detail: { docked: !!docked } }));
+  };
+
   // Switch the editor canvas to a different paper size at runtime.
-  // Re-applies the CSS vars so every .cs-doc updates in place. Existing
+  // Re-applies the CSS vars so every .cs_margin updates in place. Existing
   // block widths (set inline by the user) are preserved on purpose.
   window.setCanvasPageSize = function (sizeKey) {
     const size = PageSizes[sizeKey];
@@ -129,7 +150,7 @@
     applyPageVars();
   };
 
-  // Apply page styles to .cs-doc as CSS custom properties so the stylesheet
+  // Apply page styles to .cs_margin as CSS custom properties so the stylesheet
   // can pick them up without hardcoding values.
   const applyPageVars = () => {
     const root = document.documentElement;
@@ -142,11 +163,11 @@
     root.style.setProperty('--cs-page-border', `${Config.page.borderWidth}px solid ${Config.page.borderColor}`);
     root.style.setProperty('--cs-page-radius', `${Config.page.borderRadius}px`);
     root.style.setProperty('--cs-page-shadow', Config.page.shadow);
-    root.style.setProperty('--cs-row-margin-bottom', `${Config.row.marginBottom}px`);
-    root.style.setProperty('--cs-row-min-height', `${Config.row.minHeight}px`);
-    root.style.setProperty('--cs-col-min-width', `${Config.column.minWidth}px`);
-    root.style.setProperty('--cs-col-min-height', `${Config.column.minHeight}px`);
-    root.style.setProperty('--cs-col-padding', `${Config.column.padding}px`);
+    root.style.setProperty('--row-item-margin-bottom', `${Config.row.marginBottom}px`);
+    root.style.setProperty('--row-item-min-height', `${Config.row.minHeight}px`);
+    root.style.setProperty('--col-item-min-width', `${Config.column.minWidth}px`);
+    root.style.setProperty('--col-item-min-height', `${Config.column.minHeight}px`);
+    root.style.setProperty('--col-item-padding', `${Config.column.padding}px`);
     root.style.setProperty('--cs-section-min-height', `${Config.section.minHeight}px`);
     root.style.setProperty('--cs-section-bg', Config.section.background);
     root.style.setProperty('--cs-indicator-color', Config.indicator.color);

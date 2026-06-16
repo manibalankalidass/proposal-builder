@@ -25,9 +25,9 @@
 
   const isFlowBlock = (el) => {
     return el && el.matches?.('.cs_block_s, .canvas-block') &&
-           el.closest('.cs-flow-canvas') &&
-           !el.dataset.csInSection &&
-           el.parentElement?.matches?.('.cs-col');
+      el.closest('.cs-flow-canvas') &&
+      !el.dataset.csInSection &&
+      el.parentElement?.matches?.('.col-item');
   };
 
   const ensureGrip = (block) => {
@@ -50,7 +50,7 @@
   };
 
   const ensureGripsOnAll = (doc) => {
-    doc.querySelectorAll('.cs-col > .cs_block_s, .cs-col > .canvas-block').forEach(ensureGrip);
+    doc.querySelectorAll('.col-item > .cs_block_s, .col-item > .canvas-block').forEach(ensureGrip);
   };
 
   const findReorderHandle = (target) => {
@@ -74,6 +74,10 @@
       if (!handle) return;
       const block = handle.closest?.('.cs_block_s, .canvas-block');
       if (!block || !isFlowBlock(block)) return;
+
+      // Lone block on the page → nowhere to drop. Don't start a drag (and don't
+      // swallow the event) so no pointless blue drop-indicator line appears.
+      if (FC.canReorder && !FC.canReorder(block)) return;
 
       event.preventDefault();
       event.stopPropagation();
@@ -101,7 +105,7 @@
     const finishDrag = (event) => {
       if (!drag) return;
       const { block, grip, pointerId } = drag;
-      try { grip.releasePointerCapture?.(pointerId); } catch (e) {}
+      try { grip.releasePointerCapture?.(pointerId); } catch (e) { }
       block.classList.remove('cs-block--dragging');
       canvas.style.cursor = '';
       FC.hideIndicator?.();
@@ -145,13 +149,17 @@
 
   const siblingRows = (parent) => (
     parent ? Array.from(parent.children).filter(
-      (c) => c.matches?.('.cs-row') && !c.matches('.cs-page-header, .cs-page-footer')
+      (c) => c.matches?.('.row-item') && !c.matches('.cs-page-header, .cs-page-footer')
     ) : []
+  );
+
+  const siblingCols = (row) => (
+    row ? Array.from(row.children).filter((c) => c.matches?.('.col-item')) : []
   );
 
   window.FlowCanvas.moveBlock = function (block, dir) {
     if (!block || (dir !== 'up' && dir !== 'down')) return false;
-    const col = block.closest('.cs-col');
+    const col = block.closest('.col-item');
     if (!col) return false;
 
     const blocks = directBlocks(col);
@@ -164,7 +172,7 @@
       if (dir === 'down' && i < blocks.length - 1) { blocks[i + 1].after(block); moved = true; }
     } else {
       // Move the whole row among its siblings.
-      const row = block.closest('.cs-row');
+      const row = block.closest('.row-item');
       const parent = row?.parentElement;
       const rows = siblingRows(parent);
       const i = rows.indexOf(row);
@@ -176,5 +184,22 @@
       block.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
     return moved;
+  };
+
+  // True when there is somewhere to drag the block TO:
+  //   - the column holds more than one block (reorder within the column), OR
+  //   - the row has more than one column (drag between columns), OR
+  //   - there is more than one movable row (drag between rows).
+  // ONLY a lone block — one row, one column, one block — has none of these, so
+  // the drag handler skips starting a drag (no drop-indicator highlight). A row
+  // with multiple columns DOES allow reorder, so the column highlight shows.
+  window.FlowCanvas.canReorder = function (block) {
+    if (!block) return false;
+    const col = block.closest('.col-item');
+    if (!col) return false;
+    if (directBlocks(col).length > 1) return true;
+    const row = block.closest('.row-item');
+    if (siblingCols(row).length > 1) return true;
+    return siblingRows(row?.parentElement).length > 1;
   };
 })();

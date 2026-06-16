@@ -15,7 +15,8 @@
  *
  * Toolbar (inline, floats above the selection):
  *   bold · italic · underline · strikethrough · sub · super
- *   font family · font size
+ *   heading (inline) · font family · font size · line height
+ *   letter spacing · text case (UPPER / Capitalize / lower / as typed)
  *   text colour · highlight colour
  *   align L/C/R/justify
  *   ordered / unordered list · outdent / indent
@@ -41,6 +42,18 @@
     "'Courier New', monospace": 'Courier New',
   };
 
+  // Heading levels map to inline font-size + weight (NOT block <h1> tags) so a
+  // heading styles only the SELECTED run — e.g. make "balan" H1 without turning
+  // the rest of the line into a heading. Shared by apply + toolbar sync.
+  const HEADING_SPEC = {
+    h1: { fontSize: '32px', fontWeight: '700' },
+    h2: { fontSize: '24px', fontWeight: '700' },
+    h3: { fontSize: '19px', fontWeight: '700' },
+    h4: { fontSize: '16px', fontWeight: '700' },
+    h5: { fontSize: '13px', fontWeight: '700' },
+    h6: { fontSize: '11px', fontWeight: '700' },
+  };
+
   // Proper text-alignment icons (rows of lines, like a word processor) drawn as
   // inline SVG so they read clearly instead of the ambiguous arrow glyphs.
   const alignSvg = (rows) => {
@@ -63,6 +76,141 @@
   };
 
   let uid = 0;
+
+  // The toolbar markup is shared by the live (functional) editor bar and the
+  // docked placeholder bar, so it's built from one template.
+  function toolbarInnerHTML(fonts, sizes) {
+    const fontOpts = Object.entries(fonts || DEFAULT_FONTS)
+      .map(([val, label]) => `<option value="${val.replace(/"/g, '&quot;')}">${label}</option>`).join('');
+    const sizeOpts = (sizes || DEFAULT_SIZES).map((s) => `<option value="${s}">${s}</option>`).join('');
+    return `
+        <div class="cre-group">
+          <button type="button" data-cmd="bold" title="Bold" style="font-weight:700">${ICON.bold}</button>
+          <button type="button" data-cmd="italic" title="Italic" style="font-style:italic">${ICON.italic}</button>
+          <button type="button" data-cmd="underline" title="Underline" style="text-decoration:underline">${ICON.underline}</button>
+          <button type="button" data-cmd="strikeThrough" title="Strikethrough" style="text-decoration:line-through">${ICON.strike}</button>
+          <button type="button" data-cmd="subscript" title="Subscript">${ICON.sub}</button>
+          <button type="button" data-cmd="superscript" title="Superscript">${ICON.sup}</button>
+        </div>
+        <div class="cre-group">
+          <select data-sel="format" title="Paragraph / heading">
+            <option value="">Normal</option>
+            <option value="h1">H1</option>
+            <option value="h2">H2</option>
+            <option value="h3">H3</option>
+            <option value="h4">H4</option>
+            <option value="h5">H5</option>
+            <option value="h6">H6</option>
+          </select>
+          <select data-sel="font" title="Font family"><option value="">Font</option>${fontOpts}</select>
+          <select data-sel="size" class="cre-size" title="Font size"><option value="">Size</option>${sizeOpts}</select>
+          <select data-sel="lineheight" title="Line height">
+            <option value="">↕ LH</option>
+            <option value="1">1.0</option>
+            <option value="1.15">1.15</option>
+            <option value="1.3">1.3</option>
+            <option value="1.5">1.5</option>
+            <option value="2">2.0</option>
+            <option value="2.5">2.5</option>
+            <option value="3">3.0</option>
+          </select>
+          <select data-sel="letterspacing" title="Letter spacing">
+            <option value="">⇿ LS</option>
+            <option value="normal">Normal</option>
+            <option value="0.5px">0.5</option>
+            <option value="1px">1</option>
+            <option value="2px">2</option>
+            <option value="3px">3</option>
+            <option value="4px">4</option>
+            <option value="6px">6</option>
+            <option value="8px">8</option>
+          </select>
+          <select data-sel="textcase" title="Text case">
+            <option value="">Aa Case</option>
+            <option value="none">As typed</option>
+            <option value="uppercase">UPPERCASE</option>
+            <option value="capitalize">Capitalize Each</option>
+            <option value="lowercase">lowercase</option>
+          </select>
+        </div>
+        <div class="cre-group">
+          <label class="cre-color" title="Text colour">A<input type="color" data-color="fore" value="#000000"></label>
+          <label class="cre-color cre-color--bg" title="Highlight colour">▣<input type="color" data-color="back" value="#ffff00"></label>
+        </div>
+        <div class="cre-group">
+          <button type="button" data-cmd="justifyLeft" title="Align left">${ICON.alignLeft}</button>
+          <button type="button" data-cmd="justifyCenter" title="Align center">${ICON.alignCenter}</button>
+          <button type="button" data-cmd="justifyRight" title="Align right">${ICON.alignRight}</button>
+          <button type="button" data-cmd="justifyFull" title="Justify">${ICON.alignJustify}</button>
+        </div>
+        <div class="cre-group">
+          <button type="button" data-cmd="insertOrderedList" title="Numbered list">${ICON.ol}</button>
+          <button type="button" data-cmd="insertUnorderedList" title="Bullet list">${ICON.ul}</button>
+          <button type="button" data-cmd="outdent" title="Decrease indent">${ICON.outdent}</button>
+          <button type="button" data-cmd="indent" title="Increase indent">${ICON.indent}</button>
+        </div>
+        <div class="cre-group">
+          <button type="button" data-act="link" title="Insert / edit link">${ICON.link}</button>
+          <button type="button" data-cmd="unlink" title="Remove link">${ICON.unlink}</button>
+          <button type="button" data-cmd="removeFormat" title="Clear formatting">${ICON.clear}</button>
+        </div>
+        <div class="cre-group">
+          <button type="button" data-cmd="undo" title="Undo">${ICON.undo}</button>
+          <button type="button" data-cmd="redo" title="Redo">${ICON.redo}</button>
+        </div>`;
+  }
+
+  // All currently-alive editor instances (normally 0 or 1). Used to decide when
+  // the docked placeholder bar should show (only when nothing is being edited).
+  const liveEditors = new Set();
+  // Set true by non-rich editors (e.g. the table block) that show their OWN
+  // docked bar, so the placeholder hides and two bars never stack at the top.
+  let externalDockedActive = false;
+
+  // Persistent docked toolbar: a non-interactive copy of the bar that stays
+  // pinned to the top of the canvas whenever docked mode is ON and no block is
+  // being edited. As soon as a text block is edited, the real (functional) bar
+  // takes its place; on teardown the placeholder returns. So in docked mode a
+  // bar is ALWAYS visible — never hidden.
+  const DockedPlaceholder = {
+    el: null,
+    ensure(doc) {
+      if (this.el && this.el.ownerDocument === doc && doc.body.contains(this.el)) return this.el;
+      const tb = doc.createElement('div');
+      tb.className = 'cre-toolbar cre-toolbar--docked cre-toolbar--placeholder';
+      tb.setAttribute('data-cs-chrome', '');
+      tb.setAttribute('aria-hidden', 'true');
+      tb.innerHTML = toolbarInnerHTML(DEFAULT_FONTS, DEFAULT_SIZES);
+      // Inert: swallow any interaction so it can't steal focus / fire commands.
+      tb.addEventListener('mousedown', (e) => e.preventDefault());
+      doc.body.appendChild(tb);
+      this.el = tb;
+      return tb;
+    },
+    sync(doc) {
+      doc = doc || document;
+      const win = doc.defaultView || window;
+      const docked = !!(typeof win.isRichToolbarDocked === 'function' && win.isRichToolbarDocked());
+      if (!docked) { if (this.el) this.el.classList.remove('is-visible'); return; }
+      this.ensure(doc);
+      // Show the placeholder only while no real editor bar is up — and not while
+      // another editor (e.g. the table block) is showing its own docked bar.
+      const show = liveEditors.size === 0 && !externalDockedActive;
+      this.el.classList.toggle('is-visible', show);
+      // Follow the host scroll like any docked bar (or stop when hidden).
+      if (show) CustomRichEditor.trackDockedBar(this.el);
+      else CustomRichEditor.untrackDockedBar(this.el);
+    }
+  };
+
+  // Global hook: when the Page Settings toggle flips docked mode (and on first
+  // load), update the placeholder even if no editor instance is alive.
+  document.addEventListener('canvas:rich-toolbar-mode', () => DockedPlaceholder.sync(document));
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => DockedPlaceholder.sync(document));
+  } else {
+    DockedPlaceholder.sync(document);
+  }
 
   class CustomRichEditor {
     constructor(target, opts = {}) {
@@ -102,6 +250,12 @@
       this._onFocus = () => this._showToolbar();
       this._onBlur = () => this._maybeHideToolbar();
       this._onReflow = () => { if (this._toolbarVisible) this._positionToolbar(); };
+      // Page Settings → "Inline text toolbar" toggle flips inline ↔ docked while
+      // a block is open; re-place the live bar and refresh the placeholder.
+      this._onDockMode = () => {
+        if (this._toolbarVisible) this._positionToolbar();
+        DockedPlaceholder.sync(this.doc);
+      };
       this._onKey = (e) => this._onKeydown(e);
       // Keep the block hugging its content so new lines (Enter) expand the box
       // rather than overflowing a fixed height.
@@ -119,6 +273,12 @@
       this._onInputGrow();
       this.win.addEventListener('scroll', this._onReflow, true);
       this.win.addEventListener('resize', this._onReflow);
+      this.doc.addEventListener('canvas:rich-toolbar-mode', this._onDockMode);
+
+      // Editing has begun: register this instance and hide the docked
+      // placeholder (the real, functional bar takes over).
+      liveEditors.add(this);
+      DockedPlaceholder.sync(this.doc);
 
       // Match Froala's behaviour: focus immediately on init.
       try { t.focus(); } catch (e) { /* */ }
@@ -136,11 +296,16 @@
       t.removeEventListener('input', this._onInputGrow);
       this.win.removeEventListener('scroll', this._onReflow, true);
       this.win.removeEventListener('resize', this._onReflow);
+      this.doc.removeEventListener('canvas:rich-toolbar-mode', this._onDockMode);
       t.removeAttribute('contenteditable');
       t.removeAttribute('spellcheck');
       t.classList.remove('cre-editable');
-      if (this._toolbar) this._toolbar.remove();
+      if (this._toolbar) { CustomRichEditor.untrackDockedBar(this._toolbar); this._toolbar.remove(); }
       this._toolbar = null;
+      // Editing finished: bring the docked placeholder back so a bar stays
+      // visible at the top in docked mode.
+      liveEditors.delete(this);
+      DockedPlaceholder.sync(this.doc);
     }
 
     /* ------------------------------- toolbar -------------------------------- */
@@ -149,67 +314,7 @@
       tb.className = 'cre-toolbar';
       tb.setAttribute('data-cs-chrome', ''); // never exported / never starts a drag
 
-      const fontOpts = Object.entries(this.fonts)
-        .map(([val, label]) => `<option value="${val.replace(/"/g, '&quot;')}">${label}</option>`).join('');
-      const sizeOpts = this.sizes.map((s) => `<option value="${s}">${s}</option>`).join('');
-
-      tb.innerHTML = `
-        <div class="cre-group">
-          <button type="button" data-cmd="bold" title="Bold" style="font-weight:700">${ICON.bold}</button>
-          <button type="button" data-cmd="italic" title="Italic" style="font-style:italic">${ICON.italic}</button>
-          <button type="button" data-cmd="underline" title="Underline" style="text-decoration:underline">${ICON.underline}</button>
-          <button type="button" data-cmd="strikeThrough" title="Strikethrough" style="text-decoration:line-through">${ICON.strike}</button>
-          <button type="button" data-cmd="subscript" title="Subscript">${ICON.sub}</button>
-          <button type="button" data-cmd="superscript" title="Superscript">${ICON.sup}</button>
-        </div>
-        <div class="cre-group">
-          <select data-sel="format" title="Paragraph / heading">
-            <option value="">Normal</option>
-            <option value="h1">H1</option>
-            <option value="h2">H2</option>
-            <option value="h3">H3</option>
-            <option value="h4">H4</option>
-            <option value="h5">H5</option>
-            <option value="h6">H6</option>
-          </select>
-          <select data-sel="font" title="Font family"><option value="">Font</option>${fontOpts}</select>
-          <select data-sel="size" class="cre-size" title="Font size"><option value="">Size</option>${sizeOpts}</select>
-          <select data-sel="lineheight" title="Line height">
-            <option value="">↕ LH</option>
-            <option value="1">1.0</option>
-            <option value="1.15">1.15</option>
-            <option value="1.3">1.3</option>
-            <option value="1.5">1.5</option>
-            <option value="2">2.0</option>
-            <option value="2.5">2.5</option>
-            <option value="3">3.0</option>
-          </select>
-        </div>
-        <div class="cre-group">
-          <label class="cre-color" title="Text colour">A<input type="color" data-color="fore" value="#000000"></label>
-          <label class="cre-color cre-color--bg" title="Highlight colour">▣<input type="color" data-color="back" value="#ffff00"></label>
-        </div>
-        <div class="cre-group">
-          <button type="button" data-cmd="justifyLeft" title="Align left">${ICON.alignLeft}</button>
-          <button type="button" data-cmd="justifyCenter" title="Align center">${ICON.alignCenter}</button>
-          <button type="button" data-cmd="justifyRight" title="Align right">${ICON.alignRight}</button>
-          <button type="button" data-cmd="justifyFull" title="Justify">${ICON.alignJustify}</button>
-        </div>
-        <div class="cre-group">
-          <button type="button" data-cmd="insertOrderedList" title="Numbered list">${ICON.ol}</button>
-          <button type="button" data-cmd="insertUnorderedList" title="Bullet list">${ICON.ul}</button>
-          <button type="button" data-cmd="outdent" title="Decrease indent">${ICON.outdent}</button>
-          <button type="button" data-cmd="indent" title="Increase indent">${ICON.indent}</button>
-        </div>
-        <div class="cre-group">
-          <button type="button" data-act="link" title="Insert / edit link">${ICON.link}</button>
-          <button type="button" data-cmd="unlink" title="Remove link">${ICON.unlink}</button>
-          <button type="button" data-cmd="removeFormat" title="Clear formatting">${ICON.clear}</button>
-        </div>
-        <div class="cre-group">
-          <button type="button" data-cmd="undo" title="Undo">${ICON.undo}</button>
-          <button type="button" data-cmd="redo" title="Redo">${ICON.redo}</button>
-        </div>`;
+      tb.innerHTML = toolbarInnerHTML(this.fonts, this.sizes);
 
       // Keep focus/selection in the text while pressing a toolbar control.
       tb.addEventListener('mousedown', (e) => {
@@ -242,6 +347,14 @@
       tb.querySelector('[data-sel="lineheight"]').addEventListener('change', (e) => {
         if (e.target.value) this._setLineHeight(e.target.value);
       });
+      // Letter spacing.
+      tb.querySelector('[data-sel="letterspacing"]').addEventListener('change', (e) => {
+        if (e.target.value) this._setLetterSpacing(e.target.value);
+      });
+      // Text case (CSS text-transform).
+      tb.querySelector('[data-sel="textcase"]').addEventListener('change', (e) => {
+        if (e.target.value) this._setTextCase(e.target.value);
+      });
       tb.querySelector('[data-color="fore"]').addEventListener('input', (e) => this._setForeColor(e.target.value));
       tb.querySelector('[data-color="back"]').addEventListener('input', (e) => this._setBackColor(e.target.value));
 
@@ -262,11 +375,16 @@
       if (!this._toolbar) return;
       this._toolbar.classList.remove('is-visible');
       this._toolbarVisible = false;
+      CustomRichEditor.untrackDockedBar(this._toolbar);
     }
 
     // Hide only if focus truly left the editor AND the toolbar (a click on a
     // toolbar select/colour input blurs the text but should keep the bar up).
     _maybeHideToolbar() {
+      // Docked mode: the bar lives at the top for the whole edit session — never
+      // hide it on blur (teardown/destroy hands back to the placeholder instead).
+      const docked = (typeof this.win.isRichToolbarDocked === 'function') ? this.win.isRichToolbarDocked() : false;
+      if (docked) return;
       this.win.setTimeout(() => {
         if (this.destroyed) return;
         const a = this.doc.activeElement;
@@ -278,8 +396,22 @@
     _positionToolbar() {
       const tb = this._toolbar;
       if (!tb) return;
-      // Anchor to the block (stable) — not the selection — so the bar holds its
-      // place while the user types or moves the caret.
+
+      // Docked mode: pin the bar to the top of the canvas viewport as a
+      // full-width sticky strip (CSS drives layout; trackDockedBar follows the
+      // host scroll). We clear the inline left left over from inline mode.
+      const docked = (typeof this.win.isRichToolbarDocked === 'function')
+        ? this.win.isRichToolbarDocked() : false;
+      tb.classList.toggle('cre-toolbar--docked', docked);
+      if (docked) {
+        tb.style.left = '';
+        CustomRichEditor.trackDockedBar(tb);
+        return;
+      }
+      CustomRichEditor.untrackDockedBar(tb);
+
+      // Inline mode — anchor to the block (stable) — not the selection — so the
+      // bar holds its place while the user types or moves the caret.
       const rect = (this.anchor || this.target).getBoundingClientRect();
       const tbw = tb.offsetWidth, tbh = tb.offsetHeight;
       const vw = this.win.innerWidth, vh = this.win.innerHeight;
@@ -398,7 +530,36 @@
       if (fmtSel) {
         const blk = this._closestBlock();
         const tag = (blk && blk !== this.target) ? blk.tagName.toLowerCase() : '';
-        fmtSel.value = /^h[1-6]$/.test(tag) ? tag : '';
+        let val = /^h[1-6]$/.test(tag) ? tag : '';
+        // Headings are applied as inline size+weight, so reflect the level by
+        // matching the computed (bold) size back to a preset.
+        if (!val) {
+          const px = Math.round(parseFloat(cs.fontSize));
+          const bold = (parseInt(cs.fontWeight, 10) || 400) >= 600;
+          if (bold) {
+            for (const [lvl, spec] of Object.entries(HEADING_SPEC)) {
+              if (Math.round(parseFloat(spec.fontSize)) === px) { val = lvl; break; }
+            }
+          }
+        }
+        fmtSel.value = val;
+      }
+
+      const lsSel = this._toolbar.querySelector('[data-sel="letterspacing"]');
+      if (lsSel) {
+        const ls = cs.letterSpacing;
+        const norm = (!ls || ls === 'normal') ? '' : (parseFloat(ls) + 'px');
+        let val = '';
+        for (const opt of lsSel.options) { if (opt.value && opt.value === norm) { val = opt.value; break; } }
+        lsSel.value = val;
+      }
+
+      const tcSel = this._toolbar.querySelector('[data-sel="textcase"]');
+      if (tcSel) {
+        const tt = (cs.textTransform && cs.textTransform !== 'none') ? cs.textTransform : '';
+        let val = '';
+        for (const opt of tcSel.options) { if (opt.value && opt.value === tt) { val = opt.value; break; } }
+        tcSel.value = val;
       }
     }
 
@@ -447,10 +608,56 @@
 
     /* ------------------------------ commands -------------------------------- */
     _runCommand(cmd) {
+      // Indent/outdent ourselves with margin-left. Native execCommand('outdent')
+      // won't reverse a CSS-margin indent, so "decrease indent" did nothing
+      // after an indent or an align change. Doing both directions by hand keeps
+      // them symmetric and reliable. (User-reported.)
+      if (cmd === 'indent') return this._changeIndent(1);
+      if (cmd === 'outdent') return this._changeIndent(-1);
       this._restoreSelection();
       try { this.doc.execCommand('styleWithCSS', false, true); } catch (e) { /* */ }
       try { this.doc.execCommand(cmd, false, null); } catch (e) { /* */ }
       this._afterChange();
+    }
+
+    // Step the current block's left indent by ±40px, clamped at 0.
+    _changeIndent(dir) {
+      this._restoreSelection();
+      const STEP = 40;
+      const el = this._closestBlock();
+      const cur = parseFloat(this.win.getComputedStyle(el).marginLeft) || 0;
+      const next = Math.max(0, cur + dir * STEP);
+      if (next <= 0) el.style.removeProperty('margin-left');
+      else el.style.marginLeft = next + 'px';
+      this._afterChange();
+    }
+
+    // Letter spacing — to the selection if there is one, else the whole block
+    // (mirrors line height). 'normal' clears it.
+    _setLetterSpacing(value) {
+      this._restoreSelection();
+      const sel = this.doc.getSelection();
+      if (sel && sel.rangeCount && !sel.isCollapsed) {
+        this._wrapStyle({ letterSpacing: value });
+      } else {
+        this.target.style.letterSpacing = value;
+        this.target.querySelectorAll('[style*="letter-spacing"]').forEach((el) => el.style.removeProperty('letter-spacing'));
+        this._afterChange();
+      }
+    }
+
+    // Text case via CSS text-transform: none (as typed) / uppercase /
+    // capitalize / lowercase. Non-destructive — the underlying text is unchanged.
+    _setTextCase(value) {
+      this._restoreSelection();
+      const sel = this.doc.getSelection();
+      if (sel && sel.rangeCount && !sel.isCollapsed) {
+        this._wrapStyle({ textTransform: value });
+      } else {
+        this.target.style.textTransform = value;
+        this.target.querySelectorAll('[style*="text-transform"]').forEach((el) => el.style.removeProperty('text-transform'));
+        this._afterChange();
+      }
     }
 
     _runAction(act) {
@@ -557,13 +764,33 @@
       } catch (e) { /* */ }
     }
 
-    // Wrap the current line(s) in a heading/paragraph tag (Normal = <p>). After
-    // switching, strip explicit font-size from the block so the heading's own
-    // size shows (otherwise a previously-set size, e.g. 14px, keeps it small).
+    // Apply a heading level. With a real text selection it styles ONLY the
+    // selected run (inline size + weight) so "balan" can become H1 without
+    // turning "mani" in the same line into a heading too — a true block <h1>
+    // would swallow the whole line. With just a caret (nothing selected) we
+    // fall back to a block-level heading/paragraph for the whole line.
     _applyFormatBlock(tag) {
       this._restoreSelection();
-      const t = (tag && /^h[1-6]$/i.test(tag)) ? tag : 'p';
-      try { this.doc.execCommand('formatBlock', false, '<' + t.toUpperCase() + '>'); } catch (e) { /* */ }
+      const t = (tag && /^h[1-6]$/i.test(tag)) ? tag.toLowerCase() : '';
+      const sel = this.doc.getSelection();
+      const hasSelection = sel && sel.rangeCount && !sel.isCollapsed;
+
+      if (hasSelection) {
+        if (t) {
+          this._wrapStyle(HEADING_SPEC[t]);
+        } else {
+          // Normal → strip the heading look from the selection. Set explicit
+          // base size + normal weight (an empty value would just inherit the
+          // surrounding heading span, so it must be explicit).
+          const base = this.win.getComputedStyle(this.target).fontSize;
+          this._wrapStyle({ fontSize: base, fontWeight: '400' });
+        }
+        return;
+      }
+
+      // Caret only → turn the whole line into a block heading / <p>, then strip
+      // explicit font-size so the heading's own size shows.
+      try { this.doc.execCommand('formatBlock', false, '<' + (t ? t.toUpperCase() : 'P') + '>'); } catch (e) { /* */ }
       const blk = this._closestBlock();
       if (blk && blk !== this.target) {
         blk.style.removeProperty('font-size');
@@ -644,6 +871,10 @@
           return this._wrapStyle({ fontSize: /px|em|rem|%/.test(v) ? v : (v + 'px') });
         }
         case 'fontFamily': return this._wrapStyle({ fontFamily: args[0] });
+        case 'letterSpacing': {
+          const v = String(args[0] || 'normal');
+          return this._setLetterSpacing(/px|em|rem|%/.test(v) || v === 'normal' ? v : (v + 'px'));
+        }
         case 'align': return this._setAlign(args[0]);
         case 'paragraphStyle': return this._setParagraphWeight(args[0]);
         default:
@@ -652,6 +883,71 @@
       }
     }
   }
+
+  // Let other editors (the table block) suppress the docked placeholder while
+  // they display their own docked toolbar — keeps a single bar at the top.
+  CustomRichEditor.setExternalDockedActive = (on) => {
+    externalDockedActive = !!on;
+    DockedPlaceholder.sync(document);
+  };
+
+  // Shared toolbar markup so the table block can render the IDENTICAL text-format
+  // bar (and just append its own table-structure group), instead of maintaining
+  // a second look-alike toolbar.
+  CustomRichEditor.toolbarInnerHTML = (fonts, sizes) => toolbarInnerHTML(fonts, sizes);
+
+  // --- Docked bar: follow the host's scroll --------------------------------
+  // The editor lives in an iframe that GROWS to fit ALL pages; the HOST window
+  // scrolls it. A position:fixed bar therefore pins to the iframe's content-top
+  // and scrolls off-screen for blocks lower down (that's the "toolbar hides at
+  // the top" bug). We keep the bar IN the iframe (position:absolute) and, since
+  // we're same-origin, read our own <iframe> element to find where the visible
+  // viewport currently starts, moving the bar there each animation frame.
+  const dockedVisibleTop = () => {
+    try {
+      const fe = window.frameElement; // same-origin → readable; null if standalone
+      if (fe) return Math.max(0, -fe.getBoundingClientRect().top);
+    } catch (e) { /* cross-origin — fall through to own scroll */ }
+    return window.scrollY || window.pageYOffset || 0;
+  };
+  const dockedBars = new Set();
+  let lastDockTop = -1;
+  const applyDockedTop = () => {
+    const t = dockedVisibleTop();
+    if (t === lastDockTop) return;
+    lastDockTop = t;
+    dockedBars.forEach((el) => { if (el && el.isConnected) el.style.top = t + 'px'; });
+  };
+  // rAF-throttle the scroll/resize bursts to one reposition per frame.
+  let dockScheduled = false;
+  const onDockScroll = () => {
+    if (dockScheduled) return;
+    dockScheduled = true;
+    requestAnimationFrame(() => { dockScheduled = false; applyDockedTop(); });
+  };
+  let dockListenersOn = false;
+  const ensureDockListeners = () => {
+    if (dockListenersOn) return;
+    dockListenersOn = true;
+    // Capture phase catches scrolling of ANY element in the host (the window OR
+    // a scroll container — we can't predict which). Same-origin lets us reach
+    // the parent document; wrapped in try/catch for the cross-origin/standalone
+    // case where we just watch our own scroll.
+    try { if (window.parent && window.parent !== window) { window.parent.document.addEventListener('scroll', onDockScroll, true); window.parent.addEventListener('resize', onDockScroll); } } catch (e) { /* */ }
+    window.addEventListener('scroll', onDockScroll, true);
+    window.addEventListener('resize', onDockScroll);
+  };
+  CustomRichEditor.trackDockedBar = (el) => {
+    if (!el) return;
+    ensureDockListeners();
+    dockedBars.add(el);
+    el.style.top = dockedVisibleTop() + 'px';
+  };
+  CustomRichEditor.untrackDockedBar = (el) => {
+    if (!el) return;
+    dockedBars.delete(el);
+    el.style.top = '';
+  };
 
   window.CustomRichEditor = CustomRichEditor;
   console.log('rich-text-editor: CustomRichEditor ready');

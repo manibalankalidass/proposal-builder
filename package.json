@@ -1,6 +1,6 @@
 {
   "name": "custom-form",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "scripts": {
     "ng": "ng",
     "kill:4200": "fuser -k 4200/tcp 2>/dev/null; lsof -ti tcp:4200 | xargs -r kill -9 2>/dev/null; exit 0",
@@ -10,6 +10,9 @@
     "dev": "ng serve --port 4200",
     "preserve": "npm run kill:4200",
     "serve": "ng serve --port 4200",
+    "kill:ngrok": "pkill -x ngrok 2>/dev/null; exit 0",
+    "preshare": "npm run kill:4200 && npm run kill:ngrok",
+    "share": "node scripts/share.js",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",

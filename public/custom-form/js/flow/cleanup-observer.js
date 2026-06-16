@@ -25,11 +25,11 @@
   // canvases, so they accumulate empty rows/cols the same way).
   const cleanupOneRoot = (root) => {
     let changed = false;
-    const rows = Array.from(root.querySelectorAll(':scope > .cs-row'));
+    const rows = Array.from(root.querySelectorAll(':scope > .row-item'));
     for (const row of rows) {
       if (row.matches('.cs-page-header, .cs-page-footer')) continue;
 
-      const cols = Array.from(row.querySelectorAll(':scope > .cs-col'));
+      const cols = Array.from(row.querySelectorAll(':scope > .col-item'));
       let removedAny = false;
 
       // Remove empty columns
@@ -48,15 +48,15 @@
       }
 
       // After cleanup, remove orphaned dividers (shouldn't happen but be safe)
-      const remainingCols = row.querySelectorAll(':scope > .cs-col');
+      const remainingCols = row.querySelectorAll(':scope > .col-item');
       if (remainingCols.length === 0) {
         // No columns left - remove all dividers and the row
-        row.querySelectorAll(':scope > .cs-col-divider').forEach(d => d.remove());
+        row.querySelectorAll(':scope > .cs-line-divider').forEach(d => d.remove());
         row.remove();
         changed = true;
       } else if (removedAny) {
         // Double-check that divider count matches column count (n-1 dividers for n columns)
-        const dividerCount = row.querySelectorAll(':scope > .cs-col-divider').length;
+        const dividerCount = row.querySelectorAll(':scope > .cs-line-divider').length;
         const columnCount = remainingCols.length;
         const expectedDividerCount = Math.max(0, columnCount - 1);
         if (dividerCount !== expectedDividerCount) {
@@ -76,14 +76,14 @@
     try {
       changed = cleanupOneRoot(doc) || changed;
       // Every flow root in the tree needs its own pass. Rows live directly
-      // under a `.cs-doc` page wrapper, so when cleanup is invoked with the
+      // under a `.cs_margin` page wrapper, so when cleanup is invoked with the
       // canvas (`.custom-form-design`) as `doc` — as the Delete-key / badge
       // path does via getCanvas() — `cleanupOneRoot(doc)` finds no `:scope >
-      // .cs-row` and top-level empty columns would survive (showing the
-      // "Drop block here" placeholder). Include `.cs-doc` here so that path
-      // reaches them too. (When `doc` is already a `.cs-doc`, querySelectorAll
+      // .row-item` and top-level empty columns would survive (showing the
+      // "Drop block here" placeholder). Include `.cs_margin` here so that path
+      // reaches them too. (When `doc` is already a `.cs_margin`, querySelectorAll
       // only matches descendants, so there's no double pass.)
-      doc.querySelectorAll('.cs-doc, .body-main-content, .section-container-content').forEach((container) => {
+      doc.querySelectorAll('.cs_margin, .body-main-content, .section-container-content').forEach((container) => {
         changed = cleanupOneRoot(container) || changed;
       });
     } finally {
@@ -100,7 +100,7 @@
         for (const node of m.removedNodes) {
           if (node.nodeType !== 1) continue;
           if (node.matches?.('.cs_block_s, .canvas-block') ||
-              node.querySelector?.('.cs_block_s, .canvas-block')) {
+            node.querySelector?.('.cs_block_s, .canvas-block')) {
             blockRemoved = true;
             break;
           }

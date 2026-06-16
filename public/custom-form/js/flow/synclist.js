@@ -29,7 +29,7 @@
 
   // Auto-height: the shared column height grows so the tallest block in any
   // column always clears the bottom by BOTTOM_GAP. DEFAULT_COL_H matches the
-  // CSS `--cs-col-h` fallback and acts as the minimum height.
+  // CSS `--col-item-h` fallback and acts as the minimum height.
   const BOTTOM_GAP = 20;
   const DEFAULT_COL_H = 240;
 
@@ -85,7 +85,7 @@
   };
 
   // Strip any stale inline sizing off the columns; the grid template drives
-  // their size uniformly (the grid keeps its --cs-col-w/--cs-col-h vars).
+  // their size uniformly (the grid keeps its --col-item-w/--col-item-h vars).
   const resetColWidths = (grid) => colEls(grid).forEach((c) => {
     c.style.width = ''; c.style.height = ''; c.style.maxWidth = ''; c.style.flex = '';
   });
@@ -187,7 +187,7 @@
   };
 
   // Grow the List's shared column height so the lowest block bottom across ALL
-  // columns clears the bottom edge by BOTTOM_GAP. Columns share --cs-col-h, so
+  // columns clears the bottom edge by BOTTOM_GAP. Columns share --col-item-h, so
   // a tall block in one column lifts every column to the same height (and the
   // 20px gap is preserved below the tallest block). A manual height-resize is
   // remembered on the grid (dataset.slFloorH) and used as the minimum so the
@@ -207,8 +207,8 @@
     const manual = parseFloat(grid.dataset.slFloorH);
     const floor = Number.isFinite(manual) ? manual : DEFAULT_COL_H;
     const needed = Math.max(floor, Math.ceil(maxBottom + BOTTOM_GAP));
-    const cur = parseFloat(grid.style.getPropertyValue('--cs-col-h')) || DEFAULT_COL_H;
-    if (needed !== cur) grid.style.setProperty('--cs-col-h', `${needed}px`);
+    const cur = parseFloat(grid.style.getPropertyValue('--col-item-h')) || DEFAULT_COL_H;
+    if (needed !== cur) grid.style.setProperty('--col-item-h', `${needed}px`);
   };
 
   // Copy a block's geometry (position + size) onto its group siblings in the
@@ -246,6 +246,45 @@
     const group = hash();
     colEls(gridOf(list)).forEach((col) => {
       const blk = makeBlock(type, group, left, top);
+      if (blk) col.appendChild(blk);
+    });
+    finishStructural(list);
+  };
+
+  /* ----------------------- reusable component drops ------------------------ */
+  // A List holds only single content blocks (free-positioned, synced across
+  // columns). A saved component that is itself a group/section/list/flexible
+  // container must NOT be injected into a column — reject those and let the
+  // canvas drop handler place them in page flow instead.
+  const isSimpleComponentHtml = (html) => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html || '';
+    const root = tmp.firstElementChild;
+    return !!root && !root.matches(
+      '.cs-synclist-block, .cs-synclist__col, .cs-group-block, .cs-flexible-block, [data-block-type="section-container"]'
+    );
+  };
+
+  // Build a component instance for one column, with the same synced free-block
+  // treatment as makeBlock(). buildComponentBlock regenerates ids on each call,
+  // so calling it per column keeps every column's copy independent.
+  const makeComponentBlock = (html, group, left, top) => {
+    const inner = FC().buildComponentBlock?.(html);
+    if (!inner) return null;
+    FC().normalizeForFlow?.(inner);   // strip any baked-in absolute placement
+    inner.dataset.csInSection = '1';
+    inner.dataset.slGroup = group;
+    inner.style.position = 'absolute';
+    inner.style.left = `${left}px`;
+    inner.style.top = `${top}px`;
+    return inner;
+  };
+
+  // A reusable component as a new synced group, cloned across every column.
+  const addComponentAt = (list, html, left, top) => {
+    const group = hash();
+    colEls(gridOf(list)).forEach((col) => {
+      const blk = makeComponentBlock(html, group, left, top);
       if (blk) col.appendChild(blk);
     });
     finishStructural(list);
@@ -636,14 +675,14 @@
         const el = m.target;
         if (!(el instanceof HTMLElement) || !el.classList.contains('cs_block_s')) continue;
         if (el.classList.contains('cs-synclist__col')) {
-          // Resizing a column feeds the shared --cs-col-w/--cs-col-h, so EVERY
+          // Resizing a column feeds the shared --col-item-w/--col-item-h, so EVERY
           // column takes that exact px size (smooth, 1:1 with the drag); width
           // adds .cs-synclist--sized which switches columns from "fill the row
           // equally" to fixed px + wrap. Clear inline sizing so the var rule wins.
           const grid = el.closest('.cs-synclist');
           if (grid && (el.style.width || el.style.height)) {
             if (el.style.width) {
-              grid.style.setProperty('--cs-col-w', el.style.width);
+              grid.style.setProperty('--col-item-w', el.style.width);
               grid.classList.add('cs-synclist--sized');
             }
             // A manual height-resize becomes the new minimum (floor) for the
@@ -692,6 +731,20 @@
       const payload = readDropPayload(e);
       const type = payload?.blockType;
       clearDropHighlight();
+
+      // Reusable component → drop as a new synced group, but only when it's a
+      // single content block. Groups/sections fall through WITHOUT stopping
+      // propagation so the canvas drop handler lands them in page flow.
+      if (type === 'component') {
+        if (!payload.componentHtml || !isSimpleComponentHtml(payload.componentHtml)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const list = col.closest('.cs-synclist-block');
+        const r = col.getBoundingClientRect();
+        addComponentAt(list, payload.componentHtml, Math.max(0, e.clientX - r.left - 20), Math.max(0, e.clientY - r.top - 10));
+        return;
+      }
+
       if (!type || !ALLOWED.some((a) => a.type === type)) return;
       e.preventDefault();
       e.stopPropagation();

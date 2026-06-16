@@ -46,7 +46,7 @@
       for (let c = 0; c < cols; c++) {
         const td = document.createElement('td');
         td.className = 'cs-cell' + (r === 0 ? ' cs-cell--head' : '');
-        td.innerHTML = r === 0 ? `Header ${c + 1}` : '';
+        td.innerHTML = r === 0 ? `` : '';
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
@@ -111,6 +111,40 @@
   };
 
   const colWidthsOf = (table) => Array.from(table.querySelectorAll('colgroup > col')).map((c) => c.style.width || '');
+
+  /**
+   * Legacy Froala mode only: Froala's built-in "insert column/row" creates plain
+   * <td>s that are missing our `cs-cell` class (so they get no border) and often
+   * carry a junk `style="null; width:…"` attribute. Re-stamp every cell so it
+   * looks like a real table cell again. A freshly inserted cell mirrors the
+   * header state of its row's already-stamped siblings, so a column inserted
+   * into the header row stays a header. Returns true if anything changed.
+   */
+  const normalizeCells = (table) => {
+    if (!table) return false;
+    let changed = false;
+    Array.from(table.rows).forEach((tr) => {
+      // Captured before we stamp anything: do this row's existing cells read as
+      // header cells? Column inserts should match their row.
+      const rowIsHead = Array.from(tr.cells).some((c) => c.classList.contains('cs-cell--head'));
+      Array.from(tr.cells).forEach((td) => {
+        if (!td.classList.contains('cs-cell')) {
+          td.classList.add('cs-cell');
+          if (rowIsHead) td.classList.add('cs-cell--head');
+          changed = true;
+        }
+        // Drop the literal "null" Froala prepends to copied style attributes.
+        const style = td.getAttribute('style');
+        if (style && /(^|;)\s*null\s*(;|$)/.test(style)) {
+          const cleaned = style.replace(/(^|;)\s*null\s*(;|$)/g, '$1').replace(/^;+/, '').trim();
+          if (cleaned) td.setAttribute('style', cleaned);
+          else td.removeAttribute('style');
+          changed = true;
+        }
+      });
+    });
+    return changed;
+  };
 
   // Re-render <colgroup> + <tbody> from a matrix. Each cell is emitted once at
   // the top-left of its bounding rect with the right colspan/rowspan.
@@ -391,58 +425,129 @@
 
   /* ------------------------------- toolbar --------------------------------- */
 
-  const TB = `
-    <div class="cs-tbl-group">
-      <button data-op="row-above" title="Insert row above">⊤+</button>
-      <button data-op="row-below" title="Insert row below">⊥+</button>
-      <button data-op="col-left" title="Insert column left">⊢+</button>
-      <button data-op="col-right" title="Insert column right">⊣+</button>
+  // Self-explanatory inline-SVG icons so each table tool reads at a glance:
+  // a green band + "＋" means INSERT a row/column on that side, a red band + "✕"
+  // means DELETE, etc. Tooltips (title=) still spell every button out.
+  const svg = (inner, vb = '0 0 18 18') =>
+    `<svg width="15" height="15" viewBox="${vb}" fill="none" aria-hidden="true">${inner}</svg>`;
+  const PLUS = (cx, cy) =>
+    `<path d="M${cx} ${cy - 1.15}V${cy + 1.15}M${cx - 1.15} ${cy}H${cx + 1.15}" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>`;
+  const CROSS = (cx, cy) =>
+    `<path d="M${cx - 1.1} ${cy - 1.1}L${cx + 1.1} ${cy + 1.1}M${cx + 1.1} ${cy - 1.1}L${cx - 1.1} ${cy + 1.1}" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>`;
+
+  const ICON = {
+    // existing table outlined in the current colour + a green "new" band w/ ＋
+    rowAbove: svg(`<rect x="2.5" y="8" width="13" height="7.5" rx="1.2" stroke="currentColor" stroke-width="1.3"/><line x1="9" y1="8" x2="9" y2="15.5" stroke="currentColor" stroke-width="1"/><rect x="2.5" y="2" width="13" height="4.4" rx="1.2" fill="#34c759"/>${PLUS(9, 4.2)}`),
+    rowBelow: svg(`<rect x="2.5" y="2.5" width="13" height="7.5" rx="1.2" stroke="currentColor" stroke-width="1.3"/><line x1="9" y1="2.5" x2="9" y2="10" stroke="currentColor" stroke-width="1"/><rect x="2.5" y="11.6" width="13" height="4.4" rx="1.2" fill="#34c759"/>${PLUS(9, 13.8)}`),
+    colLeft: svg(`<rect x="8" y="2.5" width="7.5" height="13" rx="1.2" stroke="currentColor" stroke-width="1.3"/><line x1="8" y1="9" x2="15.5" y2="9" stroke="currentColor" stroke-width="1"/><rect x="2" y="2.5" width="4.4" height="13" rx="1.2" fill="#34c759"/>${PLUS(4.2, 9)}`),
+    colRight: svg(`<rect x="2.5" y="2.5" width="7.5" height="13" rx="1.2" stroke="currentColor" stroke-width="1.3"/><line x1="2.5" y1="9" x2="10" y2="9" stroke="currentColor" stroke-width="1"/><rect x="11.6" y="2.5" width="4.4" height="13" rx="1.2" fill="#34c759"/>${PLUS(13.8, 9)}`),
+    // full table + the doomed row/column tinted red w/ ✕
+    delRow: svg(`<rect x="2.5" y="2.5" width="13" height="13" rx="1.2" stroke="currentColor" stroke-width="1.3"/><line x1="2.5" y1="7.2" x2="15.5" y2="7.2" stroke="currentColor" stroke-width="1"/><line x1="2.5" y1="10.8" x2="15.5" y2="10.8" stroke="currentColor" stroke-width="1"/><rect x="3" y="7.4" width="12" height="3.2" fill="#ff5a5a"/>${CROSS(9, 9)}`),
+    delCol: svg(`<rect x="2.5" y="2.5" width="13" height="13" rx="1.2" stroke="currentColor" stroke-width="1.3"/><line x1="7.2" y1="2.5" x2="7.2" y2="15.5" stroke="currentColor" stroke-width="1"/><line x1="10.8" y1="2.5" x2="10.8" y2="15.5" stroke="currentColor" stroke-width="1"/><rect x="7.4" y="3" width="3.2" height="12" fill="#ff5a5a"/>${CROSS(9, 9)}`),
+    // two cells → one (arrows in) / one cell → two (arrows out)
+    merge: svg(`<rect x="2.5" y="4.5" width="13" height="9" rx="1.2" stroke="currentColor" stroke-width="1.3"/><line x1="9" y1="4.5" x2="9" y2="13.5" stroke="currentColor" stroke-width="1" stroke-dasharray="1.6 1.6"/><path d="M5.4 7.6 L7.8 9 L5.4 10.4 Z" fill="currentColor"/><path d="M12.6 7.6 L10.2 9 L12.6 10.4 Z" fill="currentColor"/>`),
+    split: svg(`<rect x="2.5" y="4.5" width="13" height="9" rx="1.2" stroke="currentColor" stroke-width="1.3"/><line x1="9" y1="4.5" x2="9" y2="13.5" stroke="currentColor" stroke-width="1.3"/><path d="M7.4 7.6 L5 9 L7.4 10.4 Z" fill="currentColor"/><path d="M10.6 7.6 L13 9 L10.6 10.4 Z" fill="currentColor"/>`),
+    // table with a filled top row = header
+    header: svg(`<rect x="2.5" y="2.5" width="13" height="13" rx="1.2" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="3" width="12" height="3.4" fill="currentColor"/><line x1="9" y1="6.4" x2="9" y2="15.5" stroke="currentColor" stroke-width="1"/><line x1="2.5" y1="11" x2="15.5" y2="11" stroke="currentColor" stroke-width="1"/>`),
+    // filled square = fill, outline square = border, dashed+slash = no border
+    fill: svg(`<rect x="2.7" y="2.7" width="12.6" height="12.6" rx="1.6" fill="currentColor" opacity="0.55"/><rect x="2.7" y="2.7" width="12.6" height="12.6" rx="1.6" stroke="currentColor" stroke-width="1.2"/>`),
+    border: svg(`<rect x="2.7" y="2.7" width="12.6" height="12.6" rx="1.4" stroke="currentColor" stroke-width="1.8"/>`),
+    borderOff: svg(`<rect x="2.7" y="2.7" width="12.6" height="12.6" rx="1.4" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.2 1.8"/><line x1="3.5" y1="14.5" x2="14.5" y2="3.5" stroke="#ff5a5a" stroke-width="1.4" stroke-linecap="round"/>`),
+  };
+
+  // The table-ONLY controls. Appended to the END of the shared text toolbar so a
+  // table shows "[every text-block option] + [these]", while a plain text block
+  // shows just the text options. Insert/delete row-col · merge/split/header ·
+  // cell border. (Cell fill = the shared "highlight" colour; text colour = the
+  // shared "A".) Same green-band-＋ / red-band-✕ icons as before.
+  const tableGroupHTML = () => `
+    <div class="cre-group">
+      <button type="button" data-op="row-above" title="Insert row above">${ICON.rowAbove}</button>
+      <button type="button" data-op="row-below" title="Insert row below">${ICON.rowBelow}</button>
+      <button type="button" data-op="col-left" title="Insert column left">${ICON.colLeft}</button>
+      <button type="button" data-op="col-right" title="Insert column right">${ICON.colRight}</button>
+      <button type="button" data-op="del-row" title="Delete row">${ICON.delRow}</button>
+      <button type="button" data-op="del-col" title="Delete column">${ICON.delCol}</button>
     </div>
-    <div class="cs-tbl-group">
-      <button data-op="del-row" title="Delete row">⊟R</button>
-      <button data-op="del-col" title="Delete column">⊟C</button>
-    </div>
-    <div class="cs-tbl-group">
-      <button data-op="merge" title="Merge selected cells">⊞</button>
-      <button data-op="split" title="Split cell">⃞</button>
-      <button data-op="header" title="Toggle header style">H</button>
-    </div>
-    <div class="cs-tbl-group">
-      <label class="cs-tbl-color" title="Cell fill">▦<input type="color" data-fill></label>
-      <label class="cs-tbl-color" title="Cell border colour">▢<input type="color" data-border value="#d0d5e2"></label>
-      <button data-op="border-off" title="Remove cell border">⊘</button>
-    </div>
-    <div class="cs-tbl-group">
-      <button data-cmd="bold" title="Bold" style="font-weight:700">B</button>
-      <button data-cmd="italic" title="Italic" style="font-style:italic">I</button>
-      <label class="cs-tbl-color" title="Text colour">A<input type="color" data-text value="#333333"></label>
-    </div>
-    <div class="cs-tbl-group">
-      <button data-align="left" title="Align left">⯇</button>
-      <button data-align="center" title="Align center">≡</button>
-      <button data-align="right" title="Align right">⯈</button>
+    <div class="cre-group">
+      <button type="button" data-op="merge" title="Merge selected cells">${ICON.merge}</button>
+      <button type="button" data-op="split" title="Split cell">${ICON.split}</button>
+      <button type="button" data-op="header" title="Toggle header row">${ICON.header}</button>
+      <label class="cre-color" title="Cell border colour">${ICON.border}<input type="color" data-border value="#d0d5e2"></label>
+      <button type="button" data-op="border-off" title="Remove cell border">${ICON.borderOff}</button>
     </div>`;
+
+  // Heading at cell level = size + bold; "Normal" clears both back to default.
+  const HEADING_PX = { h1: '32px', h2: '24px', h3: '19px', h4: '16px', h5: '13px', h6: '11px' };
+  const applyCellHeading = (level) => eachSelected((td) => {
+    if (HEADING_PX[level]) { td.style.fontSize = HEADING_PX[level]; td.style.fontWeight = '700'; }
+    else { td.style.fontSize = ''; td.style.fontWeight = ''; }
+  });
+
+  // Text case via CSS text-transform (non-destructive).
+  const applyCellCase = (value) => { if (value) setCellStyle('textTransform', value); };
 
   const buildToolbar = () => {
     const tb = document.createElement('div');
-    tb.className = 'cs-tbl-toolbar';
+    // Same class as the text-block bar → identical look + placement + docked
+    // behaviour. The extra `cre-toolbar--table` marker lets the click-away guard
+    // recognise our bar. `is-visible` shows it (cre-toolbar is hidden by default).
+    tb.className = 'cre-toolbar cre-toolbar--table is-visible';
     tb.setAttribute('data-cs-chrome', '');
-    tb.innerHTML = TB;
-    // Don't steal selection/focus from cells (except colour inputs).
-    tb.addEventListener('mousedown', (e) => { if (!e.target.closest('input')) e.preventDefault(); });
-    tb.addEventListener('click', (e) => {
-      const op = e.target.closest('[data-op]')?.dataset.op;
-      if (op) { e.preventDefault(); runOp(op); return; }
-      const cmd = e.target.closest('[data-cmd]')?.dataset.cmd;
-      if (cmd) { e.preventDefault(); textCmd(cmd); return; }
-      const al = e.target.closest('[data-align]')?.dataset.align;
-      if (al) { e.preventDefault(); setCellStyle('textAlign', al); return; }
-    });
-    tb.querySelector('[data-fill]').addEventListener('input', (e) => setCellStyle('backgroundColor', e.target.value));
-    tb.querySelector('[data-border]').addEventListener('input', (e) => setBorder(e.target.value, true));
-    tb.querySelector('[data-text]').addEventListener('input', (e) => setCellStyle('color', e.target.value));
+    const richHTML = (window.CustomRichEditor && window.CustomRichEditor.toolbarInnerHTML)
+      ? window.CustomRichEditor.toolbarInnerHTML(window.FROALA_FONTS || null, null)
+      : '';
+    tb.innerHTML = richHTML + tableGroupHTML();
+
+    // Keep cell focus/selection when pressing a control (selects + colour inputs
+    // need focus to open, so don't preventDefault those).
+    tb.addEventListener('mousedown', (e) => { if (!e.target.closest('input, select')) e.preventDefault(); });
+    tb.addEventListener('click', onToolbarClick);
+    tb.addEventListener('change', onToolbarChange);
+    tb.addEventListener('input', onToolbarInput);
     document.body.appendChild(tb);
     return tb;
+  };
+
+  // Route the SHARED text toolbar's controls to the table's cell operations, so
+  // the same bar drives both. (data-cmd/-act/-sel/-color come from the rich
+  // markup; data-op/-border are our appended table group.)
+  const ALIGN_CMD = { justifyLeft: 'left', justifyCenter: 'center', justifyRight: 'right', justifyFull: 'justify' };
+  const onToolbarClick = (e) => {
+    const opBtn = e.target.closest('[data-op]');
+    if (opBtn) { e.preventDefault(); return runOp(opBtn.dataset.op); }
+    const actBtn = e.target.closest('[data-act]');
+    if (actBtn) {
+      e.preventDefault();
+      if (actBtn.dataset.act === 'link') { const u = window.prompt('Link URL:', 'https://'); if (u) textCmd('createLink', u); }
+      return;
+    }
+    const cmdBtn = e.target.closest('[data-cmd]');
+    if (cmdBtn) {
+      e.preventDefault();
+      const cmd = cmdBtn.dataset.cmd;
+      if (ALIGN_CMD[cmd]) return setCellStyle('textAlign', ALIGN_CMD[cmd]);
+      return textCmd(cmd);
+    }
+  };
+  const onToolbarChange = (e) => {
+    const sel = e.target.closest('[data-sel]');
+    if (!sel) return;
+    const v = sel.value;
+    switch (sel.dataset.sel) {
+      case 'format': return applyCellHeading(v);
+      case 'font': return v && setCellStyle('fontFamily', v);
+      case 'size': return v && setCellStyle('fontSize', /px|em|rem|%/.test(v) ? v : v + 'px');
+      case 'lineheight': return v && setCellStyle('lineHeight', v);
+      case 'letterspacing': return v && setCellStyle('letterSpacing', v);
+      case 'textcase': return v && applyCellCase(v);
+    }
+  };
+  const onToolbarInput = (e) => {
+    const t = e.target;
+    if (t.matches('[data-color="fore"]')) return setCellStyle('color', t.value);
+    if (t.matches('[data-color="back"]')) return setCellStyle('backgroundColor', t.value); // highlight → cell fill
+    if (t.matches('[data-border]')) return setBorder(t.value, true);
   };
 
   const runOp = (op) => {
@@ -457,6 +562,11 @@
       case 'split': return splitCell();
       case 'header': return toggleHeader();
       case 'border-off': return setBorder(null, false);
+      case 'link': {
+        const url = window.prompt('Link URL:', 'https://');
+        if (url) textCmd('createLink', url);
+        return;
+      }
       case 'rows-equal': return rowsEqual();
       case 'cols-equal': return colsEqual();
       case 'rows-content': return rowsContent();
@@ -644,8 +754,23 @@
 
   const positionToolbar = () => {
     if (!S || !S.toolbar) return;
-    const rect = S.block.getBoundingClientRect();
     const tb = S.toolbar;
+    // Docked mode (Page Settings → "Inline text toolbar" OFF): pin the table
+    // bar to the top of the canvas, full-width — the same place the rich-text
+    // bar docks — so a single bar shows instead of the placeholder + a floating
+    // one. CSS owns the placement; clear any leftover inline coords.
+    const docked = (typeof window.isRichToolbarDocked === 'function') ? window.isRichToolbarDocked() : false;
+    tb.classList.toggle('cre-toolbar--docked', docked);
+    if (docked) {
+      // Follow the host scroll (the iframe grows + host scrolls, so a fixed bar
+      // would scroll off-screen). Same tracker the text bar uses.
+      tb.style.left = '';
+      window.CustomRichEditor?.trackDockedBar?.(tb);
+      return;
+    }
+    window.CustomRichEditor?.untrackDockedBar?.(tb);
+
+    const rect = S.block.getBoundingClientRect();
     const tw = tb.offsetWidth, th = tb.offsetHeight;
     let top = rect.top - th - 8;
     if (top < 8) top = rect.bottom + 8;
@@ -847,7 +972,7 @@
     S._down = (e) => {
       if (!S) return;
       const t = e.target;
-      if (t.closest && (t.closest('.cs-tbl-toolbar') || t.closest('.cs-tbl-menu'))) return;
+      if (t.closest && (t.closest('.cre-toolbar') || t.closest('.cs-tbl-menu'))) return;
       if (t.closest && t.closest('.cs_block_s') === block) return;
       hideContextMenu();
       try { window.EditorManager?.clearAll?.(); } catch (err) { /* */ }
@@ -867,6 +992,13 @@
     S._reflow = () => { positionToolbar(); updateOverlay(); };
     window.addEventListener('scroll', S._reflow, true);
     window.addEventListener('resize', S._reflow);
+
+    // Single bar at the top in docked mode: hide the rich-text placeholder while
+    // our bar is up, and re-place ours if docked mode is toggled mid-edit.
+    window.CustomRichEditor?.setExternalDockedActive?.(true);
+    S._mode = () => positionToolbar();
+    document.addEventListener('canvas:rich-toolbar-mode', S._mode);
+
     positionToolbar();
   };
 
@@ -881,6 +1013,9 @@
     table.removeEventListener('paste', onPaste);
     window.removeEventListener('scroll', S._reflow, true);
     window.removeEventListener('resize', S._reflow);
+    if (S._mode) document.removeEventListener('canvas:rich-toolbar-mode', S._mode);
+    if (toolbar) window.CustomRichEditor?.untrackDockedBar?.(toolbar);
+    window.CustomRichEditor?.setExternalDockedActive?.(false);
     document.removeEventListener('pointerdown', S._down, true);
     document.removeEventListener('keydown', S._key, true);
     hideContextMenu();
@@ -921,7 +1056,7 @@
     });
   };
 
-  Object.assign(window.TableBlock, { createBlock, activate, deactivate });
+  Object.assign(window.TableBlock, { createBlock, activate, deactivate, normalizeCells });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

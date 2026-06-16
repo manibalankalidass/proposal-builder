@@ -26,8 +26,18 @@
   const stripChrome = (root) => {
     const clone = root.cloneNode(true);
     clone.querySelectorAll('[data-cs-chrome], .section-binding-info').forEach((el) => el.remove());
-    clone.querySelectorAll('.cs-selected, .cs-editing, .canvas-block--selected').forEach((el) => {
-      el.classList.remove('cs-selected', 'cs-editing', 'canvas-block--selected');
+    // Strip editor-only selection markers. `cs_selected` / `cs_selected_border`
+    // are the scroll-driven "active page" highlight on .cs_page wrappers (see
+    // active-page.js) and must never appear in the exported markup. The root
+    // itself can carry them (a cover page IS the .custom-form-design root).
+    [clone, ...clone.querySelectorAll('.cs-selected, .cs-editing, .canvas-block--selected, .cs_selected, .cs_selected_border, .cs-aiden--active, .cs-aiden--loading')]
+      .forEach((el) => {
+        el.classList?.remove('cs-selected', 'cs-editing', 'canvas-block--selected', 'cs_selected', 'cs_selected_border', 'cs-aiden--active', 'cs-aiden--loading');
+      });
+    // Aiden's empty-state hint is a `:empty:before` placeholder — drop it on
+    // empty AI-writer blocks so the hint text never shows in the export.
+    clone.querySelectorAll('.cs-aiden-block .edit_me[placeholder]').forEach((el) => {
+      if (!(el.textContent || '').trim()) el.removeAttribute('placeholder');
     });
 
     // Section wrappers used to record their last manual resize as an
@@ -162,7 +172,7 @@
           } else if (anc.dataset?.repeatPath) {
             ancestorPaths.add(anc.dataset.repeatPath);
           }
-          if (anc.matches?.('.cs-doc, .cs-flow-canvas') || anc.tagName === 'BODY') break;
+          if (anc.matches?.('.cs_margin, .cs-flow-canvas') || anc.tagName === 'BODY') break;
           anc = anc.parentElement;
         }
         if (ancestorPaths.size) {
@@ -282,10 +292,10 @@
 
     // For each block that DEFERRED its {% for %} wrap, decide where the
     // wrap should land: ideally on the outermost ancestor that contains
-    // ONLY this block (typically the cs-row when the block is alone in
+    // ONLY this block (typically the row-item when the block is alone in
     // a single-col row). That way, each loop iteration produces a fresh
     // row/col stack instead of stuffing multiple blocks under the same
-    // <cs-col> (which leaves duplicate IDs and broken flex layout).
+    // <col-item> (which leaves duplicate IDs and broken flex layout).
     //
     // We mark the hoist target with BEGIN/END comment sentinels — these
     // survive .innerHTML serialization, and we substitute them with the
@@ -307,13 +317,13 @@
       const tid = sb.dataset.twigId;
       if (!tid || !blockTwigMap.has(tid + '__wrap')) return;
       // Walk up while the ancestor's ONLY top-level descendant block is
-      // this one. Stop at the cs-doc / section-container-content
+      // this one. Stop at the cs_margin / section-container-content
       // boundary, and only hoist through structural row/col wrappers.
       let hoist = sb;
       let cursor = sb.parentElement;
       while (cursor) {
-        if (cursor.matches?.('.cs-doc, .section-container-content, .cs-flow-canvas')) break;
-        if (!cursor.matches?.('.cs-row, .cs-col')) break;
+        if (cursor.matches?.('.cs_margin, .section-container-content, .cs-flow-canvas')) break;
+        if (!cursor.matches?.('.row-item, .col-item')) break;
         const topBlocks = topLevelBlocksUnder(cursor);
         if (topBlocks.length !== 1 || topBlocks[0] !== sb) break;
         hoist = cursor;
@@ -372,7 +382,7 @@
   };
 
   // Serialise EVERY page canvas (.custom-form-design) on the board and
-  // concatenate them, each on its own line. Each canvas is one A4 .cs-doc
+  // concatenate them, each on its own line. Each canvas is one A4 .cs_margin
   // page; emitting all of them (instead of only the first via getCanvas())
   // is what lets a multi-page design render past page 1 in the PDF.
   const generate = () => {
@@ -471,7 +481,7 @@
     const out = [];
     let cur = block && block.parentElement;
     while (cur && cur !== document.body) {
-      if (cur.matches && cur.matches('.cs-doc, .cs-flow-canvas, .cs_paper, .cs_page')) break;
+      if (cur.matches && cur.matches('.cs_margin, .cs-flow-canvas, .cs_paper, .cs_page')) break;
       if (cur.classList && cur.classList.contains('cs_block_s')) {
         if (!cur.id) cur.id = 'block_' + Math.random().toString(36).substr(2, 9);
         out.push({
@@ -699,11 +709,11 @@
       if (block) {
         const table = block.querySelector('table');
         const cells = block.querySelectorAll('th, td');
-        
+
         let bw = parseInt(msg.borderWidth) || 0;
         let color = msg.borderColor || '#000000';
         let borderStr = bw > 0 ? `${bw}px solid ${color}` : 'none';
-        
+
         if (table) {
           table.dataset.borderWidth = bw.toString();
           table.dataset.borderColor = color;

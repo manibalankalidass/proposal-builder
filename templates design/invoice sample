@@ -1,44 +1,338 @@
-<div class="cs_page custom-form-design centercontent cs_selected cs-flow-canvas" style="visibility: visible;" data-flow-canvas-init="1">
-        <div class="cs-doc" data-page="1"><div class="cs-row cs-page-header" id="row_1944c900-210f-496e-a953-49e55b687cf5" data-cs-page-region="header" data-cs-region-label="HEADER" data-cs-placeholder="Double-click to edit header"><div class="cs-col" id="col_c208f478-82d6-4a12-997c-1d1a28ce6d80" style="flex: 6 1 0%; max-width: 100%;"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block cs-image-block" data="Image" custom-name="Image" id="block_da36ede1-fd7e-4f84-b32a-399d38498b3b" style="max-width: none; height: 62px; width: 365.02px;"><div class="square-image image-container" id="image_e85d02c7-749a-4011-accf-9db59e2e4628" style="height: 60px !important; aspect-ratio: auto !important;"><img src="data:image/png;base64,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" alt="Uploaded image"></div><div class="cs-block-grip" data-cs-chrome="" title="Drag to reorder">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-        <circle cx="4" cy="3" r="1.4"></circle>
-        <circle cx="10" cy="3" r="1.4"></circle>
-        <circle cx="4" cy="7" r="1.4"></circle>
-        <circle cx="10" cy="7" r="1.4"></circle>
-        <circle cx="4" cy="11" r="1.4"></circle>
-        <circle cx="10" cy="11" r="1.4"></circle>
-      </svg></div></div></div><div class="cs-col-divider"></div><div class="cs-col" id="col_4ff79777-0b81-47fe-b8e9-1d06749bbc8b" style="flex: 1 1 0%; max-width: 100%;"></div><div class="cs-col-divider"></div><div class="cs-col" id="col_a829cf69-f984-43bb-b093-1430f5e5d9a5" style="flex: 3 1 0%; max-width: 100%;"></div></div><div class="body-main-content" style="flex: 1 1 0%; display: flex; flex-direction: column;"><div class="cs-row" id="row_654de7d6-3df0-493e-ae14-878fd40e7c56"><div class="cs-col" id="col_bbc06da4-f6b4-4e35-afe7-560de41383af" style="flex: 1 1 0px;"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block cs-label-block" data="Label" custom-name="Label" id="block_2ccd3835-aa55-4e72-a2cf-4f3bc9acb105" data-block-type="label-tag" style="width: 792px; max-width: none;"><div class="edit_me cs-label-tag" id="dynamic_db4b792c-ce52-420a-8bd6-105e1f32226d" placeholder="Featured" style="/* font-size: 42px; */font-weight: 600;/* border-radius: 999px; */background: #ffc80a;color: rgb(92, 92, 255);"><p style="text-align: right;"><span style="left: -90px;position: relative;top: -1px;font-size: 27px;background: white;padding: 50px;border-radius: 6px;text-transform: uppercase;color: #403f47;"><strong><em>invoice</em></strong></span></p></div><div class="cs-block-grip" data-cs-chrome="" title="Drag to reorder">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-        <circle cx="4" cy="3" r="1.4"></circle>
-        <circle cx="10" cy="3" r="1.4"></circle>
-        <circle cx="4" cy="7" r="1.4"></circle>
-        <circle cx="10" cy="7" r="1.4"></circle>
-        <circle cx="4" cy="11" r="1.4"></circle>
-        <circle cx="10" cy="11" r="1.4"></circle>
-      </svg></div></div></div></div><div class="cs-row" id="row_c7c311ad-cd4c-4a93-ab99-037d21de95f4"><div class="cs-col" id="col_cccb7af5-a521-4932-939a-0f28c6f695ee" style="flex: 1 1 0px;"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Title" custom-name="Title" id="block_8cef2ccc-21a4-435b-8772-2cf7012e5ecb" style="width: 391px; max-width: none;"><div class="edit_me add-heading-two" id="dynamic_3e22d78f-6459-405f-a87b-d92fad60cabd" placeholder="New Heading" default-style-id="" style="font-size: 14px; border-color: rgb(89, 91, 101);"><p style="text-align: center;"><span style="font-size: 24px;"><strong>Invoice to:</strong></span><br><span style="font-size: 18px;">{{cusotmer_name}},<br>{{address_line_1}}<br>{{address_line_2}}, {{city}}, {{state}}, {{zipcode}}</span></p></div><div class="cs-block-grip" data-cs-chrome="" title="Drag to reorder">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-        <circle cx="4" cy="3" r="1.4"></circle>
-        <circle cx="10" cy="3" r="1.4"></circle>
-        <circle cx="4" cy="7" r="1.4"></circle>
-        <circle cx="10" cy="7" r="1.4"></circle>
-        <circle cx="4" cy="11" r="1.4"></circle>
-        <circle cx="10" cy="11" r="1.4"></circle>
-      </svg></div></div></div><div class="cs-col-divider"></div><div class="cs-col" id="col_373358af-6f25-44a0-accb-5c0890ac8208" style="flex: 1 1 0px;"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Table" custom-name="Table" id="block_9071380c-98b4-4dcb-9056-c244fd82b49e" style="width: 391px; max-width: none;"><div class="edit_me" id="dynamic_aef1b59e-8668-4967-b493-948c741030f7"><div class="fr-element fr-view froala-table normal-table-width editor-table-container"><table><tbody><tr><td style="width: 49.8715%;">Invoice</td><td style="width: 49.8715%;">{{invoice}}</td></tr><tr><td style="width: 49.8715%;">Date</td><td style="width: 49.8715%;">{{date}}</td></tr></tbody></table></div></div><div class="cs-block-grip" data-cs-chrome="" title="Drag to reorder">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-        <circle cx="4" cy="3" r="1.4"></circle>
-        <circle cx="10" cy="3" r="1.4"></circle>
-        <circle cx="4" cy="7" r="1.4"></circle>
-        <circle cx="10" cy="7" r="1.4"></circle>
-        <circle cx="4" cy="11" r="1.4"></circle>
-        <circle cx="10" cy="11" r="1.4"></circle>
-      </svg></div></div></div></div><div class="cs-row" id="row_08643373-ab38-40a1-ac7f-4692e9521fc8"><div class="cs-col" id="col_e7d57b03-5479-4897-9461-3c13daed3269" style="flex: 1 1 0px;"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Table" custom-name="Table" id="block_f55b6ddc-6221-4b20-a575-36a3ff5484ca" style="width: 792px; max-width: none;"><div class="edit_me" aria-disabled="false"><div class="fr-element fr-view froala-table normal-table-width editor-table-container"><table><thead><tr style="color: rgb(0, 0, 0); background: rgb(248, 249, 249);"><th style="width: 48.038%; background-color: rgb(250, 197, 28);"><span style="font-size: 18px; color: rgb(255, 255, 255);"><strong>Description</strong></span></th><th style="width: 18.2911%; background-color: rgb(250, 197, 28);"><span style="font-size: 18px; color: rgb(255, 255, 255);"><strong>Price</strong></span></th><th style="width: 12.405%; background-color: rgb(250, 197, 28);"><span style="font-size: 18px; color: rgb(255, 255, 255);"><strong>Qty</strong></span></th><th style="width: 21.1393%; background-color: rgb(250, 197, 28);"><span style="color: rgb(255, 255, 255); font-size: 18px;"><strong>Total</strong></span></th></tr></thead><tbody><tr><td style="width: 48.038%;"><span style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;" id="isPasted">Lorem ipsum is a dummy or placeholder text</span><br></td><td style="width: 18.2911%;"><br></td><td style="width: 12.405%;"><br></td><td style="width: 21.1393%;"><br></td></tr><tr><td style="width: 48.038%;"><span style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;" id="isPasted">Lorem ipsum is a dummy or placeholder text</span><br></td><td style="width: 18.2911%;"><br></td><td style="width: 12.405%;"><br></td><td style="width: 21.1393%;"><br></td></tr><tr><td style="width: 48.038%;"><span style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;" id="isPasted">Lorem ipsum is a dummy or placeholder text</span><br></td><td style="width: 18.2911%;"><br></td><td style="width: 12.405%;"><br></td><td style="width: 21.1393%;"><br></td></tr><tr><td style="width: 66.2025%;" colspan="2" rowspan="2"><br></td><td style="width: 12.405%;">Sub total</td><td style="width: 21.1393%;"><br></td></tr><tr><td style="width: 12.405%;">Tax</td><td style="width: 21.1393%;"><br></td></tr></tbody></table></div></div></div></div></div><div class="cs-row" id="row_d103e406-1a9b-4121-abc6-8aa4984c70ed"><div class="cs-col" id="col_66c70650-dba4-4266-8e4c-2011d42529dd" style="flex: 516.922 0 0px;" data-start-width="519.9375"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Title" custom-name="Title" id="block_11dd1165-70f4-49a1-85b1-d826d4ebbe89" style="width: 495.766px; max-width: none;"><div class="edit_me add-heading-two" id="dynamic_84c79c5f-a14f-47f6-b2d6-7858a9420bc4" placeholder="New Heading" default-style-id="" style="font-size: 14px; border-color: rgb(89, 91, 101);"><p><span style="font-size: 18px;"><strong>&nbsp; Thank you for bussiness</strong></span></p><p><br></p></div></div></div><div class="cs-col-divider"></div><div class="cs-col" id="col_dea78c7d-a6ac-4802-a915-37724036a759" style="flex: 265.078 0 0px;" data-start-width="262.0625"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Table" custom-name="Table" id="block_2d6a36b7-9995-4ff3-8d5f-970e3f5d74b5" style="width: 262.062px; max-width: none;"><div class="edit_me" id="dynamic_ef468160-0a89-44ce-9e03-44871e67fd3d"><div class="fr-element fr-view froala-table normal-table-width editor-table-container"><table data-border-width="0" data-border-color="#000000" style="border: none; border-collapse: collapse;"><tbody><tr><td style="width: 100%; border: none;" colspan="2"><br></td></tr><tr style="
+<div class="cs_page custom-form-design centercontent  cs-flow-canvas" style="visibility: visible;"
+  data-flow-canvas-init="1">
+  <div class="cs_margin" data-page="1">
+    <div class="row-item cs-page-header" id="row_1944c900-210f-496e-a953-49e55b687cf5" data-cs-page-region="header"
+      data-cs-region-label="HEADER" data-cs-placeholder="Double-click to edit header">
+      <div class="col-item" id="col_c208f478-82d6-4a12-997c-1d1a28ce6d80" style="flex: 6 1 0%; max-width: 100%;">
+        <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block cs-image-block"
+          data="Image" custom-name="Image" id="block_da36ede1-fd7e-4f84-b32a-399d38498b3b"
+          style="max-width: none; height: 62px; width: 365.02px;">
+          <div class="square-image image-container" id="image_e85d02c7-749a-4011-accf-9db59e2e4628"
+            style="height: 60px !important; aspect-ratio: auto !important;"><img
+              src="data:image/png;base64,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"
+              alt="Uploaded image"></div>
+          <div class="cs-block-grip" data-cs-chrome="" title="Drag to reorder">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+              <circle cx="4" cy="3" r="1.4"></circle>
+              <circle cx="10" cy="3" r="1.4"></circle>
+              <circle cx="4" cy="7" r="1.4"></circle>
+              <circle cx="10" cy="7" r="1.4"></circle>
+              <circle cx="4" cy="11" r="1.4"></circle>
+              <circle cx="10" cy="11" r="1.4"></circle>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="cs-line-divider"></div>
+      <div class="col-item" id="col_4ff79777-0b81-47fe-b8e9-1d06749bbc8b" style="flex: 1 1 0%; max-width: 100%;"></div>
+      <div class="cs-line-divider"></div>
+      <div class="col-item" id="col_a829cf69-f984-43bb-b093-1430f5e5d9a5" style="flex: 3 1 0%; max-width: 100%;"></div>
+    </div>
+    <div class="body-main-content" style="flex: 1 1 0%; display: flex; flex-direction: column;">
+      <div class="row-item" id="row_654de7d6-3df0-493e-ae14-878fd40e7c56">
+        <div class="col-item" id="col_bbc06da4-f6b4-4e35-afe7-560de41383af" style="flex: 1 1 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block cs-label-block"
+            data="Label" custom-name="Label" id="block_2ccd3835-aa55-4e72-a2cf-4f3bc9acb105" data-block-type="label-tag"
+            style="width: 792px; max-width: none;">
+            <div class="edit_me cs-label-tag" id="dynamic_db4b792c-ce52-420a-8bd6-105e1f32226d" placeholder="Featured"
+              style="/* font-size: 42px; */font-weight: 600;/* border-radius: 999px; */background: #ffc80a;color: rgb(92, 92, 255);">
+              <p style="text-align: right;"><span
+                  style="left: -90px;position: relative;top: -1px;font-size: 27px;background: white;padding: 50px;border-radius: 6px;text-transform: uppercase;color: #403f47;"><strong><em>invoice</em></strong></span>
+              </p>
+            </div>
+            <div class="cs-block-grip" data-cs-chrome="" title="Drag to reorder">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+                <circle cx="4" cy="3" r="1.4"></circle>
+                <circle cx="10" cy="3" r="1.4"></circle>
+                <circle cx="4" cy="7" r="1.4"></circle>
+                <circle cx="10" cy="7" r="1.4"></circle>
+                <circle cx="4" cy="11" r="1.4"></circle>
+                <circle cx="10" cy="11" r="1.4"></circle>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row-item" id="row_c7c311ad-cd4c-4a93-ab99-037d21de95f4">
+        <div class="col-item" id="col_cccb7af5-a521-4932-939a-0f28c6f695ee" style="flex: 1 1 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Title"
+            custom-name="Title" id="block_8cef2ccc-21a4-435b-8772-2cf7012e5ecb" style="width: 391px; max-width: none;">
+            <div class="edit_me add-heading-two" id="dynamic_3e22d78f-6459-405f-a87b-d92fad60cabd"
+              placeholder="New Heading" default-style-id="" style="font-size: 14px; border-color: rgb(89, 91, 101);">
+              <p style="text-align: center;"><span style="font-size: 24px;"><strong>Invoice to:</strong></span><br><span
+                  style="font-size: 18px;">{{cusotmer_name}},<br>{{address_line_1}}<br>{{address_line_2}}, {{city}},
+                  {{state}}, {{zipcode}}</span></p>
+            </div>
+            <div class="cs-block-grip" data-cs-chrome="" title="Drag to reorder">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+                <circle cx="4" cy="3" r="1.4"></circle>
+                <circle cx="10" cy="3" r="1.4"></circle>
+                <circle cx="4" cy="7" r="1.4"></circle>
+                <circle cx="10" cy="7" r="1.4"></circle>
+                <circle cx="4" cy="11" r="1.4"></circle>
+                <circle cx="10" cy="11" r="1.4"></circle>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="cs-line-divider"></div>
+        <div class="col-item" id="col_373358af-6f25-44a0-accb-5c0890ac8208" style="flex: 1 1 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Table"
+            custom-name="Table" id="block_9071380c-98b4-4dcb-9056-c244fd82b49e" style="width: 391px; max-width: none;">
+            <div class="edit_me" id="dynamic_aef1b59e-8668-4967-b493-948c741030f7">
+              <div class="fr-element fr-view froala-table normal-table-width editor-table-container">
+                <table>
+                  <tbody>
+                    <tr>
+                      <td style="width: 49.8715%;">Invoice</td>
+                      <td style="width: 49.8715%;">{{invoice}}</td>
+                    </tr>
+                    <tr>
+                      <td style="width: 49.8715%;">Date</td>
+                      <td style="width: 49.8715%;">{{date}}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="cs-block-grip" data-cs-chrome="" title="Drag to reorder">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+                <circle cx="4" cy="3" r="1.4"></circle>
+                <circle cx="10" cy="3" r="1.4"></circle>
+                <circle cx="4" cy="7" r="1.4"></circle>
+                <circle cx="10" cy="7" r="1.4"></circle>
+                <circle cx="4" cy="11" r="1.4"></circle>
+                <circle cx="10" cy="11" r="1.4"></circle>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row-item" id="row_08643373-ab38-40a1-ac7f-4692e9521fc8">
+        <div class="col-item" id="col_e7d57b03-5479-4897-9461-3c13daed3269" style="flex: 1 1 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Table"
+            custom-name="Table" id="block_f55b6ddc-6221-4b20-a575-36a3ff5484ca" style="width: 792px; max-width: none;">
+            <div class="edit_me" aria-disabled="false">
+              <div class="fr-element fr-view froala-table normal-table-width editor-table-container">
+                <table>
+                  <thead>
+                    <tr style="color: rgb(0, 0, 0); background: rgb(248, 249, 249);">
+                      <th style="width: 48.038%; background-color: rgb(250, 197, 28);"><span
+                          style="font-size: 18px; color: rgb(255, 255, 255);"><strong>Description</strong></span></th>
+                      <th style="width: 18.2911%; background-color: rgb(250, 197, 28);"><span
+                          style="font-size: 18px; color: rgb(255, 255, 255);"><strong>Price</strong></span></th>
+                      <th style="width: 12.405%; background-color: rgb(250, 197, 28);"><span
+                          style="font-size: 18px; color: rgb(255, 255, 255);"><strong>Qty</strong></span></th>
+                      <th style="width: 21.1393%; background-color: rgb(250, 197, 28);"><span
+                          style="color: rgb(255, 255, 255); font-size: 18px;"><strong>Total</strong></span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="width: 48.038%;"><span
+                          style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"
+                          id="isPasted">Lorem ipsum is a dummy or placeholder text</span><br></td>
+                      <td style="width: 18.2911%;"><br></td>
+                      <td style="width: 12.405%;"><br></td>
+                      <td style="width: 21.1393%;"><br></td>
+                    </tr>
+                    <tr>
+                      <td style="width: 48.038%;"><span
+                          style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"
+                          id="isPasted">Lorem ipsum is a dummy or placeholder text</span><br></td>
+                      <td style="width: 18.2911%;"><br></td>
+                      <td style="width: 12.405%;"><br></td>
+                      <td style="width: 21.1393%;"><br></td>
+                    </tr>
+                    <tr>
+                      <td style="width: 48.038%;"><span
+                          style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"
+                          id="isPasted">Lorem ipsum is a dummy or placeholder text</span><br></td>
+                      <td style="width: 18.2911%;"><br></td>
+                      <td style="width: 12.405%;"><br></td>
+                      <td style="width: 21.1393%;"><br></td>
+                    </tr>
+                    <tr>
+                      <td style="width: 66.2025%;" colspan="2" rowspan="2"><br></td>
+                      <td style="width: 12.405%;">Sub total</td>
+                      <td style="width: 21.1393%;"><br></td>
+                    </tr>
+                    <tr>
+                      <td style="width: 12.405%;">Tax</td>
+                      <td style="width: 21.1393%;"><br></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row-item" id="row_d103e406-1a9b-4121-abc6-8aa4984c70ed">
+        <div class="col-item" id="col_66c70650-dba4-4266-8e4c-2011d42529dd" style="flex: 516.922 0 0px;"
+          data-start-width="519.9375">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Title"
+            custom-name="Title" id="block_11dd1165-70f4-49a1-85b1-d826d4ebbe89"
+            style="width: 495.766px; max-width: none;">
+            <div class="edit_me add-heading-two" id="dynamic_84c79c5f-a14f-47f6-b2d6-7858a9420bc4"
+              placeholder="New Heading" default-style-id="" style="font-size: 14px; border-color: rgb(89, 91, 101);">
+              <p><span style="font-size: 18px;"><strong>&nbsp; Thank you for bussiness</strong></span></p>
+              <p><br></p>
+            </div>
+          </div>
+        </div>
+        <div class="cs-line-divider"></div>
+        <div class="col-item" id="col_dea78c7d-a6ac-4802-a915-37724036a759" style="flex: 265.078 0 0px;"
+          data-start-width="262.0625">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Table"
+            custom-name="Table" id="block_2d6a36b7-9995-4ff3-8d5f-970e3f5d74b5"
+            style="width: 262.062px; max-width: none;">
+            <div class="edit_me" id="dynamic_ef468160-0a89-44ce-9e03-44871e67fd3d">
+              <div class="fr-element fr-view froala-table normal-table-width editor-table-container">
+                <table data-border-width="0" data-border-color="#000000"
+                  style="border: none; border-collapse: collapse;">
+                  <tbody>
+                    <tr>
+                      <td style="width: 100%; border: none;" colspan="2"><br></td>
+                    </tr>
+                    <tr style="
     background: #ffc80a;
-    color: white;"><td style="width: 50%; border: none;"><span style="font-size: 36px;"><strong>Total</strong></span></td><td style="width: 50%; border: none;"><span style="font-size: 36px;"><strong>22000</strong></span></td></tr></tbody></table></div></div></div></div></div><div class="cs-row" id="row_189c1511-9c1c-4bd0-88ff-ba77241009c0"><div class="cs-col" id="col_d49ee982-ce26-43c2-bfdb-4fedea8526f0" style="flex: 1 1 0px;"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Title" custom-name="Title" id="block_9957f9e0-2763-4462-a48b-0aff997d340f" style="width: 760px; max-width: none;"><div class="edit_me add-heading-two" id="dynamic_3b9dd612-c566-4f20-8bb7-1236ab810f05" placeholder="New Heading" default-style-id="" style="font-size: 14px; border-color: rgb(89, 91, 101);"><p><span style="font-size: 18px;"><strong>&nbsp;Terms and condition:</strong></span><br><span style="font-size: 18px;"><strong><span style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;" id="isPasted">Lorem ipsum is a dummy or placeholder text commonly used in graphic design, publishing, and web development.</span></strong></span></p><p><span style="font-size: 18px;"><strong><span id="isPasted"><span style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;" id="isPasted">Lorem ipsum is a dummy or placeholder text commonly used in graphic design, publishing, and web development.</span></span></strong></span></p><p><span style="font-size: 18px;"><strong><span id="isPasted"><span id="isPasted"><span style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;" id="isPasted">Lorem ipsum is a dummy or placeholder text commonly used in graphic design, publishing, and web development.</span></span></span></strong></span></p></div></div></div></div><div class="cs-row" id="row_cdf08aa3-6fea-46e3-81b9-f81bd13be490"><div class="cs-col" id="col_5f5a4601-8041-42cd-bfd3-33fc370f43d4" style="flex: 1 1 0px;"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Table" custom-name="Table" id="block_9e9ef7af-5964-41e8-8b30-684f7770abf0" style="width: 391px; max-width: none;"><div class="edit_me" aria-disabled="false"><div class="fr-element fr-view froala-table normal-table-width editor-table-container"><table><tbody><tr><td colspan="2" style="width: 99.7429%;"><div style="text-align: center;"><span style="font-size: 24px;"><strong>Payment info</strong></span></div></td></tr><tr><td style="width: 49.8715%;">Account no</td><td style="width: 49.8715%;">{{acount_no}}</td></tr><tr><td style="width: 49.8715%;">Account name</td><td style="width: 49.8715%;">{{account_name}}</td></tr><tr><td style="width: 49.8715%;">Bank details</td><td style="width: 49.8715%;">{{bank_details}}</td></tr></tbody></table></div></div></div></div><div class="cs-col-divider"></div><div class="cs-col" id="col_3a025271-02b7-4930-9566-bf43b952b06c" style="flex: 1 1 0px;"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block cs-image-block" data="Image" custom-name="Image" id="block_47a68487-3ee3-4f88-af32-a870d6c28d46"><div class="square-image image-container" id="image_9b552406-a8d2-4f7e-8047-78e98f0437bc" style="height: 100px !important; aspect-ratio: auto !important;"><div class="img-btn resize" id="image_1"><div class="icon-group"><div class="icon-layer"><i class="fa-regular fa-image plus-img-icon"></i></div><div class="img-btn-txt">Click to select image</div></div></div></div></div><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block cs-divider-block" data="Divider" custom-name="Divider" id="block_468004b5-1ce5-4ef0-951e-965fe2540848" data-block-type="divider"><div class="cs-divider-line" style="height: 1px;background: rgb(207, 212, 246);width: 100%;/* margin: 14px 0px; */"></div></div><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Title" custom-name="Title" id="block_6f0f9edc-87b4-44e1-ac93-9e7ace4650cc" style="width: 391px; max-width: none;"><div class="edit_me add-heading-two" id="dynamic_d9e96497-9774-47e0-b2bc-9fd0da86456b" placeholder="New Heading" default-style-id="" style="font-size: 14px; border-color: rgb(89, 91, 101);"><p style="text-align: center;"><span style="color: rgb(26, 26, 26); font-family: Barlow, sans-serif; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 600; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;" id="isPasted">Authorised Sign</span></p></div></div></div></div></div><div class="cs-row cs-page-footer" id="row_fb73b785-d697-416b-83ce-787e4636f8ee" data-cs-page-region="footer" data-cs-region-label="FOOTER" data-cs-placeholder="Double-click to edit footer"><div class="cs-col" id="col_da0558a9-26e0-4700-87bc-b8652d257c4d" style="flex: 6 1 0%; max-width: 100%;"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block " data="Textarea" custom-name="Textarea" id="block_40092126-45f5-48ed-a21b-e6f00c607a08" style="max-width: 100%;"><div class="edit_me fr-element fr-view resize" id="dynamic_ba90cba8-4b0f-4ab6-9017-ce48e2542c60" placeholder="Enter text here..." style="font-size: 14px;"></div><div class="cs-block-grip" data-cs-chrome="" title="Drag to reorder">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-        <circle cx="4" cy="3" r="1.4"></circle>
-        <circle cx="10" cy="3" r="1.4"></circle>
-        <circle cx="4" cy="7" r="1.4"></circle>
-        <circle cx="10" cy="7" r="1.4"></circle>
-        <circle cx="4" cy="11" r="1.4"></circle>
-        <circle cx="10" cy="11" r="1.4"></circle>
-      </svg></div></div></div><div class="cs-col-divider"></div><div class="cs-col" id="col_637fe026-71d6-47ef-a0fd-e9f2c1de514c" style="flex: 1 1 0%; max-width: 100%;"></div><div class="cs-col-divider"></div><div class="cs-col" id="col_f2ec0b10-a53f-436a-95a8-2fdeec0de6b4" style="flex: 3 1 0%; max-width: 100%;"><div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block cs-image-block" data="Image" custom-name="Image" id="block_38d97a45-102c-4d36-a820-92d530da0822" style="max-width: 100%;"><div class="square-image image-container" id="image_1310ad98-4abb-4c90-8e29-604a7a00dd4f" style="height: 60px !important; aspect-ratio: auto !important;"><div class="img-btn resize" id="image_1"><div class="icon-group"><div class="icon-layer"><i class="fa-regular fa-image plus-img-icon"></i></div><div class="img-btn-txt">Click to select image</div></div></div></div></div></div></div></div></div>
+    color: white;">
+                      <td style="width: 50%; border: none;"><span style="font-size: 36px;"><strong>Total</strong></span>
+                      </td>
+                      <td style="width: 50%; border: none;"><span style="font-size: 36px;"><strong>22000</strong></span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row-item" id="row_189c1511-9c1c-4bd0-88ff-ba77241009c0">
+        <div class="col-item" id="col_d49ee982-ce26-43c2-bfdb-4fedea8526f0" style="flex: 1 1 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Title"
+            custom-name="Title" id="block_9957f9e0-2763-4462-a48b-0aff997d340f" style="width: 760px; max-width: none;">
+            <div class="edit_me add-heading-two" id="dynamic_3b9dd612-c566-4f20-8bb7-1236ab810f05"
+              placeholder="New Heading" default-style-id="" style="font-size: 14px; border-color: rgb(89, 91, 101);">
+              <p><span style="font-size: 18px;"><strong>&nbsp;Terms and condition:</strong></span><br><span
+                  style="font-size: 18px;"><strong><span
+                      style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"
+                      id="isPasted">Lorem ipsum is a dummy or placeholder text commonly used in graphic design,
+                      publishing, and web development.</span></strong></span></p>
+              <p><span style="font-size: 18px;"><strong><span id="isPasted"><span
+                        style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"
+                        id="isPasted">Lorem ipsum is a dummy or placeholder text commonly used in graphic design,
+                        publishing, and web development.</span></span></strong></span></p>
+              <p><span style="font-size: 18px;"><strong><span id="isPasted"><span id="isPasted"><span
+                          style="color: rgb(31, 31, 31); font-family: &quot;Google Sans&quot;, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"
+                          id="isPasted">Lorem ipsum is a dummy or placeholder text commonly used in graphic design,
+                          publishing, and web development.</span></span></span></strong></span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row-item" id="row_cdf08aa3-6fea-46e3-81b9-f81bd13be490">
+        <div class="col-item" id="col_5f5a4601-8041-42cd-bfd3-33fc370f43d4" style="flex: 1 1 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Table"
+            custom-name="Table" id="block_9e9ef7af-5964-41e8-8b30-684f7770abf0" style="width: 391px; max-width: none;">
+            <div class="edit_me" aria-disabled="false">
+              <div class="fr-element fr-view froala-table normal-table-width editor-table-container">
+                <table>
+                  <tbody>
+                    <tr>
+                      <td colspan="2" style="width: 99.7429%;">
+                        <div style="text-align: center;"><span style="font-size: 24px;"><strong>Payment
+                              info</strong></span></div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="width: 49.8715%;">Account no</td>
+                      <td style="width: 49.8715%;">{{acount_no}}</td>
+                    </tr>
+                    <tr>
+                      <td style="width: 49.8715%;">Account name</td>
+                      <td style="width: 49.8715%;">{{account_name}}</td>
+                    </tr>
+                    <tr>
+                      <td style="width: 49.8715%;">Bank details</td>
+                      <td style="width: 49.8715%;">{{bank_details}}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cs-line-divider"></div>
+        <div class="col-item" id="col_3a025271-02b7-4930-9566-bf43b952b06c" style="flex: 1 1 0px;">
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block cs-image-block"
+            data="Image" custom-name="Image" id="block_47a68487-3ee3-4f88-af32-a870d6c28d46">
+            <div class="square-image image-container" id="image_9b552406-a8d2-4f7e-8047-78e98f0437bc"
+              style="height: 100px !important; aspect-ratio: auto !important;">
+              <div class="img-btn resize" id="image_1">
+                <div class="icon-group">
+                  <div class="icon-layer"><i class="fa-regular fa-image plus-img-icon"></i></div>
+                  <div class="img-btn-txt">Click to select image</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block cs-divider-block"
+            data="Divider" custom-name="Divider" id="block_468004b5-1ce5-4ef0-951e-965fe2540848"
+            data-block-type="divider">
+            <div class="cs-divider-line"
+              style="height: 1px;background: rgb(207, 212, 246);width: 100%;/* margin: 14px 0px; */"></div>
+          </div>
+          <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block" data="Title"
+            custom-name="Title" id="block_6f0f9edc-87b4-44e1-ac93-9e7ace4650cc" style="width: 391px; max-width: none;">
+            <div class="edit_me add-heading-two" id="dynamic_d9e96497-9774-47e0-b2bc-9fd0da86456b"
+              placeholder="New Heading" default-style-id="" style="font-size: 14px; border-color: rgb(89, 91, 101);">
+              <p style="text-align: center;"><span
+                  style="color: rgb(26, 26, 26); font-family: Barlow, sans-serif; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 600; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"
+                  id="isPasted">Authorised Sign</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row-item cs-page-footer" id="row_fb73b785-d697-416b-83ce-787e4636f8ee" data-cs-page-region="footer"
+      data-cs-region-label="FOOTER" data-cs-placeholder="Double-click to edit footer">
+      <div class="col-item" id="col_da0558a9-26e0-4700-87bc-b8652d257c4d" style="flex: 6 1 0%; max-width: 100%;">
+        <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block " data="Textarea"
+          custom-name="Textarea" id="block_40092126-45f5-48ed-a21b-e6f00c607a08" style="max-width: 100%;">
+          <div class="edit_me fr-element fr-view resize" id="dynamic_ba90cba8-4b0f-4ab6-9017-ce48e2542c60"
+            placeholder="Enter text here..." style="font-size: 14px;"></div>
+          <div class="cs-block-grip" data-cs-chrome="" title="Drag to reorder">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+              <circle cx="4" cy="3" r="1.4"></circle>
+              <circle cx="10" cy="3" r="1.4"></circle>
+              <circle cx="4" cy="7" r="1.4"></circle>
+              <circle cx="10" cy="7" r="1.4"></circle>
+              <circle cx="4" cy="11" r="1.4"></circle>
+              <circle cx="10" cy="11" r="1.4"></circle>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="cs-line-divider"></div>
+      <div class="col-item" id="col_637fe026-71d6-47ef-a0fd-e9f2c1de514c" style="flex: 1 1 0%; max-width: 100%;"></div>
+      <div class="cs-line-divider"></div>
+      <div class="col-item" id="col_f2ec0b10-a53f-436a-95a8-2fdeec0de6b4" style="flex: 3 1 0%; max-width: 100%;">
+        <div class="cs_block_s cs_dp_allow content-block cs-sales-editor drop_elem canvas-block cs-image-block"
+          data="Image" custom-name="Image" id="block_38d97a45-102c-4d36-a820-92d530da0822" style="max-width: 100%;">
+          <div class="square-image image-container" id="image_1310ad98-4abb-4c90-8e29-604a7a00dd4f"
+            style="height: 60px !important; aspect-ratio: auto !important;">
+            <div class="img-btn resize" id="image_1">
+              <div class="icon-group">
+                <div class="icon-layer"><i class="fa-regular fa-image plus-img-icon"></i></div>
+                <div class="img-btn-txt">Click to select image</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
