@@ -162,6 +162,9 @@ const shared = {
   bundle: true,
   target: ['es2019'],
   legalComments: 'none',
+  // Minify every shipped output so the published source is compacted and hard
+  // to read (note: JS that runs in a browser can never be truly encrypted).
+  minify: true,
   logLevel: 'info'
 };
 
@@ -169,18 +172,14 @@ await build({ ...shared, format: 'esm', outfile: join(distDir, 'proposal-studio.
 // CommonJS build uses a real .cjs extension so Node treats it as CommonJS even
 // though the package is "type": "module" (where a bare .js would be ESM).
 await build({ ...shared, format: 'cjs', outfile: join(distDir, 'proposal-studio.cjs') });
+// Single minified IIFE for <script>/CDN use. Kept at the .global.js path so the
+// package.json unpkg/jsdelivr fields keep working; .global.min.js is no longer
+// emitted separately since every build is now minified.
 await build({
   ...shared,
   format: 'iife',
   globalName: 'ProposalStudio',
   outfile: join(distDir, 'proposal-studio.global.js')
-});
-await build({
-  ...shared,
-  format: 'iife',
-  globalName: 'ProposalStudio',
-  minify: true,
-  outfile: join(distDir, 'proposal-studio.global.min.js')
 });
 
 const dts = readFileSync(join(pkgRoot, 'types', 'index.d.ts'), 'utf8');

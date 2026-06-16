@@ -31,7 +31,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node scripts/smoke-test.mjs",
-    "prepack": "node scripts/build.mjs"
+    "prepack": "PS_NG_BUILD=1 node scripts/build.mjs"
   },
   "keywords": [
     "proposal-studio",

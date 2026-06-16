@@ -111,7 +111,9 @@ fi
 # 4. Build — create a fresh dist/ folder
 # -----------------------------------------------------------------------------
 step "Building (npm run build)..."
-npm run build
+# PS_NG_BUILD=1 forces a fresh `ng build` so the LATEST Angular source changes
+# are always included in dist/ (without it, an existing Angular build is reused).
+PS_NG_BUILD=1 npm run build
 ok "Build finished"
 
 # (optional) run smoke test if one exists
