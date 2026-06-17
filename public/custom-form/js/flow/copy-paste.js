@@ -175,10 +175,73 @@
   const placeAndSelect = (canvas, newBlock, anchor) => {
     if (!newBlock) return null;
 
-    // List-aware paste. Two cases, both keep the synced behaviour:
+    // ---- Container-selected paste: paste INTO the container, not next to it ----
+
+    // List container (the col itself) is selected → create a new synced block
+    // in this col and all sibling cols, same as adding a block to the list.
+    if (anchor?.classList?.contains('cs-synclist__col') && window.SyncList?.pasteIntoCol) {
+      const placed = window.SyncList.pasteIntoCol(anchor, newBlock);
+      if (placed) {
+        requestAnimationFrame(() => {
+          if (!boardOf(canvas).contains(placed)) return;
+          placed.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          placed.click();
+        });
+        return placed;
+      }
+    }
+
+    // Group block selected → paste as a free child inside the group.
+    if (anchor?.classList?.contains('cs-group-block')) {
+      newBlock.dataset.csInSection = '1';
+      newBlock.style.position = 'absolute';
+      newBlock.style.left = '8px';
+      newBlock.style.top = '8px';
+      anchor.appendChild(newBlock);
+      window.FlowCanvas?.refitGroupToChildren?.(anchor);
+      requestAnimationFrame(() => {
+        if (!boardOf(canvas).contains(newBlock)) return;
+        newBlock.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        newBlock.click();
+      });
+      return newBlock;
+    }
+
+    // Flexible block or Section container selected → paste into the inner free
+    // canvas (cs-flexible-content) or the section's row/col content area.
+    const innerCanvas = anchor?.querySelector?.(':scope > .cs-flexible-content');
+    const innerSection = !innerCanvas && anchor?.querySelector?.(':scope > .section-container-content');
+    if (innerCanvas) {
+      newBlock.dataset.csInSection = '1';
+      newBlock.style.position = 'absolute';
+      newBlock.style.left = '8px';
+      newBlock.style.top = '8px';
+      innerCanvas.appendChild(newBlock);
+      window.FlowCanvas?.syncFlexibleContentBounds?.(anchor);
+      requestAnimationFrame(() => {
+        if (!boardOf(canvas).contains(newBlock)) return;
+        newBlock.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        newBlock.click();
+      });
+      return newBlock;
+    }
+    if (innerSection) {
+      const doc = anchor.closest('.cs_margin');
+      window.FlowCanvas?.placeBlock?.(doc, newBlock,
+        { kind: 'between-rows', parent: innerSection, beforeRow: null });
+      requestAnimationFrame(() => {
+        if (!boardOf(canvas).contains(newBlock)) return;
+        newBlock.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        newBlock.click();
+      });
+      return newBlock;
+    }
+
+    // ---- List-aware paste for child blocks already inside a col ----
+    // Two cases, both keep the synced behaviour:
     //   - a whole Container (column) was copied → add it as a new column whose
     //     children clone into the existing sync groups (handleColumnPaste);
-    //   - a content block was copied while a column is the anchor → paste into
+    //   - a content block was copied while a child-block anchor → paste into
     //     that column + clone across the others as a new group (handlePaste).
     if (anchor?.closest?.('.cs-synclist__col') && window.SyncList) {
       const isColumn = newBlock.classList?.contains('cs-synclist__col');
@@ -226,13 +289,18 @@
     return newBlock;
   };
 
-  // The block a freshly-pasted block should anchor next to: the current
-  // selection, but only when it's a real flow/list/flexible block we know how
-  // to place beside. Returns null otherwise (→ append at end of the doc).
+  // The block a freshly-pasted block should anchor next to (or into, for
+  // container selections). Returns null only when there's nothing useful selected.
   const currentAnchor = (canvas) => {
     const anchor = window.EditorManager?.getSelected?.();
-    const inList = !!anchor?.closest?.('.cs-synclist__col');
-    return (inList || isFlowBlock(anchor, canvas) || isFlexibleChild(anchor, canvas)) ? anchor : null;
+    if (!anchor) return null;
+    // Synclist col selected (paste INTO col) or child block inside a col.
+    if (anchor.closest?.('.cs-synclist__col')) return anchor;
+    // Regular flow block or flexible child (paste next to it).
+    if (isFlowBlock(anchor, canvas) || isFlexibleChild(anchor, canvas)) return anchor;
+    // Group selected directly (paste inside group).
+    if (anchor.classList?.contains('cs-group-block')) return anchor;
+    return null;
   };
 
   const pasteBlock = (canvas) => (

@@ -452,7 +452,7 @@
 
 /* Keep the block tall enough for resize handles to be reachable */
 .cs_block_s.cs-editing {
-  min-height: 32px;
+  min-height: 27px;
   min-width: 60px;
 }
 
@@ -2300,7 +2300,7 @@
 }
 
 /* The native colour input fills the swatch but stays invisible — the glyph
-   (A / ▣) is the visible affordance. */
+   is the visible affordance. The input triggers the native colour picker. */
 .cre-color input[type="color"] {
   position: absolute;
   inset: 0;
@@ -2310,6 +2310,33 @@
   border: none;
   padding: 0;
   cursor: pointer;
+}
+
+/* Google-Docs-style colour glyph: letter "A" with a colour bar beneath it.
+   The bar's background is updated in JS to reflect the picked colour. */
+.cre-color__glyph {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  pointer-events: none;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cre-color__glyph::after {
+  content: '';
+  display: block;
+  width: 14px;
+  height: 3px;
+  border-radius: 1.5px;
+  background: var(--cre-swatch, #e5e7f0);
+}
+
+.cre-color__glyph--hi::after {
+  background: var(--cre-swatch, #ffff00);
 }
 
 /* Centre glyphs in toolbar buttons so the SVG icons (alignment + the table
@@ -2671,7 +2698,7 @@
   position: relative;
   display: block;
   padding: 0;
-  border-left: 1px solid #e6e8f2;
+  /* border-left: 1px solid #e6e8f2; */
   box-sizing: border-box;
 }
 
@@ -2724,6 +2751,40 @@
 .cs-synclist__col--dropping {
   box-shadow: inset 0 0 0 2px #5c5cff !important;
   background: rgba(92, 92, 255, 0.06);
+}
+
+/* Blink a child block when it's preventing the column from resizing narrower.
+   Two flashes of a red outline so the user sees exactly which block is the blocker. */
+@keyframes cs-synclist-blink {
+  0% {
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+  }
+
+  20% {
+    outline: 2px solid #e11d48;
+    outline-offset: 1px;
+  }
+
+  40% {
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+  }
+
+  65% {
+    outline: 2px solid #e11d48;
+    outline-offset: 1px;
+  }
+
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+  }
+}
+
+.cs-synclist__blink {
+  animation: cs-synclist-blink 0.55s ease forwards;
+  z-index: 10;
 }
 
 /* ===========================================================================

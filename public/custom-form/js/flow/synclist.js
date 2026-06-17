@@ -30,7 +30,7 @@
   // Auto-height: the shared column height grows so the tallest block in any
   // column always clears the bottom by BOTTOM_GAP. DEFAULT_COL_H matches the
   // CSS `--col-item-h` fallback and acts as the minimum height.
-  const BOTTOM_GAP = 20;
+  const BOTTOM_GAP = 10;
   const DEFAULT_COL_H = 240;
 
   const ALLOWED = [
@@ -163,6 +163,32 @@
 
   /* --------------------------- cross-column sync --------------------------- */
 
+  // Minimum column width = the rightmost extent (left + offsetWidth) across all
+  // absolutely-positioned child blocks. Prevents the column from being dragged
+  // narrower than its content allows.
+  const minColContentWidth = (col) => {
+    let max = 0;
+    Array.from(col.querySelectorAll(':scope > .cs_block_s')).forEach((child) => {
+      const right = (parseFloat(child.style.left) || 0) + child.offsetWidth;
+      if (right > max) max = right;
+    });
+    return Math.ceil(max);
+  };
+
+  // Flash the child block(s) whose right edge equals the minimum column width so
+  // the user can see WHY the container cannot shrink further.
+  const BLINK_TOL = 3; // px tolerance for "rightmost" match
+  const blinkBlockers = (col, minW) => {
+    Array.from(col.querySelectorAll(':scope > .cs_block_s')).forEach((child) => {
+      const right = (parseFloat(child.style.left) || 0) + child.offsetWidth;
+      if (Math.abs(right - minW) > BLINK_TOL) return;
+      child.classList.remove('cs-synclist__blink');
+      void child.offsetWidth; // force reflow to restart the animation
+      child.classList.add('cs-synclist__blink');
+      child.addEventListener('animationend', () => child.classList.remove('cs-synclist__blink'), { once: true });
+    });
+  };
+
   // Keep a block inside its column: never wider/taller than the column, never
   // positioned past its edges. This stops a block spilling into the next column
   // and caps resize at the container's width/height. Idempotent (only writes
@@ -173,12 +199,11 @@
     const cw = col.clientWidth;
     if (!cw) return;
     const set = (p, v) => { if (block.style[p] !== v) block.style[p] = v; };
-    let w = block.offsetWidth;
-    // Horizontal only: keep the block from spilling sideways. Vertically the
-    // block is free to grow taller than the column — autoSizeList() then grows
-    // the (shared) column height to fit it (text overflow → taller container),
-    // so we deliberately don't cap height or bottom here anymore.
-    if (w > cw) { set('width', `${cw}px`); w = cw; }
+    const w = block.offsetWidth;
+    // Width is intentionally NOT clamped here: the column is prevented from
+    // going narrower than its children by minColContentWidth, so child blocks
+    // should never need to be shrunk. Clamping width here caused child blocks
+    // to visually shrink whenever the column resize interaction ran clampToCol.
     let left = parseFloat(block.style.left) || 0;
     let top = parseFloat(block.style.top) || 0;
     if (left < 0) { left = 0; set('left', '0px'); }
@@ -218,7 +243,12 @@
     const group = block.dataset.slGroup;
     const list = block.closest('.cs-synclist-block');
     if (!group || !list) return;
-    const vals = { left: block.style.left, top: block.style.top, width: block.style.width, height: block.style.height };
+    // minHeight must be mirrored alongside height: inline-editor pins a manual
+    // resize with minHeight so the block doesn't collapse when height:auto is set
+    // on edit-entry (startEditor). Without mirroring minHeight, the sibling block
+    // (which received only the height value) collapses back to content height the
+    // moment the user clicks it to edit — the "previous state comes back" bug.
+    const vals = { left: block.style.left, top: block.style.top, width: block.style.width, height: block.style.height, minHeight: block.style.minHeight };
     groupMembers(list, group).forEach((sib) => {
       if (sib === block) return;
       Object.keys(vals).forEach((p) => { if (sib.style[p] !== vals[p]) sib.style[p] = vals[p]; });
@@ -356,6 +386,34 @@
       blk.style.position = 'absolute';
       blk.style.left = `${left}px`;
       blk.style.top = `${top}px`;
+      col.appendChild(blk);
+      if (ci === colIndex) placed = blk;
+    });
+    finishStructural(list);
+    return placed;
+  };
+
+  // Paste directly into a selected Container (the col tier, not a child block).
+  // Creates the block in every column as a new synced group, same as handlePaste
+  // but takes the col itself as the target instead of requiring a child anchor.
+  const pasteIntoCol = (targetCol, newBlock) => {
+    if (!targetCol?.classList?.contains('cs-synclist__col') || !newBlock) return null;
+    const list = targetCol.closest('.cs-synclist-block');
+    const grid = list && gridOf(list);
+    if (!grid) return null;
+    const cols = colEls(grid);
+    const colIndex = cols.indexOf(targetCol);
+    if (colIndex < 0) return null;
+    const group = hash();
+    let placed = null;
+    cols.forEach((col, ci) => {
+      const blk = (ci === colIndex) ? newBlock : newBlock.cloneNode(true);
+      if (ci !== colIndex) cleanInner(blk);
+      blk.dataset.csInSection = '1';
+      blk.dataset.slGroup = group;
+      blk.style.position = 'absolute';
+      blk.style.left = '8px';
+      blk.style.top = '8px';
       col.appendChild(blk);
       if (ci === colIndex) placed = blk;
     });
@@ -627,7 +685,11 @@
   const init = () => {
     wrapOverrides();
 
-    const surface = document.querySelector('.custom-form-design') || document.body;
+    // Watch the outer .cs_paper so BOTH content pages (.cs_page > .custom-form-design)
+    // AND cover pages (.cs_page[data-cs-cover].custom-form-design, which are siblings
+    // under .cs_paper not descendants of the first .custom-form-design) are observed.
+    // Watching only the first .custom-form-design silently skipped cover pages.
+    const surface = document.querySelector('.cs_paper') || document.querySelector('.custom-form-design') || document.body;
 
     if (typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver((entries) => {
@@ -682,7 +744,14 @@
           const grid = el.closest('.cs-synclist');
           if (grid && (el.style.width || el.style.height)) {
             if (el.style.width) {
-              grid.style.setProperty('--col-item-w', el.style.width);
+              // Clamp: never narrower than the rightmost child block's right edge.
+              let w = parseFloat(el.style.width);
+              const minW = minColContentWidth(el);
+              if (minW > 0 && w < minW) {
+                w = minW;
+                blinkBlockers(el, minW);
+              }
+              grid.style.setProperty('--col-item-w', `${w}px`);
               grid.classList.add('cs-synclist--sized');
             }
             // A manual height-resize becomes the new minimum (floor) for the
@@ -769,7 +838,7 @@
     return null;
   };
 
-  Object.assign(window.SyncList, { createBlock, handlePaste, handleColumnPaste, activate, deactivate });
+  Object.assign(window.SyncList, { createBlock, handlePaste, pasteIntoCol, handleColumnPaste, activate, deactivate });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

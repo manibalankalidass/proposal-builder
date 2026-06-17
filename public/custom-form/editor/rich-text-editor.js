@@ -63,16 +63,42 @@
     return `<svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">${bars}</svg>`;
   };
 
+  // Helper: stroke-only SVG icon (14×14, viewBox 0 0 16 16).
+  const _s = (d) => `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+
   // SVG/text glyphs for toolbar buttons (no icon font needed).
   const ICON = {
-    bold: 'B', italic: 'I', underline: 'U', strike: 'S',
-    sub: 'x₂', sup: 'x²',
-    alignLeft: alignSvg([[1, 14], [1, 8], [1, 14], [1, 8]]),
-    alignCenter: alignSvg([[1, 14], [4, 8], [1, 14], [4, 8]]),
-    alignRight: alignSvg([[1, 14], [7, 8], [1, 14], [7, 8]]),
+    // B / I / U / S keep styled-text glyphs — universally recognised in every editor.
+    bold:      'B',
+    italic:    'I',
+    underline: 'U',
+    strike:    'S',
+    // subscript / superscript
+    sub: 'x<sub style="font-size:8px;line-height:1">2</sub>',
+    sup: 'x<sup style="font-size:8px;line-height:1">2</sup>',
+    // alignment (word-processor row-of-lines style, already SVG)
+    alignLeft:    alignSvg([[1, 14], [1, 8], [1, 14], [1, 8]]),
+    alignCenter:  alignSvg([[1, 14], [4, 8], [1, 14], [4, 8]]),
+    alignRight:   alignSvg([[1, 14], [7, 8], [1, 14], [7, 8]]),
     alignJustify: alignSvg([[1, 14], [1, 14], [1, 14], [1, 14]]),
-    ol: '1.', ul: '•', outdent: '⇤', indent: '⇥',
-    link: '🔗', unlink: '⛓', clear: '⌫', undo: '↶', redo: '↷',
+    // numbered list: three lines + filled square markers on the left
+    ol: _s(`<line x1="7" y1="4" x2="14" y2="4"/><line x1="7" y1="8.5" x2="14" y2="8.5"/><line x1="7" y1="13" x2="14" y2="13"/><rect x="2" y="2.5" width="3.2" height="3" rx="0.6" fill="currentColor" stroke="none"/><rect x="2" y="7" width="3.2" height="3" rx="0.6" fill="currentColor" stroke="none"/><rect x="2" y="11.5" width="3.2" height="3" rx="0.6" fill="currentColor" stroke="none"/>`),
+    // bullet list: three lines + filled circle markers on the left
+    ul: _s(`<line x1="7" y1="4" x2="14" y2="4"/><line x1="7" y1="8.5" x2="14" y2="8.5"/><line x1="7" y1="13" x2="14" y2="13"/><circle cx="3.5" cy="4" r="1.6" fill="currentColor" stroke="none"/><circle cx="3.5" cy="8.5" r="1.6" fill="currentColor" stroke="none"/><circle cx="3.5" cy="13" r="1.6" fill="currentColor" stroke="none"/>`),
+    // outdent: lines + left-pointing chevron
+    outdent: _s(`<line x1="2" y1="2.5" x2="14" y2="2.5"/><polyline points="6,5.5 3,8 6,10.5"/><line x1="7.5" y1="8" x2="14" y2="8"/><line x1="2" y1="13.5" x2="14" y2="13.5"/>`),
+    // indent: lines + right-pointing chevron
+    indent:  _s(`<line x1="2" y1="2.5" x2="14" y2="2.5"/><polyline points="3,5.5 6,8 3,10.5"/><line x1="7.5" y1="8" x2="14" y2="8"/><line x1="2" y1="13.5" x2="14" y2="13.5"/>`),
+    // link: two interlocking arcs (chain link)
+    link:   _s(`<path d="M7 9.5C7.6 11 9 12 10.5 12C12.4 12 14 10.4 14 8.5C14 6.6 12.4 5 10.5 5L9.5 5"/><path d="M9 6.5C8.4 5 7 4 5.5 4C3.6 4 2 5.6 2 7.5C2 9.4 3.6 11 5.5 11L6.5 11"/>`),
+    // unlink: same arcs dimmed + diagonal slash
+    unlink: _s(`<path d="M7 9.5C7.6 11 9 12 10.5 12C12.4 12 14 10.4 14 8.5C14 6.6 12.4 5 10.5 5L9.5 5" stroke-opacity="0.35"/><path d="M9 6.5C8.4 5 7 4 5.5 4C3.6 4 2 5.6 2 7.5C2 9.4 3.6 11 5.5 11L6.5 11" stroke-opacity="0.35"/><line x1="3" y1="13" x2="13" y2="3"/>`),
+    // clear formatting: eraser shape
+    clear:  _s(`<path d="M10.5 2L14 5.5L7.5 12H3.5V8.5L10.5 2Z"/><line x1="7" y1="5.5" x2="11" y2="9.5"/><line x1="1.5" y1="12" x2="7.5" y2="12"/>`),
+    // undo: curved arrow counter-clockwise
+    undo:   _s(`<path d="M5 6C6 3.8 8.3 2.5 10.5 2.5C13.5 2.5 15 5 15 7.5C15 10.5 12.8 13 10 13H8"/><polyline points="5,2.5 5,6 8.5,6"/>`),
+    // redo: curved arrow clockwise
+    redo:   _s(`<path d="M11 6C10 3.8 7.7 2.5 5.5 2.5C2.5 2.5 1 5 1 7.5C1 10.5 3.2 13 6 13H8"/><polyline points="11,2.5 11,6 7.5,6"/>`),
   };
 
   let uid = 0;
@@ -134,8 +160,8 @@
           </select>
         </div>
         <div class="cre-group">
-          <label class="cre-color" title="Text colour">A<input type="color" data-color="fore" value="#000000"></label>
-          <label class="cre-color cre-color--bg" title="Highlight colour">▣<input type="color" data-color="back" value="#ffff00"></label>
+          <label class="cre-color" title="Text colour"><span class="cre-color__glyph">A</span><input type="color" data-color="fore" value="#000000"></label>
+          <label class="cre-color cre-color--bg" title="Highlight colour"><span class="cre-color__glyph cre-color__glyph--hi">A</span><input type="color" data-color="back" value="#ffff00"></label>
         </div>
         <div class="cre-group">
           <button type="button" data-cmd="justifyLeft" title="Align left">${ICON.alignLeft}</button>
@@ -355,8 +381,14 @@
       tb.querySelector('[data-sel="textcase"]').addEventListener('change', (e) => {
         if (e.target.value) this._setTextCase(e.target.value);
       });
-      tb.querySelector('[data-color="fore"]').addEventListener('input', (e) => this._setForeColor(e.target.value));
-      tb.querySelector('[data-color="back"]').addEventListener('input', (e) => this._setBackColor(e.target.value));
+      tb.querySelector('[data-color="fore"]').addEventListener('input', (e) => {
+        e.target.closest('.cre-color').style.setProperty('--cre-swatch', e.target.value);
+        this._setForeColor(e.target.value);
+      });
+      tb.querySelector('[data-color="back"]').addEventListener('input', (e) => {
+        e.target.closest('.cre-color').style.setProperty('--cre-swatch', e.target.value);
+        this._setBackColor(e.target.value);
+      });
 
       this.doc.body.appendChild(tb);
       this._toolbar = tb;
