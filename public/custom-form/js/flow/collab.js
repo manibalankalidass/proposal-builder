@@ -537,6 +537,13 @@
     try { window.parent && window.parent.postMessage({ source: 'custom-form-twig', type: 'collab:ready' }, '*'); } catch (e) { /* */ }
   };
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  const collabEnabled = () => {
+    const f = (typeof window !== 'undefined' && window.EditorFeatures) ? window.EditorFeatures : null;
+    return !f || f.collab !== false;
+  };
+
+  if (collabEnabled()) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+  }
 })();

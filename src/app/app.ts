@@ -231,8 +231,8 @@ export class App implements AfterViewInit {
     enableHeaderFooter: true,
     enableInlineInsert: true,
     inlineTextToolbar: true, // ON → rich-text toolbar floats above the block; OFF → docks to canvas top
-    enableComments: false,   // collab: show comment button + pins
-    enablePresence: false,   // collab: live cursors + avatars
+    enableComments: true,    // collab: show comment button + pins
+    enablePresence: true,    // collab: live cursors + avatars
     pageBackgroundImage: '',
   };
   protected readonly frameUrl: SafeResourceUrl;

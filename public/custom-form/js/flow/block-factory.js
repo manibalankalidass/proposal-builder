@@ -229,6 +229,7 @@
     'table':       () => window.TableBlock?.createBlock() || null,
     'sync-list':   () => window.SyncList?.createBlock() || null,
     'aiden':       () => window.Aiden?.createBlock() || null,
+    'voice-text':  () => window.VoiceText?.createBlock() || null,
   };
   // Expose so other modules / future plugins can register builders.
   window.FlowCanvas.BLOCK_BUILDERS = BUILDERS;

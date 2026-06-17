@@ -48,6 +48,7 @@
     { type: 'heading', label: 'Heading', icon: 'H', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: STD_TEXT, legacyKeys: ['Title'] },
     { type: 'body-text', label: 'Body Text', icon: '¶', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: STD_TEXT, legacyKeys: ['Textarea'] },
     { type: 'aiden', label: 'AI Writer', icon: '✦', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: STD_TEXT },
+    { type: 'voice-text', label: 'Voice Text', icon: '🎙', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: STD_TEXT, feature: 'voiceText' },
     { type: 'label-tag', label: 'Label / Tag', icon: 'A', category: 'Basic Elements', inSidebar: true, inInlineMenu: false, styleProps: STD_TEXT },
     { type: 'image', label: 'Image', icon: '▨', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: BOX_RADIUS, legacyKeys: ['Image'] },
     { type: 'video', label: 'Video', icon: '▶', category: 'Basic Elements', inSidebar: true, inInlineMenu: true, styleProps: VIDEO, legacyKeys: ['Video'] },
