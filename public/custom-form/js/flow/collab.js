@@ -399,17 +399,258 @@
     clearTimeout(toastEl._t); toastEl._t = setTimeout(() => { toastEl.style.opacity = '0'; }, 4000);
   };
 
+  /* ========================= CANVAS REAL-TIME SYNC ========================= */
+
+  // Guard: set true while applying a remote mutation so we don't re-broadcast it.
+  let _applyingRemote = false;
+  // Debounce timers per block for text updates (avoid flooding on every keystroke).
+  const _textTimers = new Map();
+  // Move/resize debounce — throttle to one broadcast per 60 ms per block.
+  const _moveTimers = new Map();
+  // Tracks which blocks are locked by remote users { blockId → user }.
+  const _lockedBy = new Map();
+  // My own join timestamp — used to decide who sends the snapshot to a newcomer.
+  const _joinedAt = Date.now();
+
+  // Ensure every block has a stable DOM id.
+  const _ensureId = (el) => { if (!el.id) el.id = uid('block_'); return el.id; };
+
+  // Root canvas element (contains all .cs_page / .cs_doc children).
+  const _canvas = () =>
+    document.querySelector('.cs_paper') ||
+    document.querySelector('.cs-doc-wrapper') ||
+    document.querySelector('.custom-form-design');
+
+  // ---- outbound helpers ----
+
+  const _sendBlockAdd = (block) => {
+    if (_applyingRemote) return;
+    const id = _ensureId(block);
+    const parentId = block.parentElement ? (block.parentElement.id || '') : '';
+    // nextSiblingId helps remote tab insert at the right position.
+    const nextId = (block.nextElementSibling && block.nextElementSibling.id) || '';
+    send({ type: 'block:add', blockId: id, html: block.outerHTML, parentId, nextId });
+  };
+
+  const _sendBlockRemove = (blockId) => {
+    if (_applyingRemote || !blockId) return;
+    send({ type: 'block:remove', blockId });
+  };
+
+  const _sendBlockMove = (block) => {
+    if (_applyingRemote) return;
+    const id = _ensureId(block);
+    clearTimeout(_moveTimers.get(id));
+    _moveTimers.set(id, setTimeout(() => {
+      send({ type: 'block:move', blockId: id, style: block.getAttribute('style') || '' });
+    }, 60));
+  };
+
+  const _sendBlockText = (block) => {
+    if (_applyingRemote) return;
+    const id = _ensureId(block);
+    clearTimeout(_textTimers.get(id));
+    _textTimers.set(id, setTimeout(() => {
+      const editMe = block.querySelector('.edit_me');
+      if (editMe) send({ type: 'block:text', blockId: id, html: editMe.innerHTML });
+    }, 250));
+  };
+
+  const _sendLock = (blockId) => {
+    if (_applyingRemote || !blockId) return;
+    send({ type: 'block:lock', blockId, user: me });
+  };
+
+  const _sendUnlock = (blockId) => {
+    if (_applyingRemote || !blockId) return;
+    send({ type: 'block:unlock', blockId });
+  };
+
+  const _sendSnapshot = () => {
+    const root = _canvas();
+    if (!root) return;
+    send({ type: 'canvas:snapshot', html: root.innerHTML, senderId: me.id, ts: _joinedAt });
+  };
+
+  // ---- inbound apply ----
+
+  const _applyAdd = (blockId, html, parentId, nextId) => {
+    if (document.getElementById(blockId)) return; // already exists
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    const block = temp.firstElementChild;
+    if (!block) return;
+    _applyingRemote = true;
+    try {
+      // Remove any collab lock overlays from the incoming HTML (they're transient).
+      block.querySelectorAll('.cs-sync-lock').forEach((e) => e.remove());
+      // Find the right parent container.
+      let parent = parentId ? document.getElementById(parentId) : null;
+      if (!parent) parent = document.querySelector('.cs_doc') || _canvas();
+      if (!parent) return;
+      const nextSib = nextId ? document.getElementById(nextId) : null;
+      parent.insertBefore(block, nextSib || null);
+    } finally { _applyingRemote = false; }
+  };
+
+  const _applyRemove = (blockId) => {
+    const block = document.getElementById(blockId);
+    if (!block) return;
+    // Don't remove a block the local user is actively editing.
+    if (block.classList.contains('cs-editing') || block.classList.contains('cs-selected')) return;
+    _applyingRemote = true;
+    try { block.remove(); } finally { _applyingRemote = false; }
+  };
+
+  const _applyMove = (blockId, style) => {
+    const block = document.getElementById(blockId);
+    if (!block) return;
+    _applyingRemote = true;
+    try { block.setAttribute('style', style); } finally { _applyingRemote = false; }
+  };
+
+  const _applyText = (blockId, html) => {
+    const block = document.getElementById(blockId);
+    if (!block) return;
+    const editMe = block.querySelector('.edit_me');
+    if (!editMe) return;
+    // Don't overwrite a block the local user is currently typing in.
+    if (editMe.contentEditable === 'true') return;
+    _applyingRemote = true;
+    try { editMe.innerHTML = html; } finally { _applyingRemote = false; }
+  };
+
+  const _applyLock = (blockId, user) => {
+    _lockedBy.set(blockId, user);
+    const block = document.getElementById(blockId);
+    if (!block) return;
+    if (block.querySelector('.cs-sync-lock')) return;
+    const ov = document.createElement('div');
+    ov.className = 'cs-sync-lock';
+    ov.style.cssText = `position:absolute;inset:0;background:${user.color}18;border:2px solid ${user.color};
+      border-radius:4px;pointer-events:none;z-index:500;display:flex;
+      align-items:flex-start;justify-content:flex-end;padding:3px;box-sizing:border-box;`;
+    ov.innerHTML = `<span style="background:${user.color};color:#fff;font:600 10px/1.4 Inter,sans-serif;
+      padding:1px 5px;border-radius:3px;white-space:nowrap;">✏ ${user.name}</span>`;
+    block.style.position = block.style.position || 'relative';
+    block.appendChild(ov);
+  };
+
+  const _applyUnlock = (blockId) => {
+    _lockedBy.delete(blockId);
+    document.getElementById(blockId)?.querySelector('.cs-sync-lock')?.remove();
+  };
+
+  const _applySnapshot = (html, senderId) => {
+    if (senderId === me.id) return; // ignore my own snapshot echo
+    const root = _canvas();
+    if (!root) return;
+    _applyingRemote = true;
+    try { root.innerHTML = html; } finally { _applyingRemote = false; }
+  };
+
+  // ---- MutationObserver: watch the canvas for local changes ----
+
+  let _canvasObserver = null;
+  let _lockObserver   = null;
+  let _lastEditingId  = null;
+
+  const _initCanvasObserver = () => {
+    const root = _canvas();
+    if (!root || _canvasObserver) return;
+
+    _canvasObserver = new MutationObserver((mutations) => {
+      if (_applyingRemote) return;
+      for (const mut of mutations) {
+        // Block added
+        for (const node of mut.addedNodes) {
+          if (node.nodeType === 1 && node.classList.contains('cs_block_s')) {
+            _sendBlockAdd(node);
+          }
+        }
+        // Block removed
+        for (const node of mut.removedNodes) {
+          if (node.nodeType === 1 && node.classList.contains('cs_block_s') && node.id) {
+            _sendBlockRemove(node.id);
+          }
+        }
+        // Position / size / style attribute changed on a block
+        if (mut.type === 'attributes' && mut.attributeName === 'style') {
+          if (mut.target.nodeType === 1 && mut.target.classList.contains('cs_block_s')) {
+            _sendBlockMove(mut.target);
+          }
+        }
+        // Text content changed inside a block
+        if (mut.type === 'childList' || mut.type === 'characterData') {
+          const target = mut.target;
+          const editMe = (target.nodeType === 1)
+            ? target.closest?.('.edit_me')
+            : target.parentElement?.closest?.('.edit_me');
+          if (editMe) {
+            const block = editMe.closest('.cs_block_s');
+            if (block) _sendBlockText(block);
+          }
+        }
+      }
+    });
+
+    _canvasObserver.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style'],
+      characterData: true,
+    });
+  };
+
+  // Watch cs-editing class to broadcast lock / unlock when local user edits text.
+  const _initLockObserver = () => {
+    const root = _canvas();
+    if (!root || _lockObserver) return;
+
+    _lockObserver = new MutationObserver(() => {
+      if (_applyingRemote) return;
+      const editing = document.querySelector('.cs_block_s.cs-editing');
+      const currentId = editing ? _ensureId(editing) : null;
+      if (currentId === _lastEditingId) return;
+      if (_lastEditingId) _sendUnlock(_lastEditingId);
+      if (currentId)      _sendLock(currentId);
+      _lastEditingId = currentId;
+    });
+
+    _lockObserver.observe(root, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  };
+
   /* --------------------------- incoming messages --------------------------- */
   onMsg((m) => {
-    if (m.type === 'presence:hello') { if (cfg.presence) touchPeer(m.user); }
+    if (m.type === 'presence:hello') {
+      if (cfg.presence) touchPeer(m.user);
+      // New peer joined — if I've been here longer, send them the current canvas.
+      if (!peers.has(m.user.id)) {
+        setTimeout(_sendSnapshot, 600);
+      }
+    }
     else if (m.type === 'presence:cursor') { if (cfg.presence) { touchPeer(m.user); showCursor(m.user, fromPageFrac(m.pos)); } }
     else if (m.type === 'presence:select') { if (cfg.presence) { touchPeer(m.user); showRemoteSelection(m.user, m.blockId); } }
-    else if (m.type === 'presence:leave') { dropPeer(m.userId); }
+    else if (m.type === 'presence:leave') {
+      dropPeer(m.userId);
+      // Clean up any lock overlays from the user who left.
+      _lockedBy.forEach((user, blockId) => { if (user.id === m.userId) _applyUnlock(blockId); });
+    }
     else if (m.type === 'comment:add' || m.type === 'comment:reply') {
       if (!comments.find((c) => c.id === m.comment.id)) { comments.push(m.comment); persistComments(); renderPins(); notifyMentions(m.comment); if (openThreadId && (m.comment.parentId === openThreadId)) openThread(openThreadId); }
     }
     else if (m.type === 'comment:resolve') { const c = comments.find((x) => x.id === m.id); if (c) { c.resolved = m.resolved; persistComments(); renderPins(); } }
     else if (m.type === 'comment:delete') { comments = comments.filter((c) => c.id !== m.id && c.parentId !== m.id); persistComments(); renderPins(); if (openThreadId === m.id) closePopover(); }
+    // ---- canvas sync ----
+    else if (m.type === 'block:add')    { _applyAdd(m.blockId, m.html, m.parentId, m.nextId); }
+    else if (m.type === 'block:remove') { _applyRemove(m.blockId); }
+    else if (m.type === 'block:move')   { _applyMove(m.blockId, m.style); }
+    else if (m.type === 'block:text')   { _applyText(m.blockId, m.html); }
+    else if (m.type === 'block:lock')   { _applyLock(m.blockId, m.user); }
+    else if (m.type === 'block:unlock') { _applyUnlock(m.blockId); }
+    else if (m.type === 'canvas:snapshot') { _applySnapshot(m.html, m.senderId); }
+    else if (m.type === 'canvas:snapshot:request') { _sendSnapshot(); }
   });
 
   /* --------------------------------- toolbar ------------------------------- */
@@ -530,6 +771,8 @@
       }, 400);
     }
     hello();
+    // Wire up canvas mutation observers after DOM is stable.
+    setTimeout(() => { _initCanvasObserver(); _initLockObserver(); }, 800);
     // When THIS iframe instance goes away, remove its host-appended UI so the
     // next load doesn't stack a duplicate bar/toast.
     window.addEventListener('pagehide', () => { try { bar && bar.remove(); toastEl && toastEl.remove(); } catch (e) { /* */ } });
