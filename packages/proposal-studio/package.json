@@ -1,6 +1,6 @@
 {
   "name": "proposal-studio",
-  "version": "0.1.1",
+  "version": "0.2.2",
   "description": "Framework-agnostic visual form / proposal / brochure editor as a Web Component. Works in Angular (7–22+), React, Vue, Svelte and plain HTML.",
   "type": "module",
   "main": "./dist/proposal-studio.cjs",
