@@ -1680,6 +1680,9 @@ button {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Tablet — 1200px and below
+   --------------------------------------------------------------------------- */
 @media (max-width: 1200px) {
   .topbar {
     grid-template-columns: auto 1fr auto;
@@ -1705,6 +1708,9 @@ button {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Tablet portrait — 960px and below (stacked layout)
+   --------------------------------------------------------------------------- */
 @media (max-width: 960px) {
   .workspace {
     grid-template-columns: 1fr;
@@ -1752,6 +1758,271 @@ button {
   .utility-action,
   .library-item {
     font-size: 12px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile — 768px and below (full overlay-drawer layout)
+   --------------------------------------------------------------------------- */
+
+/* Mobile toggle buttons — hidden on desktop */
+.mobile-nav-toggle {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  order: -1;
+}
+
+/* Mobile close button inside drawers — hidden on desktop */
+.mobile-drawer-close {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile backdrop overlay */
+.mobile-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Show mobile toggle buttons */
+  .mobile-nav-toggle {
+    display: flex;
+  }
+
+  /* Show mobile drawer close buttons */
+  .mobile-drawer-close {
+    display: flex;
+  }
+
+  /* Show backdrop */
+  .mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    background: rgba(20, 24, 48, 0.45);
+    backdrop-filter: blur(2px);
+    animation: backdrop-in 0.18s ease;
+  }
+
+  @keyframes backdrop-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Topbar: compressed single row */
+  .topbar {
+    grid-template-columns: auto auto 1fr auto auto;
+    grid-template-rows: 48px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  /* Hide history (undo/redo) group on mobile — too cramped */
+  .topbar__group--history {
+    display: none;
+  }
+
+  /* Zoom group stays visible but compact */
+  .topbar__group--zoom {
+    gap: 2px;
+  }
+
+  /* Utility actions: show icons only, hide text labels */
+  .utility-action span:not(.utility-action__icon) {
+    display: none;
+  }
+
+  .utility-action {
+    min-width: 32px;
+    padding: 0 6px;
+    font-size: 14px;
+  }
+
+  /* Workspace: single column, canvas fills the space */
+  .workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+
+  /* Sidebars become full-height overlay drawers */
+  .sidebar--left,
+  .sidebar--right {
+    position: fixed;
+    top: 48px; /* below topbar */
+    bottom: 0;
+    z-index: 200;
+    width: min(300px, 88vw);
+    border: 0;
+    box-shadow: 4px 0 24px rgba(20, 24, 48, 0.18);
+    overflow: hidden;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar--left {
+    left: 0;
+    transform: translateX(-100%);
+    border-right: 1px solid var(--border);
+  }
+
+  .sidebar--right {
+    right: 0;
+    transform: translateX(100%);
+    border-left: 1px solid var(--border);
+  }
+
+  /* Open state for both drawers */
+  .sidebar--left.sidebar--mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar--right.sidebar--mobile-open {
+    transform: translateX(0);
+  }
+
+  /* Sidebar content scrolls full height on mobile */
+  .sidebar__content {
+    max-height: none;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  /* Canvas takes full remaining space */
+  .canvas-panel {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .canvas-stage {
+    padding: 12px 8px;
+    height: 100%;
+  }
+
+  /* Panel tabs: allow horizontal scroll instead of wrapping */
+  .panel-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  .panel-tab {
+    font-size: 12px;
+    padding: 0 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Library items: two-column grid for easier tap targets */
+  .library-list {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .library-item {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-height: 48px;
+    padding: 6px 4px;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .library-item__label {
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .library-item__icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  /* Binding modal: full width */
+  .binding-modal__card {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 64px);
+    overflow-y: auto;
+  }
+
+  /* Preview modal: full width */
+  .preview-modal__card {
+    width: calc(100% - 16px);
+    height: calc(100dvh - 32px);
+    border-radius: 10px;
+  }
+
+  /* Save-as modal: full width */
+  .saveas-modal__card {
+    width: calc(100vw - 24px);
+  }
+
+  /* Style panel inputs: full width on mobile */
+  .style-row {
+    flex-wrap: wrap;
+  }
+
+  .style-row__label {
+    width: 100%;
+  }
+}
+
+/* Very small phones — 480px and below */
+@media (max-width: 480px) {
+  .topbar {
+    padding: 0 6px;
+    gap: 2px;
+  }
+
+  .brand-name {
+    display: none;
+  }
+
+  .icon-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .zoom-readout {
+    min-width: 38px;
+    font-size: 11px;
+  }
+
+  .utility-action {
+    padding: 0 4px;
+    font-size: 13px;
+  }
+
+  .sidebar--left,
+  .sidebar--right {
+    width: 100vw;
   }
 }
 

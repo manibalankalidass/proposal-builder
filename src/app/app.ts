@@ -103,6 +103,8 @@ export class App implements AfterViewInit {
   // protected readonly leftTabs = ['Components', 'Layers', 'Pages'];
   protected readonly rightTabs = ['Properties', 'Data Binding', 'Style', 'Brand', 'Layers'];
   protected activeRightTab = 'Properties';
+  protected mobileLeftOpen = false;
+  protected mobileRightOpen = false;
   protected activeBlock: any = null;
 
   // -------- Layers panel (Cover Page Photoshop-style layer tree) --------
@@ -2113,6 +2115,21 @@ export class App implements AfterViewInit {
   protected selectRightTab(tab: string): void {
     this.activeRightTab = tab;
     if (tab === 'Layers') this.postToIframe({ type: 'layers:request' });
+  }
+
+  protected openMobileLeft(): void {
+    this.mobileLeftOpen = true;
+    this.mobileRightOpen = false;
+  }
+
+  protected openMobileRight(): void {
+    this.mobileRightOpen = true;
+    this.mobileLeftOpen = false;
+  }
+
+  protected closeMobileDrawers(): void {
+    this.mobileLeftOpen = false;
+    this.mobileRightOpen = false;
   }
 
   // -------- Layers panel helpers --------

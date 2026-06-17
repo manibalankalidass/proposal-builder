@@ -38,14 +38,22 @@
   let cfg = { comments: true, presence: true };
 
   /* ------------------------------- identity -------------------------------- */
+  // Identity lives in sessionStorage (NOT localStorage) so every browser TAB is
+  // a DISTINCT user. localStorage is shared across all same-origin tabs, which
+  // made two tabs load the SAME id — the collab protocol then treated them as
+  // one person: snapshots self-rejected via `senderId === me.id` (so a new tab
+  // never received the canvas), and a rename in one tab leaked into the other.
+  // sessionStorage survives a reload of the SAME tab (id + chosen name persist
+  // across refresh) but is unique per tab — exactly what multi-user collab needs.
+  // NOTE: in production with real auth, seed `id` from the logged-in account.
   const loadUser = () => {
-    try { const u = JSON.parse(localStorage.getItem(USER_KEY)); if (u && u.id) return u; } catch (e) { /* */ }
+    try { const u = JSON.parse(sessionStorage.getItem(USER_KEY)); if (u && u.id) return u; } catch (e) { /* */ }
     const u = { id: uid('u_'), name: 'Guest ' + Math.floor(100 + Math.random() * 900), color: COLORS[Math.floor(Math.random() * COLORS.length)] };
-    localStorage.setItem(USER_KEY, JSON.stringify(u));
+    try { sessionStorage.setItem(USER_KEY, JSON.stringify(u)); } catch (e) { /* */ }
     return u;
   };
   let me = loadUser();
-  const saveUser = () => localStorage.setItem(USER_KEY, JSON.stringify(me));
+  const saveUser = () => { try { sessionStorage.setItem(USER_KEY, JSON.stringify(me)); } catch (e) { /* */ } };
 
   /* ------------------------------- transport ------------------------------- */
   let send = () => { };
@@ -74,7 +82,7 @@
     } catch (e) { startBC(); }
     setTimeout(() => { if (!wsOk && !bc) startBC(); }, 1500);
   };
-  const hello = () => send({ type: 'presence:hello', user: me });
+  const hello = () => send({ type: 'presence:hello', user: me, joinedAt: _joinedAt });
 
   /* --------------------------- coordinate mapping -------------------------- */
   // Cursors are shared in page-relative fractions so they line up regardless of
@@ -182,6 +190,14 @@
       el = document.createElement('div'); el.className = 'cs-collab-cursor';
       el.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1 1l5 13 2-5 5-2z" fill="${user.color}"/></svg><span style="background:${user.color}">${user.name}</span>`;
       document.body.appendChild(el); cursorEls.set(user.id, el);
+    } else {
+      // Element already exists — refresh label/color in case the peer renamed.
+      const span = el.querySelector('span');
+      if (span && (span.textContent !== user.name || span.style.background !== user.color)) {
+        span.textContent = user.name; span.style.background = user.color;
+      }
+      const path = el.querySelector('path');
+      if (path && path.getAttribute('fill') !== user.color) path.setAttribute('fill', user.color);
     }
     el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
   };
@@ -194,21 +210,56 @@
       el.style.borderColor = user.color;
       el.innerHTML = `<span style="background:${user.color}">${user.name}</span>`;
       document.body.appendChild(el); selEls.set(user.id, el);
+    } else {
+      // Refresh label/color in case the peer renamed.
+      el.style.borderColor = user.color;
+      const span = el.querySelector('span');
+      if (span) { span.textContent = user.name; span.style.background = user.color; }
     }
     el._blockId = blockId;
     const r = b.getBoundingClientRect();
     el.style.left = r.left + 'px'; el.style.top = r.top + 'px';
     el.style.width = r.width + 'px'; el.style.height = r.height + 'px';
   };
+  // Refresh a peer's already-rendered cursor + selection labels after a rename
+  // (the elements are created once with the name baked in; without this they'd
+  // keep showing the old name until the element is recreated).
+  const refreshPeerLabels = (user) => {
+    const cur = cursorEls.get(user.id);
+    if (cur) {
+      const span = cur.querySelector('span');
+      if (span) { span.textContent = user.name; span.style.background = user.color; }
+      const path = cur.querySelector('path');
+      if (path) path.setAttribute('fill', user.color);
+    }
+    const sel = selEls.get(user.id);
+    if (sel) {
+      sel.style.borderColor = user.color;
+      const span = sel.querySelector('span');
+      if (span) { span.textContent = user.name; span.style.background = user.color; }
+    }
+  };
   const dropPeer = (userId) => {
     peers.delete(userId);
     [cursorEls, selEls].forEach((m) => { const e = m.get(userId); if (e) e.remove(); m.delete(userId); });
     renderAvatars();
   };
-  const touchPeer = (user) => {
-    const isNew = !peers.has(user.id);
-    peers.set(user.id, { user, lastSeen: performance.now() });
-    if (isNew) { renderAvatars(); hello(); /* let the new peer learn us */ }
+  const touchPeer = (user, joinedAt) => {
+    const existing = peers.get(user.id);
+    const isNew = !existing;
+    // A peer renamed / recolored if we already knew them but name/color differs.
+    const changed = existing && (existing.user.name !== user.name || existing.user.color !== user.color);
+    peers.set(user.id, {
+      user,
+      lastSeen: performance.now(),
+      // Preserve the known joinedAt when this update carries none (cursor/select
+      // messages call touchPeer without it) — otherwise it would reset to 0 and
+      // wrongly look like a re-join on the next hello.
+      joinedAt: (joinedAt != null) ? joinedAt : (existing ? existing.joinedAt : 0),
+    });
+    if (isNew || changed) renderAvatars();
+    if (changed) refreshPeerLabels(user);   // push the new name onto live cursor/selection
+    if (isNew) hello();                      // let the new peer learn us
   };
   // Reap peers we haven't heard from in a while (covers BroadcastChannel, which
   // has no disconnect event).
@@ -415,6 +466,23 @@
   // Ensure every block has a stable DOM id.
   const _ensureId = (el) => { if (!el.id) el.id = uid('block_'); return el.id; };
 
+  // Walk up from a block to find the nearest container that matches canvas
+  // structure (.cs_margin → .cs_doc → .cs_page → .cs_paper). Assigns a stable
+  // ID to that container so the remote tab can find the exact insertion point.
+  const _ensureParentId = (block) => {
+    const CONTAINER_CLASSES = ['cs_margin', 'cs_doc', 'cs_page', 'cs_paper', 'cs-doc-wrapper', 'custom-form-design'];
+    let p = block.parentElement;
+    while (p) {
+      if (p.id) return p.id;
+      if (CONTAINER_CLASSES.some((cls) => p.classList && p.classList.contains(cls))) {
+        p.id = uid('container_');
+        return p.id;
+      }
+      p = p.parentElement;
+    }
+    return '';
+  };
+
   // Root canvas element (contains all .cs_page / .cs_doc children).
   const _canvas = () =>
     document.querySelector('.cs_paper') ||
@@ -426,7 +494,9 @@
   const _sendBlockAdd = (block) => {
     if (_applyingRemote) return;
     const id = _ensureId(block);
-    const parentId = block.parentElement ? (block.parentElement.id || '') : '';
+    // Use _ensureParentId so the container gets a stable id that the remote
+    // tab can look up — plain parentElement.id is often '' for .cs_margin etc.
+    const parentId = _ensureParentId(block);
     // nextSiblingId helps remote tab insert at the right position.
     const nextId = (block.nextElementSibling && block.nextElementSibling.id) || '';
     send({ type: 'block:add', blockId: id, html: block.outerHTML, parentId, nextId });
@@ -466,9 +536,15 @@
     send({ type: 'block:unlock', blockId });
   };
 
+  // Count real content blocks in the canvas (ignoring transient lock overlays).
+  const _blockCount = (root) => (root || document).querySelectorAll('.cs_block_s').length;
+
   const _sendSnapshot = () => {
     const root = _canvas();
     if (!root) return;
+    // Never broadcast an empty canvas — an empty snapshot would wipe a peer that
+    // has content. Only the tab(s) that actually hold blocks act as the source.
+    if (_blockCount(root) === 0) return;
     send({ type: 'canvas:snapshot', html: root.innerHTML, senderId: me.id, ts: _joinedAt });
   };
 
@@ -484,9 +560,21 @@
     try {
       // Remove any collab lock overlays from the incoming HTML (they're transient).
       block.querySelectorAll('.cs-sync-lock').forEach((e) => e.remove());
-      // Find the right parent container.
+      // Find the right parent container by id first, then by class fallback.
       let parent = parentId ? document.getElementById(parentId) : null;
-      if (!parent) parent = document.querySelector('.cs_doc') || _canvas();
+      if (!parent) {
+        // The sender assigned an id to the container — but on THIS tab the same
+        // container hasn't received that id yet (fresh page). Mirror the id and
+        // use the matching container element so future adds resolve correctly.
+        if (parentId) {
+          const FALLBACK_SELECTORS = ['.cs_margin', '.cs_doc', '.cs_page', '.cs_paper', '.cs-doc-wrapper', '.custom-form-design'];
+          for (const sel of FALLBACK_SELECTORS) {
+            const el = document.querySelector(sel);
+            if (el) { el.id = parentId; parent = el; break; }
+          }
+        }
+        if (!parent) parent = document.querySelector('.cs_margin') || document.querySelector('.cs_doc') || _canvas();
+      }
       if (!parent) return;
       const nextSib = nextId ? document.getElementById(nextId) : null;
       parent.insertBefore(block, nextSib || null);
@@ -545,8 +633,26 @@
     if (senderId === me.id) return; // ignore my own snapshot echo
     const root = _canvas();
     if (!root) return;
+    // Don't overwrite a block the local user is actively editing right now.
+    if (document.querySelector('.cs_block_s.cs-editing')) return;
+    // Snapshots are ONLY for initial catch-up of a freshly (re)joined tab. Apply
+    // it only when THIS canvas is still empty — never clobber local content.
+    // This prevents data loss / snapshot flip-flop when two tabs each hold
+    // content; ongoing edits stay in sync via the incremental block:*/row:*
+    // messages, not via wholesale snapshot replacement.
+    if (_blockCount(root) > 0) return;
     _applyingRemote = true;
     try { root.innerHTML = html; } finally { _applyingRemote = false; }
+  };
+
+  // Debounced full-canvas snapshot: sent 600ms after any structural change.
+  // This is the catch-all that guarantees both tabs stay in sync even when
+  // block-level messages miss due to DOM structure differences (row-item wrapping).
+  let _snapshotDebounce = null;
+  const _scheduleSnapshot = () => {
+    if (_applyingRemote) return;
+    clearTimeout(_snapshotDebounce);
+    _snapshotDebounce = setTimeout(_sendSnapshot, 600);
   };
 
   // ---- MutationObserver: watch the canvas for local changes ----
@@ -562,25 +668,50 @@
     _canvasObserver = new MutationObserver((mutations) => {
       if (_applyingRemote) return;
       for (const mut of mutations) {
-        // Block added
+        // Nodes added — handle both direct cs_block_s and row-item wrappers.
+        // When a block is dropped onto the canvas, the canvas JS creates a
+        // .row-item that already contains the .cs_block_s, then inserts that
+        // row-item into .cs_margin in one DOM operation. The MutationObserver
+        // only fires for the row-item insertion (not the inner block) because
+        // the block was already inside the row-item before it hit the DOM.
         for (const node of mut.addedNodes) {
-          if (node.nodeType === 1 && node.classList.contains('cs_block_s')) {
+          if (node.nodeType !== 1) continue;
+          if (node.classList.contains('cs_block_s')) {
+            // Bare block added directly (e.g. free-move cover canvas).
             _sendBlockAdd(node);
+            _scheduleSnapshot();
+          } else if (node.classList.contains('row-item') || node.classList.contains('col-item')) {
+            // Row/col wrapper added — sync the whole row-item so structure is preserved.
+            const innerBlocks = node.querySelectorAll(':scope .cs_block_s');
+            if (innerBlocks.length) {
+              _ensureId(node); // give the row-item a stable id
+              const parentId = _ensureParentId(node);
+              const nextId = (node.nextElementSibling && node.nextElementSibling.id) || '';
+              // Send the row-item itself as the sync unit so the remote tab
+              // gets the full DOM structure (row-item + inner block).
+              send({ type: 'row:add', rowId: node.id, html: node.outerHTML, parentId, nextId });
+              _scheduleSnapshot();
+            }
           }
         }
-        // Block removed
+        // Nodes removed.
         for (const node of mut.removedNodes) {
-          if (node.nodeType === 1 && node.classList.contains('cs_block_s') && node.id) {
+          if (node.nodeType !== 1) continue;
+          if (node.classList.contains('cs_block_s') && node.id) {
             _sendBlockRemove(node.id);
+            _scheduleSnapshot();
+          } else if ((node.classList.contains('row-item') || node.classList.contains('col-item')) && node.id) {
+            send({ type: 'row:remove', rowId: node.id });
+            _scheduleSnapshot();
           }
         }
-        // Position / size / style attribute changed on a block
+        // Position / size / style attribute changed on a block.
         if (mut.type === 'attributes' && mut.attributeName === 'style') {
           if (mut.target.nodeType === 1 && mut.target.classList.contains('cs_block_s')) {
             _sendBlockMove(mut.target);
           }
         }
-        // Text content changed inside a block
+        // Text content changed inside a block.
         if (mut.type === 'childList' || mut.type === 'characterData') {
           const target = mut.target;
           const editMe = (target.nodeType === 1)
@@ -624,9 +755,19 @@
   /* --------------------------- incoming messages --------------------------- */
   onMsg((m) => {
     if (m.type === 'presence:hello') {
-      if (cfg.presence) touchPeer(m.user);
-      // New peer joined — if I've been here longer, send them the current canvas.
-      if (!peers.has(m.user.id)) {
+      const existingPeer = peers.get(m.user.id);
+      // Detect re-join: same userId but different joinedAt (user refreshed their tab).
+      const isNew = !existingPeer;
+      const isRejoin = existingPeer && existingPeer.joinedAt !== (m.joinedAt || 0);
+      if (cfg.presence) touchPeer(m.user, m.joinedAt);
+      // Answer a (re)joining peer with the current canvas — but only if I HOLD
+      // content. CONTENT-POSSESSION (not join order) decides the source of
+      // truth, so it works no matter which tab opened first. The receiver only
+      // applies a snapshot when its own canvas is empty (see _applySnapshot), so
+      // an empty peer can never wipe a tab that has content, and two tabs that
+      // each hold content never clobber each other (they stay in sync via the
+      // incremental block:*/row:* messages instead).
+      if ((isNew || isRejoin) && _blockCount(_canvas()) > 0) {
         setTimeout(_sendSnapshot, 600);
       }
     }
@@ -649,6 +790,9 @@
     else if (m.type === 'block:text')   { _applyText(m.blockId, m.html); }
     else if (m.type === 'block:lock')   { _applyLock(m.blockId, m.user); }
     else if (m.type === 'block:unlock') { _applyUnlock(m.blockId); }
+    // Row-level sync (row-item wrapper + inner block sent as one unit).
+    else if (m.type === 'row:add')    { _applyAdd(m.rowId, m.html, m.parentId, m.nextId); }
+    else if (m.type === 'row:remove') { _applyRemove(m.rowId); }
     else if (m.type === 'canvas:snapshot') { _applySnapshot(m.html, m.senderId); }
     else if (m.type === 'canvas:snapshot:request') { _sendSnapshot(); }
   });

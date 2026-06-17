@@ -839,6 +839,8 @@
         enabled
       }, '*');
     }
+    if (msg.type === 'history:undo') { window.FlowCanvas?.undo?.(); }
+    if (msg.type === 'history:redo') { window.FlowCanvas?.redo?.(); }
     if (msg.type === 'rich-toolbar:dock') {
       // Place the CustomRichEditor toolbar: docked (top sticky) vs inline float.
       if (typeof window.setRichToolbarDocked === 'function') {
