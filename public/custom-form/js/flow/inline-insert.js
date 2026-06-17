@@ -315,6 +315,22 @@
     const resolveTarget = (doc, clientX, clientY, eventTarget) => {
       const hoveredCol = eventTarget?.closest?.('.col-item');
       if (hoveredCol && doc.contains(hoveredCol)) {
+        // Single-column rows only: if the cursor is near the row's top/bottom
+        // edge, prefer between-rows (new row) over in-col. In a multi-column
+        // row each column's top/bottom is still a valid in-col target, so we
+        // leave that behaviour untouched.
+        const row = hoveredCol.closest('.row-item');
+        const blocks = blockChildrenOfCol(hoveredCol);
+        const rowCols = row ? directChildren(row, '.col-item') : [];
+        if (row && blocks.length && rowCols.length === 1 && typeof FC.findDropTarget === 'function') {
+          const rowRect = row.getBoundingClientRect();
+          const ROW_EDGE_THRESHOLD = 14;
+          if (clientY <= rowRect.top + ROW_EDGE_THRESHOLD || clientY >= rowRect.bottom - ROW_EDGE_THRESHOLD) {
+            const r = FC.findDropTarget(doc, paper, clientX, clientY);
+            if (r?.target) return r;
+          }
+        }
+
         // Near the column's left/right edge → offer a new column beside it.
         // Tighten that edge band while hovering a block so an in-column insert
         // stays the default and the indicator doesn't flip to vertical mid-column.

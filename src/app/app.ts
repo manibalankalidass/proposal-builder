@@ -397,6 +397,12 @@ export class App implements AfterViewInit {
     if (msg.type === 'iframe:height') {
       this.iframeHeight = msg.height;
     }
+
+    // Zoom shortcut pressed while focus was inside the editor iframe — the
+    // iframe already blocked the browser's native zoom; apply ours here.
+    if (msg.type === 'editor:zoom' && (msg.dir === 'in' || msg.dir === 'out' || msg.dir === 'reset')) {
+      this.applyZoomDir(msg.dir);
+    }
   }
 
   // Select an ancestor block in the canvas (the "Choose parent <name>" buttons
@@ -2008,6 +2014,38 @@ export class App implements AfterViewInit {
   protected zoomIn(): void { this.setZoom(this.canvasZoom + 0.1); }
   protected zoomOut(): void { this.setZoom(this.canvasZoom - 0.1); }
   protected zoomReset(): void { this.setZoom(1); }
+
+  /**
+   * Ctrl/⌘ + (＋ / − / 0) zooms the canvas instead of the browser page.
+   * This fires only when focus is on the host chrome; when the user is inside
+   * the editor iframe, that document forwards its own presses as an
+   * 'editor:zoom' message (handled in onMessage). preventDefault blocks the
+   * browser's native page zoom. As a HostListener it auto-triggers change
+   * detection, so the {{ zoomPercent }} label stays in sync (zoneless app).
+   */
+  @HostListener('window:keydown', ['$event'])
+  protected onZoomKeydown(e: KeyboardEvent): void {
+    if (!e.ctrlKey && !e.metaKey) return;
+    const dir = this.zoomKeyDir(e);
+    if (!dir) return;
+    e.preventDefault();
+    this.applyZoomDir(dir);
+  }
+
+  /** Map a Ctrl/⌘ key event to a zoom direction, or '' if it isn't one. */
+  private zoomKeyDir(e: KeyboardEvent): 'in' | 'out' | 'reset' | '' {
+    const k = e.key;
+    if (k === '+' || k === '=' || e.code === 'NumpadAdd') return 'in';
+    if (k === '-' || k === '_' || e.code === 'NumpadSubtract') return 'out';
+    if (k === '0' || e.code === 'Numpad0' || e.code === 'Digit0') return 'reset';
+    return '';
+  }
+
+  private applyZoomDir(dir: 'in' | 'out' | 'reset'): void {
+    if (dir === 'in') this.zoomIn();
+    else if (dir === 'out') this.zoomOut();
+    else this.zoomReset();
+  }
 
   /* ------------------------------- brand kit -------------------------------- */
   private loadBrandKit(): void {

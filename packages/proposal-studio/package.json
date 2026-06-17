@@ -31,7 +31,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node scripts/smoke-test.mjs",
-    "prepack": "PS_NG_BUILD=1 node scripts/build.mjs"
+    "prepack": "node scripts/build.mjs"
   },
   "keywords": [
     "proposal-studio",
@@ -56,7 +56,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/manibalankalidass/proposal-builder.git"
+    "url": "git+https://github.com/manibalan/proposal-studio.git"
   },
   "devDependencies": {
     "esbuild": "^0.27.0"
