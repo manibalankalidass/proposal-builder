@@ -65,14 +65,14 @@
     </div> -->
 
     <div class="topbar__group topbar__group--utility">
-      <button *ngIf="pdfSettings.enableComments" class="utility-action utility-action--outline" type="button"
+      <!-- <button *ngIf="pdfSettings.enableComments" class="utility-action utility-action--outline" type="button"
         (click)="toggleComments()" title="Toggle comment mode, then click a block to comment">
         <span class="utility-action__icon">💬</span>
         <span>Comments</span>
-      </button>
+      </button> -->
       <button class="utility-action utility-action--outline" type="button" (click)="openSaveAs()">
         <span class="utility-action__icon">💾</span>
-        <span>Save as</span>
+        <span>Save as template</span>
       </button>
       <button class="utility-action utility-action--outline" type="button" (click)="openPreview()">
         <span class="utility-action__icon">◉</span>
@@ -1255,8 +1255,7 @@
       <div class="saveas-modal__actions">
         <button type="button" class="saveas-modal__btn saveas-modal__btn--ghost"
           (click)="cancelSaveAs()">Cancel</button>
-        <button type="button" class="saveas-modal__btn saveas-modal__btn--primary" (click)="confirmSaveAs()">Save as
-          Template</button>
+        <button type="button" class="saveas-modal__btn saveas-modal__btn--primary" (click)="confirmSaveAs()">Save</button>
       </div>
     </div>
   </div>

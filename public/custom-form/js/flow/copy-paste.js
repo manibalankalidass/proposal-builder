@@ -192,7 +192,9 @@
     }
 
     // Group block selected → paste as a free child inside the group.
-    if (anchor?.classList?.contains('cs-group-block')) {
+    // Exception: if the block being pasted IS itself a group, it should land
+    // next to the anchor group (same cover page level), not nested inside it.
+    if (anchor?.classList?.contains('cs-group-block') && !newBlock.classList?.contains('cs-group-block')) {
       newBlock.dataset.csInSection = '1';
       newBlock.style.position = 'absolute';
       newBlock.style.left = '8px';

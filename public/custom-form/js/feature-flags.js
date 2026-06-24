@@ -12,7 +12,7 @@
   const FEATURES = {
     rulersGuides: true,  // Rulers + draggable alignment guides
     voiceText:    true,  // Voice-to-text dictation block (Web Speech API)
-    collab:       true,  // Real-time presence, cursors, comments & mentions
+    collab:       false,  // Real-time presence, cursors, comments & mentions
   };
 
   const g = (typeof window !== 'undefined') ? window : globalThis;

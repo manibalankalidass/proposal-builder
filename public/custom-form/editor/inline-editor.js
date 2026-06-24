@@ -539,6 +539,44 @@
   let move = null;
   let wasDragged = false;
 
+  // Block types that must NOT be reparented into a group when dragged over one.
+  const GROUP_RESTRICTED_TYPES = new Set(['group', 'section-container', 'sync-list']);
+  const canDropIntoGroup = (block) => {
+    if (!block) return false;
+    if (block.classList.contains('cs-group-block')) return false;
+    if (block.classList.contains('cs-synclist-block')) return false;
+    const bt = block.dataset.blockType;
+    if (bt && GROUP_RESTRICTED_TYPES.has(bt)) return false;
+    return true;
+  };
+
+  // When a free block (direct cover-page child) is released, check if its
+  // centre overlaps a group block — if so, reparent it into the group.
+  const tryReparentIntoGroup = (block, cover) => {
+    if (!canDropIntoGroup(block)) return;
+    const blockRect = block.getBoundingClientRect();
+    const cx = (blockRect.left + blockRect.right) / 2;
+    const cy = (blockRect.top + blockRect.bottom) / 2;
+
+    const groups = Array.from(cover.querySelectorAll(':scope > .cs-group-block'));
+    let targetGroup = null;
+    for (const g of groups) {
+      const gr = g.getBoundingClientRect();
+      if (cx >= gr.left && cx <= gr.right && cy >= gr.top && cy <= gr.bottom) {
+        targetGroup = g; break;
+      }
+    }
+    if (!targetGroup) return;
+
+    const groupRect = targetGroup.getBoundingClientRect();
+    block.style.left = `${Math.round(blockRect.left - groupRect.left)}px`;
+    block.style.top = `${Math.round(blockRect.top - groupRect.top)}px`;
+    block.dataset.csInSection = '1';
+    block.style.position = 'absolute';
+    targetGroup.appendChild(block);
+    window.FlowCanvas?.refitGroupToChildren?.(targetGroup);
+  };
+
   /* --------- live position / size readout (free-move blocks only) ---------
    * While dragging or resizing a free-positioned block (cover page or flexible
    * container), show the live X/Y (move) or W/H (resize) right where the title
@@ -704,10 +742,28 @@
   const onMoveMove = (event) => {
     if (!move) return;
     const { block, parent, parentRect, offsetX, offsetY } = move;
-    const { minLeft, maxLeft, minTop, maxTop } = getFlexibleMoveBounds(parent, block);
 
-    // If the parent is a section container content, we might not want to strictly constrain the bottom edge if it grows
-    // But for bounding logic, using the clientHeight prevents breaking out.
+    // Child blocks inside a group are allowed to move beyond the group's current
+    // boundary (constrained by the cover page instead). The group live-expands
+    // rightward/downward; refitGroupToChildren on mouseup handles any top/left
+    // overflow by repositioning the group and adjusting all children.
+    const parentIsGroup = parent.classList?.contains('cs-group-block');
+    let minLeft, maxLeft, minTop, maxTop;
+    if (parentIsGroup) {
+      const cover = parent.closest('[data-cs-cover="1"]');
+      if (cover) {
+        const coverRect = cover.getBoundingClientRect();
+        const bw = block.offsetWidth, bh = block.offsetHeight;
+        minLeft = coverRect.left - parentRect.left;
+        maxLeft = coverRect.right - parentRect.left - bw;
+        minTop = coverRect.top - parentRect.top;
+        maxTop = coverRect.bottom - parentRect.top - bh;
+      } else {
+        ({ minLeft, maxLeft, minTop, maxTop } = getFlexibleMoveBounds(parent, block));
+      }
+    } else {
+      ({ minLeft, maxLeft, minTop, maxTop } = getFlexibleMoveBounds(parent, block));
+    }
 
     if (Math.abs(event.clientX - move.startX) > 3 || Math.abs(event.clientY - move.startY) > 3) {
       wasDragged = true;
@@ -726,6 +782,15 @@
     block.style.left = `${left}px`;
     block.style.top = `${top}px`;
 
+    // Live-expand the group's right/bottom edge as the child is dragged outward.
+    // Top/left overflow is handled by refitGroupToChildren on mouseup.
+    if (parentIsGroup) {
+      const neededW = left + block.offsetWidth;
+      const neededH = top + block.offsetHeight;
+      if (neededW > parent.clientWidth) parent.style.width = `${neededW}px`;
+      if (neededH > parent.clientHeight) parent.style.height = `${neededH}px`;
+    }
+
     // Live X/Y readout in the title badge for free-move blocks.
     if (isFreeFormBlock(block)) {
       showMetric(block, `X: ${Math.round(left)}  Y: ${Math.round(top)}`);
@@ -736,10 +801,17 @@
     restoreMetric();
     clearAlignGuides();
     const moved = move?.block;
+    const didDrag = wasDragged;
     move = null;
     // A child moved inside a group → grow/shrink the group to wrap its children.
     const group = moved?.closest?.('.cs-group-block');
-    if (group && group !== moved) window.FlowCanvas?.refitGroupToChildren?.(group);
+    if (group && group !== moved) {
+      window.FlowCanvas?.refitGroupToChildren?.(group);
+    } else if (didDrag && moved && moved.dataset?.csInSection === '1') {
+      // Free block on a cover page was dragged — if it lands over a group, reparent it.
+      const cover = moved.closest?.('[data-cs-cover="1"]');
+      if (cover) tryReparentIntoGroup(moved, cover);
+    }
     // Decay the drag flag after a split second so future regular clicks are guaranteed clean
     setTimeout(() => { wasDragged = false; }, 100);
   };
@@ -1082,7 +1154,22 @@
 
     const step = event.shiftKey ? 10 : 1;
     const parent = block.offsetParent;
-    const { minLeft, maxLeft, minTop, maxTop } = getFlexibleMoveBounds(parent, block);
+
+    let minLeft, maxLeft, minTop, maxTop;
+    if (parent?.classList?.contains('cs-group-block')) {
+      const cover = parent.closest('[data-cs-cover="1"]');
+      if (cover) {
+        const bw = block.offsetWidth, bh = block.offsetHeight;
+        minLeft = -parent.offsetLeft;
+        maxLeft = cover.clientWidth - parent.offsetLeft - bw;
+        minTop = -parent.offsetTop;
+        maxTop = cover.clientHeight - parent.offsetTop - bh;
+      } else {
+        ({ minLeft, maxLeft, minTop, maxTop } = getFlexibleMoveBounds(parent, block));
+      }
+    } else {
+      ({ minLeft, maxLeft, minTop, maxTop } = getFlexibleMoveBounds(parent, block));
+    }
 
     let left = readRenderedPosition(block, 'left');
     let top = readRenderedPosition(block, 'top');
@@ -1094,6 +1181,10 @@
 
     block.style.left = `${Math.min(Math.max(left, minLeft), maxLeft)}px`;
     block.style.top = `${Math.min(Math.max(top, minTop), maxTop)}px`;
+
+    // Arrow-nudge on a group child → refit the group to wrap all children.
+    const group = block.closest('.cs-group-block');
+    if (group) window.FlowCanvas?.refitGroupToChildren?.(group);
   };
 
   /* ----------------------------- init ----------------------------- */

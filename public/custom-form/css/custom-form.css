@@ -861,6 +861,7 @@ body {
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
+  padding: 50px
 }
 
 /* Page background shape layer (.cs-page-shape-bg, injected by the Page Shape

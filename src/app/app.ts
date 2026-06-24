@@ -101,7 +101,7 @@ export class App implements AfterViewInit {
   protected readonly leftTabs = ['Components', 'Templates', 'History', 'Saved templates', 'My Components'];
   protected activeLeftTab = 'Components';
   // protected readonly leftTabs = ['Components', 'Layers', 'Pages'];
-  protected readonly rightTabs = ['Properties', 'Data Binding', 'Style', 'Brand', 'Layers'];
+  protected readonly rightTabs = ['Properties', 'Data Binding', 'Style', 'Brand']; //Layers <------- add this for layer
   protected activeRightTab = 'Properties';
   protected mobileLeftOpen = false;
   protected mobileRightOpen = false;
@@ -1479,7 +1479,7 @@ export class App implements AfterViewInit {
     // { label: 'New', icon: '✦', variant: 'ghost' },
     // { label: 'Preview', icon: '◉', variant: 'ghost' },
     { label: 'Add Page', icon: '＋', variant: 'ghost' },
-    { label: 'Add Cover Page', icon: '▭', variant: 'ghost' },
+    // { label: 'Add Cover Page', icon: '▭', variant: 'ghost' },
     // { label: 'Generate Twig Code', icon: '⬇', variant: 'primary' },
     { label: 'Generate PDF (Puppeteer)', icon: '⤓', variant: 'primary' },
     // { label: 'Load Template', icon: '', variant: 'ghost' },
