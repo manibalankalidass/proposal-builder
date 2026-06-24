@@ -968,6 +968,9 @@
 
       // Default: Apply to outer block
       block.style[msg.prop] = msg.value;
+      // When height is set manually, clear min-height so the user can freely
+      // shrink the block below whatever the previous min was.
+      if (msg.prop === 'height') block.style.minHeight = '';
     }
   });
 

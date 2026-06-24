@@ -885,6 +885,10 @@
     const MIN_W = isFreeForm ? (flexCfg.minWidth ?? 20) : MIN;
     let MIN_H = isFreeForm ? (flexCfg.minHeight ?? 20) : MIN;
 
+    // Divider and spacer blocks have no content — let them shrink to 1px.
+    const blockType = block.dataset.blockType;
+    if (blockType === 'divider' || blockType === 'spacer') MIN_H = 1;
+
     // For a TEXT block, never shrink the height below the text's natural height
     // — otherwise the box clips and the text overflows it (the box would be
     // shorter than the content). The edit target is height:auto, so its

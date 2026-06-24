@@ -705,6 +705,13 @@ body {
   background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
 }
 
+/* Divider and spacer blocks must be freely resizable to any height — override
+   any inline min-height that older saves may have written onto the block. */
+[data-block-type="divider"],
+[data-block-type="spacer"] {
+  min-height: 0 !important;
+}
+
 .block-spacer {
   height: 72px;
   border: 1px dashed var(--line-strong);
