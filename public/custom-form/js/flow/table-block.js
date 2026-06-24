@@ -295,6 +295,36 @@
     return { widths: nw };
   });
 
+  const duplicateRow = () => apply((st) => {
+    const { r } = activeCoord();
+    const srcRow = st.M[r].slice();
+    const newRow = srcRow.map((id) => {
+      const src = st.cells[id] || { html: '', style: '', head: false };
+      const nid = (st._next || (st._next = Object.keys(st.cells).length + 1000)) + 1;
+      st._next = nid;
+      st.cells[nid] = { html: src.html, style: src.style, head: false };
+      return nid;
+    });
+    st.M.splice(r + 1, 0, newRow);
+    st.rows++;
+  });
+
+  const duplicateCol = () => apply((st, widths) => {
+    const { c } = activeCoord();
+    for (let r = 0; r < st.rows; r++) {
+      const id = st.M[r][c];
+      const src = st.cells[id] || { html: '', style: '', head: false };
+      const nid = (st._next || (st._next = Object.keys(st.cells).length + 1000)) + 1;
+      st._next = nid;
+      st.cells[nid] = { html: src.html, style: src.style, head: src.head };
+      st.M[r].splice(c + 1, 0, nid);
+    }
+    st.cols++;
+    const nw = widths.slice();
+    nw.splice(c + 1, 0, widths[c]);
+    return { widths: nw };
+  });
+
   // A fresh empty cell id added to a state mid-mutation.
   const freshId = (st, head = false) => {
     const id = (st._next || (st._next = Object.keys(st.cells).length + 1000)) + 1;
@@ -367,6 +397,53 @@
     emitChange();
   };
 
+  // Returns true when there is a non-collapsed text selection inside a cell.
+  const hasTextSelection = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return false;
+    return S.table.contains(sel.anchorNode);
+  };
+
+  // Apply a style via execCommand (operates on the current text selection).
+  const applyToSelection = (cmd, value) => {
+    try { document.execCommand('styleWithCSS', false, true); } catch (e) { /* */ }
+    try { document.execCommand(cmd, false, value); } catch (e) { /* */ }
+    emitChange();
+  };
+
+  // Wrap the current text selection in a <span> with the given CSS property set.
+  const wrapSelectionWithStyle = (prop, value) => {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const span = document.createElement('span');
+    span.style[prop] = value;
+    try { range.surroundContents(span); } catch (e) {
+      // surroundContents fails when the selection crosses element boundaries;
+      // fall back to extractContents+insert.
+      span.appendChild(range.extractContents());
+      range.insertNode(span);
+    }
+    // Re-select the wrapped content.
+    sel.removeAllRanges();
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+    sel.addRange(newRange);
+    emitChange();
+  };
+
+  // Apply style to selection if text is selected, otherwise to the whole cell(s).
+  const setCellStyleSmart = (prop, value) => {
+    if (hasTextSelection()) {
+      if (prop === 'color') { applyToSelection('foreColor', value); return; }
+      // font-family and font-size need span wrapping (execCommand sizes are 1-7 only).
+      wrapSelectionWithStyle(prop, value);
+      return;
+    }
+    eachSelected((td) => { td.style[prop] = value; });
+    emitChange();
+  };
+
   const setCellStyle = (prop, value) => eachSelected((td) => { td.style[prop] = value; });
   const toggleHeader = () => eachSelected((td) => td.classList.toggle('cs-cell--head'));
 
@@ -375,8 +452,23 @@
     td.style.border = `1px solid ${color || '#d0d5e2'}`;
   });
 
+  // Map execCommand names to CSS property toggles for multi-cell apply.
+  const CMD_STYLE = {
+    bold:          (td) => { const on = td.style.fontWeight === '700' || td.style.fontWeight === 'bold'; td.style.fontWeight = on ? '' : '700'; },
+    italic:        (td) => { const on = td.style.fontStyle === 'italic'; td.style.fontStyle = on ? '' : 'italic'; },
+    underline:     (td) => { const cur = td.style.textDecoration || ''; const on = /underline/.test(cur); td.style.textDecoration = on ? cur.replace('underline', '').trim() : (cur ? cur + ' underline' : 'underline'); },
+    strikeThrough: (td) => { const cur = td.style.textDecoration || ''; const on = /line-through/.test(cur); td.style.textDecoration = on ? cur.replace('line-through', '').trim() : (cur ? cur + ' line-through' : 'line-through'); },
+  };
+
   // Text format inside the focused cell via execCommand.
+  // When multiple cells are selected, apply CSS directly to all of them.
   const textCmd = (cmd, val) => {
+    const multiCells = S.selected.size > 1 ? Array.from(S.selected) : null;
+    if (multiCells && CMD_STYLE[cmd]) {
+      multiCells.forEach(CMD_STYLE[cmd]);
+      emitChange();
+      return;
+    }
     if (S.activeCell) S.activeCell.focus();
     try { document.execCommand('styleWithCSS', false, true); } catch (e) { /* */ }
     try { document.execCommand(cmd, false, val == null ? null : val); } catch (e) { /* */ }
@@ -481,13 +573,106 @@
 
   // Heading at cell level = size + bold; "Normal" clears both back to default.
   const HEADING_PX = { h1: '32px', h2: '24px', h3: '19px', h4: '16px', h5: '13px', h6: '11px' };
-  const applyCellHeading = (level) => eachSelected((td) => {
-    if (HEADING_PX[level]) { td.style.fontSize = HEADING_PX[level]; td.style.fontWeight = '700'; }
-    else { td.style.fontSize = ''; td.style.fontWeight = ''; }
-  });
+  const applyCellHeading = (level) => {
+    if (hasTextSelection()) {
+      if (HEADING_PX[level]) {
+        // Wrap in a span with both font-size and font-weight set together.
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+          const range = sel.getRangeAt(0);
+          const span = document.createElement('span');
+          span.style.fontSize = HEADING_PX[level];
+          span.style.fontWeight = '700';
+          try { range.surroundContents(span); } catch (e) {
+            span.appendChild(range.extractContents()); range.insertNode(span);
+          }
+          sel.removeAllRanges();
+          const nr = document.createRange(); nr.selectNodeContents(span); sel.addRange(nr);
+          emitChange();
+        }
+      } else {
+        // "Normal" — strip inline size+bold from the selection.
+        try { document.execCommand('styleWithCSS', false, true); } catch (e) { /* */ }
+        try { document.execCommand('removeFormat', false, null); } catch (e) { /* */ }
+        emitChange();
+      }
+      return;
+    }
+    eachSelected((td) => {
+      if (HEADING_PX[level]) { td.style.fontSize = HEADING_PX[level]; td.style.fontWeight = '700'; }
+      else { td.style.fontSize = ''; td.style.fontWeight = ''; }
+    });
+  };
 
   // Text case via CSS text-transform (non-destructive).
   const applyCellCase = (value) => { if (value) setCellStyle('textTransform', value); };
+
+  // Reflect the active cell's styles in the toolbar dropdowns so the user sees
+  // the correct heading/font/size when they move between cells or select text.
+  // When there is a text selection, read from the node at the selection anchor
+  // (which may be a <span> inside the td) rather than the td itself.
+  const syncToolbarToCell = (td) => {
+    if (!S || !S.toolbar || !td) return;
+    const tb = S.toolbar;
+
+    // Resolve the element whose computed style we should read.
+    // Prefer the node at the caret/selection anchor when it's inside this cell.
+    let styleEl = td;
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount) {
+      const anchor = sel.anchorNode;
+      if (anchor && td.contains(anchor)) {
+        styleEl = (anchor.nodeType === 1 ? anchor : anchor.parentElement) || td;
+      }
+    }
+
+    let cs = null;
+    try { cs = window.getComputedStyle(styleEl); } catch (e) { /* */ }
+    if (!cs) return;
+
+    // Format (heading) dropdown — match by fontSize+bold, same logic as rich-text-editor.
+    const fmtSel = tb.querySelector('[data-sel="format"]');
+    if (fmtSel) {
+      const px = Math.round(parseFloat(cs.fontSize));
+      const bold = (parseInt(cs.fontWeight, 10) || 400) >= 600;
+      let val = '';
+      if (bold) {
+        for (const [lvl, pxStr] of Object.entries(HEADING_PX)) {
+          if (Math.round(parseFloat(pxStr)) === px) { val = lvl; break; }
+        }
+      }
+      fmtSel.value = val;
+    }
+
+    // Font family dropdown.
+    const fontSel = tb.querySelector('[data-sel="font"]');
+    if (fontSel) {
+      const cur = cs.fontFamily.split(',')[0].trim().replace(/['"]/g, '').toLowerCase();
+      let val = '';
+      for (const opt of fontSel.options) {
+        if (opt.value && opt.value.split(',')[0].trim().replace(/['"]/g, '').toLowerCase() === cur) { val = opt.value; break; }
+      }
+      fontSel.value = val;
+    }
+
+    // Font size dropdown.
+    const sizeSel = tb.querySelector('[data-sel="size"]');
+    if (sizeSel) {
+      const px = Math.round(parseFloat(cs.fontSize));
+      if (!isNaN(px)) {
+        const val = String(px);
+        if (!Array.from(sizeSel.options).some((o) => o.value === val)) {
+          const opt = document.createElement('option');
+          opt.value = val; opt.textContent = val; opt.dataset.dynamic = '1';
+          sizeSel.appendChild(opt);
+        }
+        sizeSel.querySelectorAll('option[data-dynamic="1"]').forEach((o) => { if (o.value !== val) o.remove(); });
+        sizeSel.value = val;
+      } else {
+        sizeSel.value = '';
+      }
+    }
+  };
 
   const buildToolbar = () => {
     const tb = document.createElement('div');
@@ -500,6 +685,13 @@
       ? window.CustomRichEditor.toolbarInnerHTML(window.FROALA_FONTS || null, null)
       : '';
     tb.innerHTML = richHTML + tableGroupHTML();
+
+    // Remove buttons that don't apply to table cells (list/indent/link/undo/redo),
+    // then prune any cre-group that became empty.
+    const HIDE_CMDS = ['insertOrderedList', 'insertUnorderedList', 'outdent', 'indent', 'unlink', 'removeFormat', 'undo', 'redo'];
+    HIDE_CMDS.forEach((cmd) => tb.querySelectorAll(`[data-cmd="${cmd}"]`).forEach((el) => el.remove()));
+    tb.querySelectorAll('[data-act="link"]').forEach((el) => el.remove());
+    tb.querySelectorAll('.cre-group').forEach((g) => { if (!g.children.length) g.remove(); });
 
     // Keep cell focus/selection when pressing a control (selects + colour inputs
     // need focus to open, so don't preventDefault those).
@@ -539,8 +731,8 @@
     const v = sel.value;
     switch (sel.dataset.sel) {
       case 'format': return applyCellHeading(v);
-      case 'font': return v && setCellStyle('fontFamily', v);
-      case 'size': return v && setCellStyle('fontSize', /px|em|rem|%/.test(v) ? v : v + 'px');
+      case 'font': return v && setCellStyleSmart('fontFamily', v);
+      case 'size': return v && setCellStyleSmart('fontSize', /px|em|rem|%/.test(v) ? v : v + 'px');
       case 'lineheight': return v && setCellStyle('lineHeight', v);
       case 'letterspacing': return v && setCellStyle('letterSpacing', v);
       case 'textcase': return v && applyCellCase(v);
@@ -548,7 +740,7 @@
   });
   const onToolbarInput = _withTbInteract((e) => {
     const t = e.target;
-    if (t.matches('[data-color="fore"]')) return setCellStyle('color', t.value);
+    if (t.matches('[data-color="fore"]')) return setCellStyleSmart('color', t.value);
     if (t.matches('[data-color="back"]')) return setCellStyle('backgroundColor', t.value); // highlight → cell fill
     if (t.matches('[data-border]')) return setBorder(t.value, true);
   });
@@ -561,6 +753,8 @@
       case 'col-right': return insertCol('right');
       case 'del-row': return deleteRow();
       case 'del-col': return deleteCol();
+      case 'dup-row': return duplicateRow();
+      case 'dup-col': return duplicateCol();
       case 'merge': return mergeCells();
       case 'split': return splitCell();
       case 'header': return toggleHeader();
@@ -683,6 +877,9 @@
     }
 
     items.push(
+      { op: 'dup-row', label: '⧉  Duplicate row', success: true },
+      { op: 'dup-col', label: '⧉  Duplicate column', success: true },
+      { sep: true },
       { op: 'del-row', label: '🗑  Delete row', danger: true },
       { op: 'del-col', label: '🗑  Delete column', danger: true },
       { op: 'del-table', label: '🗑  Delete table', danger: true },
@@ -693,6 +890,7 @@
   const clearPreview = () => {
     if (!S) return;
     S.table.querySelectorAll('.cs-cell--danger').forEach((td) => td.classList.remove('cs-cell--danger'));
+    S.table.querySelectorAll('.cs-cell--success').forEach((td) => td.classList.remove('cs-cell--success'));
   };
 
   // Mark every rendered cell whose matrix area satisfies `pred(r,c)` red.
@@ -708,6 +906,19 @@
     });
   };
 
+  // Mark every rendered cell whose matrix area satisfies `pred(r,c)` green.
+  const markCellsSuccess = (pred) => {
+    if (!S) return;
+    const state = read(S.table);
+    S.table.querySelectorAll('td.cs-cell').forEach((td) => {
+      const rc = cellRect(S.table, td);
+      const id = state.M[rc.r][rc.c];
+      let hit = false;
+      for (let r = 0; r < state.rows && !hit; r++) for (let c = 0; c < state.cols; c++) { if (state.M[r][c] === id && pred(r, c)) { hit = true; break; } }
+      if (hit) td.classList.add('cs-cell--success');
+    });
+  };
+
   // Hover-preview of what a delete item will remove (Canva-style red highlight).
   const previewOp = (op) => {
     clearPreview();
@@ -715,6 +926,8 @@
     if (op === 'del-table') { S.table.querySelectorAll('td.cs-cell').forEach((td) => td.classList.add('cs-cell--danger')); return; }
     if (op === 'del-row') { const { r } = activeCoord(); markCells((rr) => rr === r); return; }
     if (op === 'del-col') { const { c } = activeCoord(); markCells((rr, cc) => cc === c); return; }
+    if (op === 'dup-row') { const { r } = activeCoord(); markCellsSuccess((rr) => rr === r); return; }
+    if (op === 'dup-col') { const { c } = activeCoord(); markCellsSuccess((rr, cc) => cc === c); return; }
   };
 
   const hideContextMenu = () => {
@@ -731,10 +944,10 @@
       if (it.sep) { const s = document.createElement('div'); s.className = 'cs-tbl-menu__sep'; m.appendChild(s); return; }
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'cs-tbl-menu__item' + (it.danger ? ' cs-tbl-menu__item--danger' : '');
+      b.className = 'cs-tbl-menu__item' + (it.danger ? ' cs-tbl-menu__item--danger' : it.success ? ' cs-tbl-menu__item--success' : '');
       b.dataset.op = it.op;
       b.textContent = it.label;
-      if (/^del-/.test(it.op)) {
+      if (/^del-/.test(it.op) || /^dup-/.test(it.op)) {
         b.addEventListener('mouseenter', () => previewOp(it.op));
         b.addEventListener('mouseleave', clearPreview);
       }
@@ -1029,8 +1242,19 @@
     document.addEventListener('canvas:rich-toolbar-mode', S._mode);
 
     // Show toolbar only on text selection inside a cell.
-    S._selChange = () => onTableSelChange();
+    S._selChange = () => {
+      onTableSelChange();
+      // Sync toolbar dropdowns to reflect the text at the caret/selection.
+      if (S.activeCell) syncToolbarToCell(S.activeCell);
+    };
     document.addEventListener('selectionchange', S._selChange);
+
+    // Sync toolbar dropdowns to reflect the focused cell's styles.
+    S._focusin = (e) => {
+      const td = e.target.closest && e.target.closest('td.cs-cell');
+      if (td) { S.activeCell = td; syncToolbarToCell(td); }
+    };
+    table.addEventListener('focusin', S._focusin);
   };
 
   const deactivate = () => {
@@ -1046,6 +1270,7 @@
     window.removeEventListener('resize', S._reflow);
     if (S._mode) document.removeEventListener('canvas:rich-toolbar-mode', S._mode);
     if (S._selChange) document.removeEventListener('selectionchange', S._selChange);
+    if (S._focusin) table.removeEventListener('focusin', S._focusin);
     if (toolbar) window.CustomRichEditor?.untrackDockedBar?.(toolbar);
     window.CustomRichEditor?.setExternalDockedActive?.(false);
     document.removeEventListener('pointerdown', S._down, true);

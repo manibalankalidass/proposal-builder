@@ -607,7 +607,7 @@
   align-items: center;
   flex-direction: row;
   justify-content: center;
-  overflow: hidden;
+  /* overflow: hidden; */
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
@@ -2522,7 +2522,7 @@
 /* The cell holding the caret gets a clear highlight. */
 .cs-table .cs-cell:focus {
   box-shadow: inset 0 0 0 1px #248567;
-  background: rgba(92, 92, 255, 0.06);
+  /* background: rgba(92, 92, 255, 0.06); */
 }
 
 /* Canva-style cell selection: a soft tint on each cell + one crisp rectangle
@@ -2545,6 +2545,11 @@
 .cs-table .cs-cell--danger {
   box-shadow: inset 0 0 0 1px #e5484d;
   background: rgba(229, 72, 77, 0.16) !important;
+}
+
+.cs-table .cs-cell--success {
+  box-shadow: inset 0 0 0 1px #16a34a;
+  background: rgba(22, 163, 74, 0.14) !important;
 }
 
 /* Right-click context menu. */
@@ -2586,6 +2591,14 @@
 
 .cs-tbl-menu__item--danger:hover {
   background: #fdecec;
+}
+
+.cs-tbl-menu__item--success {
+  color: #16a34a;
+}
+
+.cs-tbl-menu__item--success:hover {
+  background: #dcfce7;
 }
 
 .cs-tbl-menu__sep {
@@ -3012,5 +3025,19 @@
 }
 
 [data-pen="snap"]{
+  display: none;
+}
+
+/* Hide list/indent, link/unlink/clear, and undo/redo from the table toolbar —
+   these operate on a text cursor selection and are meaningless across cells. */
+.cre-toolbar--table [data-cmd="insertOrderedList"],
+.cre-toolbar--table [data-cmd="insertUnorderedList"],
+.cre-toolbar--table [data-cmd="outdent"],
+.cre-toolbar--table [data-cmd="indent"],
+.cre-toolbar--table [data-act="link"],
+.cre-toolbar--table [data-cmd="unlink"],
+.cre-toolbar--table [data-cmd="removeFormat"],
+.cre-toolbar--table [data-cmd="undo"],
+.cre-toolbar--table [data-cmd="redo"] {
   display: none;
 }

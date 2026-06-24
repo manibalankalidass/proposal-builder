@@ -502,25 +502,13 @@
       return;
     }
 
-    // EDIT (direct-select) mode. A locked active layer can't be anchor-edited
-    // or dragged (you can still select a DIFFERENT layer to switch away).
-    const activeLocked = !!S.state.paths[S.activePath]?.locked;
-    if (hit && !activeLocked) {
-      if (hit.type === 'anchor' && alt) {
-        snapshot();
-        const p = S.state.paths[hit.p].anchors[hit.i];
-        if (p.inX != null || p.outX != null) { delete p.inX; delete p.inY; delete p.outX; delete p.outY; }
-        else setSmooth(p, p.x + 80, p.y);
-        S.sel = { p: hit.p, i: hit.i }; commit(); return;
-      }
-      S.sel = { p: hit.p, i: hit.i };
-      startDrag(hit, vb);
-      return;
-    }
+    // HAND (✋ edit) mode — move whole shape only; anchor dots are hidden so
+    // anchor/handle hit results are discarded to prevent accidental reshaping.
     // MOVE (hand) tool — move ONLY (no point inserting; that's the pen's job):
     //   • over a DIFFERENT sub-path → select it
     //   • over the ACTIVE shape → drag the whole shape
     //   • empty space → deselect
+    const activeLocked = !!S.state.paths[S.activePath]?.locked;
     const vbRaw = clientToVbRaw(e.clientX, e.clientY);
     const overPath = pickPath(vbRaw);
     if (overPath >= 0 && overPath !== S.activePath) { S.selected?.clear(); selectPath(overPath); return; }
@@ -1389,8 +1377,8 @@
     <div class="cs-pen-toolbar">
       <div class="cs-pen-layers" data-pen-layers title="Shapes — click to select"></div>
       <span class="cs-pen-sep"></span>
-      <button type="button" data-pen="pen"    title="Pen — draw a shape; on a finished shape hover an edge to add a point (+) or a point to remove it (×)">✒</button>
-      <button type="button" data-pen="edit"   title="Move — drag points or the whole shape">✋</button>
+      <button type="button" data-pen="pen"    title="Pen — draw &amp; edit points; drag anchors to reshape, hover edge to add point">✒</button>
+      <button type="button" data-pen="edit"   title="Move — drag the whole shape; use the Pen tool to edit individual points">✋</button>
       <button type="button" data-pen="scale"  title="Scale — drag corner/edge handles to resize shape">⤡</button>
       <button type="button" data-pen="snap"   title="Snap to grid / page edges">🧲</button>
       <button type="button" data-pen="smooth" title="Smooth / round corners">∿</button>

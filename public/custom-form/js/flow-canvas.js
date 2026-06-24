@@ -76,7 +76,7 @@
     if (region === 'header') {
       const col1 = (FC.makeCol && FC.makeCol()) || document.createElement('div');
       if (!col1.classList.contains('col-item')) col1.classList.add('col-item');
-      col1.style.flex = '6';
+      col1.style.flex = '2';
       col1.style.maxWidth = '100%';
       const imgBlock = FC.createBlock && FC.createBlock('image');
       if (imgBlock) {
@@ -90,15 +90,9 @@
       }
       el.appendChild(col1);
 
-      const colGap = (FC.makeCol && FC.makeCol()) || document.createElement('div');
-      if (!colGap.classList.contains('col-item')) colGap.classList.add('col-item');
-      colGap.style.flex = '1';
-      colGap.style.maxWidth = '100%';
-      el.appendChild(colGap);
-
       const col2 = (FC.makeCol && FC.makeCol()) || document.createElement('div');
       if (!col2.classList.contains('col-item')) col2.classList.add('col-item');
-      col2.style.flex = '3';
+      col2.style.flex = '1';
       col2.style.maxWidth = '100%';
       const textBlock = FC.createBlock && FC.createBlock('body-text');
       if (textBlock) {
@@ -114,7 +108,7 @@
     } else if (region === 'footer') {
       const col1 = (FC.makeCol && FC.makeCol()) || document.createElement('div');
       if (!col1.classList.contains('col-item')) col1.classList.add('col-item');
-      col1.style.flex = '6';
+      col1.style.flex = '2';
       col1.style.maxWidth = '100%';
       const textBlock = FC.createBlock && FC.createBlock('body-text');
       if (textBlock) {
@@ -126,15 +120,9 @@
       }
       el.appendChild(col1);
 
-      const colGap = (FC.makeCol && FC.makeCol()) || document.createElement('div');
-      if (!colGap.classList.contains('col-item')) colGap.classList.add('col-item');
-      colGap.style.flex = '1';
-      colGap.style.maxWidth = '100%';
-      el.appendChild(colGap);
-
       const col2 = (FC.makeCol && FC.makeCol()) || document.createElement('div');
       if (!col2.classList.contains('col-item')) col2.classList.add('col-item');
-      col2.style.flex = '3';
+      col2.style.flex = '1';
       col2.style.maxWidth = '100%';
       const imgBlock = FC.createBlock && FC.createBlock('image');
       if (imgBlock) {
