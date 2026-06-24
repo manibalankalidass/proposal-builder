@@ -268,13 +268,18 @@
               </label>
               <button type="button" data-ref-clear class="cs-page-shape-ref__clear">Remove reference</button>
               <p class="cs-page-shape-ref__hint">Drop an image, dim it, then trace it with the pen tool. It's only a guide — it is NOT saved with the shape.</p>
+              <label class="cs-page-shape-ref__chk cs-page-shape-ref__apply-all">
+                <input type="checkbox" data-apply-all-pages>
+                <span>Apply to all pages</span>
+              </label>
             </div>
             <div class="cs-page-shape-shapes__title">Properties</div>
             <div class="cs-page-shape-props" data-props-host></div>
             <div class="cs-page-shape-shapes__title">Shapes</div>
             <div class="cs-page-shape-size">
-              <label>W <input type="number" data-shape-w min="10" step="10" value="220"></label>
-              <label>H <input type="number" data-shape-h min="10" step="10" value="160"></label>
+              <label>W <input type="number" data-shape-w min="10" step="1" value="220"></label>
+              <button type="button" class="cs-shape-lock" data-shape-lock title="Lock aspect ratio">🔒</button>
+              <label>H <input type="number" data-shape-h min="10" step="1" value="160"></label>
             </div>
             <div class="cs-page-shape-shapes__grid">
               <button type="button" data-preset="rectangle"      title="Rectangle">▭</button>
@@ -426,12 +431,25 @@
 
   const save = () => {
     if (!block || !sessionDesigns) { close(); return; }
-    // Capture the page currently open, then flush every page edited this
-    // session. Pages never visited keep their existing layer untouched.
+    // Capture the page currently open.
     sessionDesigns.set(targetPage, captureBlock());
-    sessionDesigns.forEach((design, pageEl) => {
-      if (document.contains(pageEl)) injectLayer(pageEl, design);
-    });
+
+    const applyAll = !!(modal && modal.querySelector('[data-apply-all-pages]')?.checked);
+    // Persist preference so the checkbox is pre-ticked next time.
+    try { localStorage.setItem('cs-page-shape:apply-all', applyAll ? '1' : '0'); } catch (e) { /* */ }
+
+    if (applyAll) {
+      // Apply the current page's design to every page (live design, not stale session map).
+      const design = sessionDesigns.get(targetPage);
+      getAllPages().forEach((pageEl) => {
+        if (document.contains(pageEl)) injectLayer(pageEl, design);
+      });
+    } else {
+      // Only pages edited in this session; others are left untouched.
+      sessionDesigns.forEach((design, pageEl) => {
+        if (document.contains(pageEl)) injectLayer(pageEl, design);
+      });
+    }
     close();
   };
 
@@ -460,6 +478,12 @@
     hostDoc.body.appendChild(modal);
     populatePageSelect();
 
+    // Restore "Apply to all pages" preference from last session.
+    const applyAllChk = modal.querySelector('[data-apply-all-pages]');
+    if (applyAllChk) {
+      try { applyAllChk.checked = localStorage.getItem('cs-page-shape:apply-all') === '1'; } catch (e) { /* */ }
+    }
+
     const stage = modal.querySelector('.cs-page-shape-stage');
     zoom = 1;
 
@@ -481,6 +505,76 @@
 
     stage.appendChild(block);
     layoutStage();
+
+    // W/H size inputs: show current active-path bbox, scale shape on change.
+    let shapeLocked = true; // proportion lock — on by default
+    const wInput = modal.querySelector('[data-shape-w]');
+    const hInput = modal.querySelector('[data-shape-h]');
+    const lockBtn = modal.querySelector('[data-shape-lock]');
+    if (lockBtn) lockBtn.classList.toggle('is-locked', shapeLocked);
+
+    // Convert viewBox units → page px and back for the inputs.
+    const vbToPx = (vb, axis) => {
+      const dims = getPageDims();
+      const VBU = window.PenShape?.VIEWBOX || 1000;
+      return Math.round(vb / VBU * (axis === 'w' ? dims.w : dims.h));
+    };
+    const pxToVb = (px, axis) => {
+      const dims = getPageDims();
+      const VBU = window.PenShape?.VIEWBOX || 1000;
+      return (px / (axis === 'w' ? dims.w : dims.h)) * VBU;
+    };
+
+    // Update inputs from current active-path bbox — but not while user is typing.
+    const syncWH = (bb) => {
+      if (!bb || bb.w < 1 || bb.h < 1) return;
+      if (document.activeElement === wInput || document.activeElement === hInput) return;
+      if (wInput) wInput.value = vbToPx(bb.w, 'w');
+      if (hInput) hInput.value = vbToPx(bb.h, 'h');
+    };
+
+    // Register callback so inputs update whenever shape changes or path switches.
+    window.PenShape?.onBboxChange?.(syncWH);
+    // Sync immediately for the already-loaded shape.
+    syncWH(window.PenShape?.getActivePathBbox?.());
+
+    // Scale shape live as user types W or H.
+    // When locked: changing W auto-updates H display and scales proportionally.
+    let _lastBb = window.PenShape?.getActivePathBbox?.() || null;
+    const applyWH = (changedAxis) => {
+      // Use the bbox captured at the START of this edit (before scaleActivePath
+      // mutates the anchors) so the ratio stays constant while typing.
+      const bb = _lastBb;
+      if (!bb || bb.w < 1 || bb.h < 1) return;
+      let newWvb, newHvb;
+      if (changedAxis === 'w') {
+        newWvb = pxToVb(Number(wInput.value), 'w');
+        if (newWvb <= 0) return;
+        if (shapeLocked) {
+          newHvb = (newWvb / bb.w) * bb.h;
+          // Mirror the computed H into the H input so user sees it update live.
+          if (hInput) hInput.value = vbToPx(newHvb, 'h');
+        } else {
+          newHvb = pxToVb(Number(hInput.value), 'h');
+        }
+      } else {
+        newHvb = pxToVb(Number(hInput.value), 'h');
+        if (newHvb <= 0) return;
+        if (shapeLocked) {
+          newWvb = (newHvb / bb.h) * bb.w;
+          if (wInput) wInput.value = vbToPx(newWvb, 'w');
+        } else {
+          newWvb = pxToVb(Number(wInput.value), 'w');
+        }
+      }
+      if (newWvb > 0 && newHvb > 0) window.PenShape?.scaleActivePath?.(newWvb, newHvb);
+    };
+
+    // Reset the baseline bbox when the user starts typing (focus), so ratio is
+    // computed from the shape's size at focus time, not after mid-edit mutations.
+    const resetBb = () => { _lastBb = window.PenShape?.getActivePathBbox?.() || null; };
+    if (wInput) { wInput.addEventListener('focus', resetBb); wInput.addEventListener('input', () => applyWH('w')); }
+    if (hInput) { hInput.addEventListener('focus', resetBb); hInput.addEventListener('input', () => applyWH('h')); }
 
     modal.addEventListener('change', (e) => {
       if (e.target.matches('[data-page-select]')) {
@@ -530,6 +624,11 @@
         setReference(null);
         const f = modal.querySelector('[data-ref-file]');
         if (f) f.value = '';
+        return;
+      }
+      if (e.target.closest('[data-shape-lock]')) {
+        shapeLocked = !shapeLocked;
+        lockBtn?.classList.toggle('is-locked', shapeLocked);
         return;
       }
       const lact = e.target.closest('[data-layers-act]')?.dataset.layersAct;

@@ -2580,6 +2580,14 @@ button {
 
 .saveas-modal__btn--primary:hover { background: #1e6f57; }
 
+.saveas-modal__btn--danger {
+  background: #248567;
+  border-color: #248567;
+  color: #fff;
+}
+
+.saveas-modal__btn--danger:hover { background: #b91c1c; }
+
 /* ---------------------------------------------------------------------------
    Preview modal — full-screen, read-only render of all pages (scaled)
    --------------------------------------------------------------------------- */

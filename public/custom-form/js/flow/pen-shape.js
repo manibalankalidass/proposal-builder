@@ -264,7 +264,8 @@
 
   const snapshot = () => { S.undo.push(clone(S.state)); if (S.undo.length > 100) S.undo.shift(); S.redo.length = 0; };
 
-  const commit = () => { writeState(S.block, S.state); renderShape(S.block); drawOverlay(); renderLayers(); };
+  const notifyBboxChange = () => { if (S && S.onBboxChange) S.onBboxChange(getActivePathBbox()); };
+  const commit = () => { writeState(S.block, S.state); renderShape(S.block); drawOverlay(); renderLayers(); notifyBboxChange(); };
 
   // Index of the sub-path currently open (still being drawn), else the last
   // path (so edits/undo target something sensible).
@@ -361,6 +362,7 @@
     writeStyle(S.block, st); // new paths inherit the selected path's look
     S.applyStyleValues?.();
     syncToolbar();
+    notifyBboxChange();
   };
 
   const setSmooth = (p, ox, oy) => { p.outX = ox; p.outY = oy; p.inX = 2 * p.x - ox; p.inY = 2 * p.y - oy; };
@@ -384,11 +386,41 @@
     drawOverlay();
   };
 
+  // Start a bbox-scale drag. corner = 'nw'|'ne'|'se'|'sw'|'n'|'s'|'e'|'w'.
+  const startBboxScale = (corner, vb) => {
+    const path = S.state.paths[S.activePath];
+    if (!path) return;
+    const bb = getActivePathBbox();
+    if (!bb) return;
+    snapshot();
+    S.dragPivot = { cx: bb.x + bb.w / 2, cy: bb.y + bb.h / 2 };
+    S.drag = { kind: 'bbox-scale', p: S.activePath, corner,
+      origBb: { ...bb }, orig: clone(ringsOf(path)) };
+    drawOverlay();
+  };
+
+  // Return which bbox handle (if any) the raw client point is over.
+  const pickBboxHandle = (cx, cy) => {
+    const el = S.ovSvg.querySelector(':hover') ||
+      [...S.ovSvg.querySelectorAll('[data-bbox-handle]')].find((h) => {
+        const r = h.getBoundingClientRect();
+        return cx >= r.left - 4 && cx <= r.right + 4 && cy >= r.top - 4 && cy <= r.bottom + 4;
+      });
+    return el?.dataset?.bboxHandle || null;
+  };
+
   const onDown = (e) => {
     if (!S || S.resizeMode) return; // let the block resize handles work
     e.preventDefault(); e.stopPropagation();
     S.overlay.setPointerCapture?.(e.pointerId);
     const vb = clientToVb(e.clientX, e.clientY);
+
+    // Bbox scale handle check (only in scale mode) — before anchor pick so handles win.
+    if (S.bboxScaleMode) {
+      const bboxHit = pickBboxHandle(e.clientX, e.clientY);
+      if (bboxHit) { startBboxScale(bboxHit, vb); return; }
+    }
+
     // Space held → "move whole clip-path" override: a drag anywhere relocates the
     // active shape, even over an anchor/handle (works in pen AND edit mode).
     if (S.spaceHeld) { startShapeDrag(vb); return; }
@@ -524,6 +556,43 @@
       return;
     }
     const d = S.drag, a = S.state.paths[d.p].anchors;
+    if (d.kind === 'bbox-scale') {
+      const ob = d.origBb;
+      const corner = d.corner;
+      const isN = corner.includes('n'), isS = corner.includes('s');
+      const isW = corner.includes('w'), isE = corner.includes('e');
+      const isCorner = (isN || isS) && (isE || isW);
+      // How far the dragged handle moved from its original position.
+      const origHx = isW ? ob.x : (isE ? ob.x + ob.w : ob.x + ob.w / 2);
+      const origHy = isN ? ob.y : (isS ? ob.y + ob.h : ob.y + ob.h / 2);
+      const dxDrag = vb.x - origHx, dyDrag = vb.y - origHy;
+      // New size: only the relevant axes change.
+      let newW = ob.w + (isE ? dxDrag : (isW ? -dxDrag : 0));
+      let newH = ob.h + (isS ? dyDrag : (isN ? -dyDrag : 0));
+      newW = Math.max(10, newW); newH = Math.max(10, newH);
+      // Corner handles: always proportional (lock to axis that moved more).
+      if (isCorner) {
+        const ratio = ob.w / ob.h;
+        if (newW / ob.w >= newH / ob.h) newH = newW / ratio; else newW = newH * ratio;
+      }
+      // Scale about bbox centre (stays fixed).
+      const cx = ob.x + ob.w / 2, cy = ob.y + ob.h / 2;
+      const sx = newW / ob.w, sy = newH / ob.h;
+      const path = S.state.paths[d.p];
+      const scaled = d.orig.map((r) => ({
+        closed: r.closed,
+        anchors: r.anchors.map((o) => {
+          const na = { x: cx + (o.x - cx) * sx, y: cy + (o.y - cy) * sy };
+          if (o.inX != null) { na.inX = cx + (o.inX - cx) * sx; na.inY = cy + (o.inY - cy) * sy; }
+          if (o.outX != null) { na.outX = cx + (o.outX - cx) * sx; na.outY = cy + (o.outY - cy) * sy; }
+          return na;
+        }),
+      }));
+      if (path.rings && path.rings.length) path.rings = scaled;
+      else { path.anchors = scaled[0].anchors; path.closed = scaled[0].closed; }
+      writeState(S.block, S.state); renderShape(S.block); drawOverlay();
+      return;
+    }
     if (d.kind === 'shape') {
       // Translate every ring of the shape; snap the delta when snap is on.
       const dx = snapDelta(vb.x - d.ox), dy = snapDelta(vb.y - d.oy);
@@ -624,10 +693,8 @@
     if (S.resizeMode) return; // box-resize mode: anchors hidden, handles drive
     const paths = S.state.paths;
     const ap = paths[S.activePath];
-    // Hand / Move tool: hide the clip-path selection chrome (anchor squares +
-    // bézier handles) for a clean view. The Pen tool brings them back. Guides /
-    // rubber-band still draw (the former only during a whole-shape snap-drag).
-    const showMarks = S.mode !== 'edit';
+    // In scale mode: only show the bbox outline + scale handles, no anchor dots.
+    const showMarks = S.mode !== 'edit' && !S.bboxScaleMode;
 
     // Smart alignment guides (full-bleed dashed lines through the snapped x / y).
     // Span the FULL overlay, not just the block: in the page designer the overlay
@@ -672,6 +739,33 @@
         ov.appendChild(ns('rect', { x: pp.x - size / 2, y: pp.y - size / 2, width: size, height: size, class: cls }));
       });
     });
+
+    // Bounding-box scale handles — 8 squares around the active closed path.
+    // Dragging any handle scales the shape (proportional = corners, free = edges).
+    if (S.bboxScaleMode && ap && ap.closed && ap.anchors.length >= 3 && !S.drag) {
+      const bb = getActivePathBbox();
+      if (bb && bb.w > 1 && bb.h > 1) {
+        const tl = vbToPx(bb.x, bb.y), br = vbToPx(bb.x + bb.w, bb.y + bb.h);
+        const mx = (tl.x + br.x) / 2, my = (tl.y + br.y) / 2;
+        // Dashed bounding box outline.
+        ov.appendChild(ns('rect', { x: tl.x, y: tl.y, width: br.x - tl.x, height: br.y - tl.y,
+          class: 'cs-pen-bbox-outline' }));
+        const corners = new Set(['nw', 'ne', 'se', 'sw']);
+        const handles = [
+          { id: 'nw', x: tl.x, y: tl.y }, { id: 'n', x: mx, y: tl.y }, { id: 'ne', x: br.x, y: tl.y },
+          { id: 'e',  x: br.x, y: my  },  { id: 'se', x: br.x, y: br.y },
+          { id: 's',  x: mx,   y: br.y }, { id: 'sw', x: tl.x, y: br.y }, { id: 'w', x: tl.x, y: my  },
+        ];
+        const SZ = 8;
+        handles.forEach(({ id, x, y }) => {
+          const isCorner = corners.has(id);
+          const attrs = { x: x - SZ / 2, y: y - SZ / 2, width: SZ, height: SZ,
+            class: 'cs-pen-bbox-handle', 'data-bbox-handle': id };
+          if (isCorner) { attrs.rx = SZ / 2; attrs.ry = SZ / 2; } // circle for corners
+          ov.appendChild(ns('rect', attrs));
+        });
+      }
+    }
 
     // Pen-tool hover affordances on a completed shape: + to add a point on the
     // outline, × to remove the point under the cursor.
@@ -865,6 +959,38 @@
     if (!S) return;
     snapshot();
     S.state.paths = []; S.activePath = -1; S.mode = 'pen'; S.sel = null; S.selected?.clear();
+    commit();
+  };
+
+  // Return the bounding box (in viewBox units) of the active path, or null.
+  const getActivePathBbox = () => {
+    const path = S && S.state.paths[S.activePath];
+    if (!path) return null;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    ringsOf(path).forEach((r) => r.anchors.forEach(({ x, y }) => {
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    }));
+    if (!isFinite(minX)) return null;
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  };
+
+  // Scale the active path so its bounding box becomes newW × newH (viewBox
+  // units), keeping the bbox center in place.
+  const scaleActivePath = (newW, newH) => {
+    const path = S && S.state.paths[S.activePath];
+    if (!path || path.locked) return;
+    const bb = getActivePathBbox();
+    if (!bb || bb.w < 1 || bb.h < 1) return;
+    snapshot();
+    const cx = bb.x + bb.w / 2, cy = bb.y + bb.h / 2;
+    const sx = newW / bb.w, sy = newH / bb.h;
+    const mapPt = (x, y) => ({ x: cx + (x - cx) * sx, y: cy + (y - cy) * sy });
+    ringsOf(path).forEach((r) => r.anchors.forEach((a) => {
+      const mp = mapPt(a.x, a.y); a.x = mp.x; a.y = mp.y;
+      if (a.inX != null) { const ip = mapPt(a.inX, a.inY); a.inX = ip.x; a.inY = ip.y; }
+      if (a.outX != null) { const op = mapPt(a.outX, a.outY); a.outX = op.x; a.outY = op.y; }
+    }));
     commit();
   };
 
@@ -1263,9 +1389,10 @@
     <div class="cs-pen-toolbar">
       <div class="cs-pen-layers" data-pen-layers title="Shapes — click to select"></div>
       <span class="cs-pen-sep"></span>
-      <button type="button" data-pen="pen"   title="Pen — draw a shape; on a finished shape hover an edge to add a point (+) or a point to remove it (×)">✒</button>
-      <button type="button" data-pen="edit"  title="Move — drag points or the whole shape">✋</button>
-      <button type="button" data-pen="snap"  title="Snap to grid / page edges">🧲</button>
+      <button type="button" data-pen="pen"    title="Pen — draw a shape; on a finished shape hover an edge to add a point (+) or a point to remove it (×)">✒</button>
+      <button type="button" data-pen="edit"   title="Move — drag points or the whole shape">✋</button>
+      <button type="button" data-pen="scale"  title="Scale — drag corner/edge handles to resize shape">⤡</button>
+      <button type="button" data-pen="snap"   title="Snap to grid / page edges">🧲</button>
       <button type="button" data-pen="smooth" title="Smooth / round corners">∿</button>
       <span class="cs-pen-sep"></span>
       <button type="button" data-pen="dup"    title="Duplicate shape">⧉</button>
@@ -1390,8 +1517,9 @@
       const btn = e.target.closest('button[data-pen]');
       if (!btn || !bar.contains(btn) || propsEl.contains(btn)) return;
       const cmd = btn.dataset.pen;
-      if (cmd === 'pen') { setResizeMode(false); S.mode = 'pen'; startNewPath(); }
-      else if (cmd === 'edit') { setResizeMode(false); S.mode = 'edit'; }
+      if (cmd === 'pen') { setResizeMode(false); S.bboxScaleMode = false; S.mode = 'pen'; startNewPath(); }
+      else if (cmd === 'edit') { setResizeMode(false); S.bboxScaleMode = false; S.mode = 'edit'; }
+      else if (cmd === 'scale') { setResizeMode(false); S.bboxScaleMode = !S.bboxScaleMode; S.mode = 'edit'; }
       else if (cmd === 'resize') setResizeMode(!S.resizeMode);
       else if (cmd === 'snap') S.snap = !S.snap;
       else if (cmd === 'smooth') smoothAll();
@@ -1489,8 +1617,9 @@
 
   const syncToolbar = () => {
     if (!S) return;
-    S.toolbar.querySelectorAll('[data-pen="pen"],[data-pen="edit"],[data-pen="resize"],[data-pen="snap"]').forEach((b) => b.classList.remove('is-active'));
+    S.toolbar.querySelectorAll('[data-pen="pen"],[data-pen="edit"],[data-pen="scale"],[data-pen="resize"],[data-pen="snap"]').forEach((b) => b.classList.remove('is-active'));
     if (S.resizeMode) S.toolbar.querySelector('[data-pen="resize"]')?.classList.add('is-active');
+    else if (S.bboxScaleMode) S.toolbar.querySelector('[data-pen="scale"]')?.classList.add('is-active');
     else S.toolbar.querySelector(`[data-pen="${S.mode}"]`)?.classList.add('is-active');
     if (S.snap) S.toolbar.querySelector('[data-pen="snap"]')?.classList.add('is-active');
     // Keep the style controls + rotation in sync with whatever sub-path is now
@@ -1594,7 +1723,7 @@
       // Page designer enlarges the overlay past the page → allow off-page points.
       freeDraw: block.classList.contains('cs-page-shape-block'),
       activePath,
-      sel: null, drag: null, cursor: null, penHover: null, guides: null, resizeMode: false, snap: false, spaceHeld: false, layersEl: null, panelEl: null, propsEl: null, selected: new Set(), undo: [], redo: []
+      sel: null, drag: null, dragPivot: null, cursor: null, penHover: null, guides: null, resizeMode: false, bboxScaleMode: false, snap: false, spaceHeld: false, layersEl: null, panelEl: null, propsEl: null, selected: new Set(), undo: [], redo: []
     };
     S.toolbar = buildToolbar();
     overlay.appendChild(S.toolbar);
@@ -1652,6 +1781,11 @@
     readStyle, writeStyle,
     clearAllPaths,       // clearAllPaths() → wipe the active session's shapes
     loadPreset,          // loadPreset(name) → add a preset shape (rectangle, corner, …)
+    getActivePathBbox,   // → { x, y, w, h } viewBox units of the active path bbox
+    scaleActivePath,     // scaleActivePath(newW, newH) → scale active path in-place
+    // Register a callback fired after every commit + selectPath with the new bbox
+    // (or null if no active path). Used by the page-shape designer to sync W/H inputs.
+    onBboxChange: (fn) => { if (S) S.onBboxChange = fn; },
     mergeSelected,       // merge the multi-selected layers into one
     toggleLockSelected,  // lock / unlock the multi-selected layers
     getActiveBlock: () => (S ? S.block : null),

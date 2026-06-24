@@ -1,5 +1,6 @@
-import { Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, Input, OnInit, Output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 type RatioOpt = { key: string; label: string; value: number | null };
 
@@ -14,7 +15,7 @@ type RatioOpt = { key: string; label: string; value: number | null };
 @Component({
   selector: 'app-image-cropper',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="ic-modal">
       <div class="ic-backdrop" (click)="cancel()"></div>
@@ -48,6 +49,10 @@ type RatioOpt = { key: string; label: string; value: number | null };
 
         <div class="ic-foot">
           <span class="ic-hint">Drag to move · drag a handle to resize · pick a ratio above</span>
+          <label class="ic-apply-all">
+            <input type="checkbox" [(ngModel)]="applyToAll" />
+            Apply to all pages
+          </label>
           <div class="ic-actions">
             <button type="button" class="ic-btn" (click)="cancel()">Cancel</button>
             <button type="button" class="ic-btn ic-btn--primary" (click)="apply()">Apply crop</button>
@@ -88,9 +93,12 @@ type RatioOpt = { key: string; label: string; value: number | null };
     .ic-h--s  { left: 50%; bottom: -6px; transform: translateX(-50%); cursor: ns-resize; }
     .ic-h--sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
     .ic-h--w  { left: -6px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
-    .ic-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    .ic-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
       padding: 12px 18px; border-top: 1px solid rgba(255,255,255,0.08); }
     .ic-hint { font-size: 11px; color: rgba(255,255,255,0.55); }
+    .ic-apply-all { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600;
+      color: #c7ccec; cursor: pointer; user-select: none; }
+    .ic-apply-all input { width: 14px; height: 14px; cursor: pointer; accent-color: #5c5cff; }
     .ic-actions { display: flex; gap: 8px; }
     .ic-btn { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.16);
       background: rgba(255,255,255,0.06); color: #e7eaf6; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -99,11 +107,13 @@ type RatioOpt = { key: string; label: string; value: number | null };
     .ic-btn--primary:hover { background: #4a4af0; }
   `]
 })
-export class ImageCropperComponent {
+export class ImageCropperComponent implements OnInit {
   @Input() src = '';
   /** Page aspect ratio (width / height) for the "Page" preset. */
   @Input() pageRatio: number | null = null;
-  @Output() applied = new EventEmitter<string>();
+  /** Pre-fill the "Apply to all pages" checkbox from the parent's remembered state. */
+  @Input() applyToAllInit = false;
+  @Output() applied = new EventEmitter<{ dataUrl: string; applyAll: boolean }>();
   @Output() cancelled = new EventEmitter<void>();
 
   @ViewChild('img') imgRef!: ElementRef<HTMLImageElement>;
@@ -113,6 +123,9 @@ export class ImageCropperComponent {
   natW = 0; natH = 0;   // natural image size (px)
   crop = { x: 0, y: 0, w: 0, h: 0 }; // in displayed px, relative to the image
   ratioKey = 'free';
+  applyToAll = false;
+
+  ngOnInit(): void { this.applyToAll = this.applyToAllInit; }
 
   private drag: { mode: string; sx: number; sy: number; ox: number; oy: number; ow: number; oh: number } | null = null;
 
@@ -238,6 +251,6 @@ export class ImageCropperComponent {
     ctx.drawImage(im, sx, sy, sw, sh, 0, 0, outW, outH);
     const isPng = /^data:image\/png/i.test(this.src);
     const url = canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.92);
-    this.applied.emit(url);
+    this.applied.emit({ dataUrl: url, applyAll: this.applyToAll });
   }
 }

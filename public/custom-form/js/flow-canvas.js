@@ -771,6 +771,24 @@
         try { window.parent?.postMessage({ source: 'custom-form-twig', type: 'page:active', bgImage: url }, '*'); } catch (e) { /* */ }
       }
     }
+    if (msg.type === 'page-bg:set-all') {
+      const url = msg.imageUrl || '';
+      const allPages = document.querySelectorAll('.cs_margin, .cs_page[data-cs-cover="1"]');
+      allPages.forEach((page) => {
+        if (url) {
+          page.style.backgroundImage = `url("${url}")`;
+          page.style.backgroundSize = 'cover';
+          page.style.backgroundPosition = 'center';
+          page.style.backgroundRepeat = 'no-repeat';
+          page.dataset.csBgImage = url;
+        } else {
+          page.style.backgroundImage = '';
+          delete page.dataset.csBgImage;
+        }
+      });
+      // Echo back the active page's state so the panel preview updates.
+      try { window.parent?.postMessage({ source: 'custom-form-twig', type: 'page:active', bgImage: url }, '*'); } catch (e) { /* */ }
+    }
     if (msg.type === 'component:capture') {
       const data = window.FlowCanvas?.captureComponent?.() || null;
       window.parent?.postMessage({ source: 'custom-form-twig', type: 'component:captured', data }, '*');
@@ -841,6 +859,28 @@
     }
     if (msg.type === 'history:undo') { window.FlowCanvas?.undo?.(); }
     if (msg.type === 'history:redo') { window.FlowCanvas?.redo?.(); }
+    if (msg.type === 'template:apply') {
+      // Apply a predefined template HTML to the canvas (replaces existing content).
+      const html = window.FlowCanvas?.TEMPLATE_HTML?.[msg.templateIndex];
+      if (!html) return;
+      try { window.EditorManager?.clearAll?.(); } catch (e) { /* */ }
+      const firstDocEl = paper.querySelector('.cs_margin');
+      if (firstDocEl) {
+        firstDocEl.innerHTML = html;
+        window.FlowCanvas?.initEditors?.(firstDocEl);
+      }
+      window.parent?.postMessage({ source: 'custom-form-twig', type: 'draft:restored', data: { savedAt: new Date().toISOString() } }, '*');
+    }
+    if (msg.type === 'savedtemplate:apply') {
+      // Apply a saved template HTML to the canvas (replaces existing content).
+      try { window.EditorManager?.clearAll?.(); } catch (e) { /* */ }
+      const firstDocEl = paper.querySelector('.cs_margin');
+      if (firstDocEl) {
+        firstDocEl.innerHTML = msg.html;
+        window.FlowCanvas?.initEditors?.(firstDocEl);
+      }
+      window.parent?.postMessage({ source: 'custom-form-twig', type: 'draft:restored', data: { savedAt: new Date().toISOString() } }, '*');
+    }
     if (msg.type === 'rich-toolbar:dock') {
       // Place the CustomRichEditor toolbar: docked (top sticky) vs inline float.
       if (typeof window.setRichToolbarDocked === 'function') {
@@ -1123,6 +1163,15 @@
     event.stopPropagation();
     paper.querySelectorAll('.drop-surface--active').forEach(el => el.classList.remove('drop-surface--active'));
     FC.hideIndicator?.();
+
+    // Predefined templates replace the whole canvas — ask the host to confirm.
+    const templateMatch = payload.blockType && payload.blockType.match(/^predefine-template-(\d+)$/);
+    if (templateMatch) {
+      paper._pendingDropTarget = null;
+      paper._pendingDropDoc = null;
+      window.parent?.postMessage({ source: 'custom-form-twig', type: 'template:confirm', templateIndex: Number(templateMatch[1]) }, '*');
+      return;
+    }
 
     // De-dupe: some browsers / wrapper frames emit duplicate drop events.
     const now = performance.now();

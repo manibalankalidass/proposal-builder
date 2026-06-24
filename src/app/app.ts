@@ -146,6 +146,10 @@ export class App implements AfterViewInit {
   protected saveAsOpen = false;
   protected saveAsName = '';
 
+  // Template-replace warning modal
+  protected templateWarnOpen = false;
+  private _pendingTemplateAction: (() => void) | null = null;
+
   // Read-only design preview (all pages, scaled down, rendered in an iframe
   // with the editor's own stylesheets so it looks exactly like the design).
   protected previewOpen = false;
@@ -405,6 +409,13 @@ export class App implements AfterViewInit {
     if (msg.type === 'editor:zoom' && (msg.dir === 'in' || msg.dir === 'out' || msg.dir === 'reset')) {
       this.applyZoomDir(msg.dir);
     }
+    if (msg.type === 'template:confirm' && typeof msg.templateIndex === 'number') {
+      const idx = msg.templateIndex;
+      this.showTemplateWarning(() => {
+        this.postToCanvas('template:apply', { templateIndex: idx });
+      });
+      this.cdr.markForCheck();
+    }
   }
 
   // Select an ancestor block in the canvas (the "Choose parent <name>" buttons
@@ -512,6 +523,8 @@ export class App implements AfterViewInit {
   protected cropperOpen = false;
   protected cropperSrc = '';
   protected cropperRatio: number | null = null;
+  protected applyBgToAllPages = false;
+  protected bgRemoveOpen = false;
 
   protected onPageBgImageUpload(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -532,11 +545,16 @@ export class App implements AfterViewInit {
     input.value = ''; // allow re-selecting the same file later
   }
 
-  protected onCropApplied(dataUrl: string): void {
+  protected onCropApplied(result: { dataUrl: string; applyAll: boolean }): void {
     this.cropperOpen = false;
     this.cropperSrc = '';
-    this.pdfSettings.pageBackgroundImage = dataUrl; // panel preview
-    this.sendPageBgToIframe(dataUrl);               // apply to the active page
+    this.applyBgToAllPages = result.applyAll; // remember choice for next open
+    this.pdfSettings.pageBackgroundImage = result.dataUrl; // panel preview
+    if (result.applyAll) {
+      this.postToCanvas('page-bg:set-all', { imageUrl: result.dataUrl });
+    } else {
+      this.sendPageBgToIframe(result.dataUrl); // apply to the active page only
+    }
   }
 
   protected onCropCancelled(): void {
@@ -544,9 +562,22 @@ export class App implements AfterViewInit {
     this.cropperSrc = '';
   }
 
-  protected removePageBgImage(): void {
+  protected openBgRemoveModal(): void {
+    this.bgRemoveOpen = true;
+  }
+
+  protected confirmRemoveBgImage(allPages: boolean): void {
+    this.bgRemoveOpen = false;
     this.pdfSettings.pageBackgroundImage = '';
-    this.sendPageBgToIframe('');
+    if (allPages) {
+      this.postToCanvas('page-bg:set-all', { imageUrl: '' });
+    } else {
+      this.sendPageBgToIframe('');
+    }
+  }
+
+  protected removePageBgImage(): void {
+    this.openBgRemoveModal();
   }
 
   // Page width/height ratio for the cropper's "Page" preset.
@@ -1506,8 +1537,18 @@ export class App implements AfterViewInit {
       .replace(/(^-|-$)/g, '');
   }
 
+  protected onTemplateClick(templateId: string): void {
+    const m = templateId.match(/^predefine-template-(\d+)$/);
+    if (!m) return;
+    const templateIndex = Number(m[1]);
+    this.showTemplateWarning(() => {
+      this.postToCanvas('template:apply', { templateIndex });
+    });
+  }
+
   protected handleLibraryDragStart(event: DragEvent, label: string, icon?: string, type?: string): void {
     console.log('APP: handleLibraryDragStart called, label:', label, 'icon:', icon);
+
     const payload: DragPayload = {
       // Prefer the explicit registry type; fall back to deriving it from the
       // label (used by predefined templates that pass a templateId as label).
@@ -1557,6 +1598,23 @@ export class App implements AfterViewInit {
 
   protected handleLibraryDragEnd(): void {
     delete (window as Window & { __BROCHURE_FLOW_DRAG__?: DragPayload }).__BROCHURE_FLOW_DRAG__;
+  }
+
+  private showTemplateWarning(action: () => void): void {
+    this._pendingTemplateAction = action;
+    this.templateWarnOpen = true;
+  }
+
+  protected confirmTemplateReplace(): void {
+    this.templateWarnOpen = false;
+    const fn = this._pendingTemplateAction;
+    this._pendingTemplateAction = null;
+    fn?.();
+  }
+
+  protected cancelTemplateReplace(): void {
+    this.templateWarnOpen = false;
+    this._pendingTemplateAction = null;
   }
 
   protected applyDataBinding(): void {
@@ -1959,18 +2017,9 @@ export class App implements AfterViewInit {
   protected loadSavedItem(id: string): void {
     const item = this.savedTemplates.find(i => i.id === id);
     if (!item) return;
-
-    const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
-    if (!iframe || !iframe.contentDocument) return;
-    const canvas = iframe.contentDocument.querySelector('.custom-form-design');
-    if (!canvas) return;
-
-    canvas.innerHTML = item.html;
-    iframe.contentWindow?.postMessage({
-      target: 'custom-form-twig',
-      type: 'draft:restored',
-      data: { savedAt: new Date(item.timestamp).toISOString() }
-    }, '*');
+    this.showTemplateWarning(() => {
+      this.postToCanvas('savedtemplate:apply', { html: item.html });
+    });
   }
 
   protected deleteSavedItem(id: string): void {

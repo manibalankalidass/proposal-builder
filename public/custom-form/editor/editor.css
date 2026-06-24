@@ -809,6 +809,7 @@
    overrides this, so resizing (smaller or larger) still works. */
 .cs-pen-shape-block {
   height: 200px;
+  border: 0px solid transparent !important;
 }
 
 .cs-pen-shape-block .cs-pen-shape {
@@ -872,6 +873,29 @@
   overflow: visible;
   pointer-events: none;
 }
+
+.cs-pen-bbox-outline {
+  fill: none;
+  stroke: #5c5cff;
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.cs-pen-bbox-handle {
+  fill: #fff;
+  stroke: #5c5cff;
+  stroke-width: 1.5;
+  cursor: nwse-resize;
+}
+.cs-pen-bbox-handle[data-bbox-handle="n"],
+.cs-pen-bbox-handle[data-bbox-handle="s"]  { cursor: ns-resize; }
+.cs-pen-bbox-handle[data-bbox-handle="e"],
+.cs-pen-bbox-handle[data-bbox-handle="w"]  { cursor: ew-resize; }
+.cs-pen-bbox-handle[data-bbox-handle="nw"],
+.cs-pen-bbox-handle[data-bbox-handle="se"] { cursor: nwse-resize; }
+.cs-pen-bbox-handle[data-bbox-handle="ne"],
+.cs-pen-bbox-handle[data-bbox-handle="sw"] { cursor: nesw-resize; }
 
 .cs-pen-anchor {
   fill: #fff;
@@ -1847,6 +1871,32 @@
   padding: 0 6px;
 }
 
+.cs-shape-lock {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #8aa4e6;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.45;
+  transition: opacity 0.15s, background 0.15s;
+}
+.cs-shape-lock.is-locked {
+  opacity: 1;
+  background: rgba(92, 92, 255, 0.18);
+  border-color: #5c5cff;
+  color: #a5b4fc;
+}
+
 .cs-page-shape-shapes__grid {
   padding: 12px;
   display: grid;
@@ -2147,6 +2197,14 @@
 .cs-page-shape-ref__chk input {
   margin-top: 1px;
   flex: 0 0 auto;
+}
+
+.cs-page-shape-ref__apply-all {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #334155;
+  color: #e2e8f0;
+  font-weight: 600;
 }
 
 /* "Outline only" trace mode: show the traced clip-paths as outlines (no fill)
@@ -2951,4 +3009,8 @@
 .cs-aiden-pop__foot {
   display: flex;
   justify-content: flex-end;
+}
+
+[data-pen="snap"]{
+  display: none;
 }

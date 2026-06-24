@@ -385,15 +385,16 @@
 
   /* ------------------------------- selection ------------------------------- */
 
-  const clearSelection = () => {
+  const clearSelection = (silent = false) => {
     if (!S) return;
     S.table.querySelectorAll('.cs-cell--selected').forEach((td) => td.classList.remove('cs-cell--selected'));
     S.selected.clear();
     updateOverlay();
+    if (!silent) onTableSelChange();
   };
 
   const selectRange = (a, b) => {
-    clearSelection();
+    clearSelection(true);
     const ra = cellRect(S.table, a), rb = cellRect(S.table, b);
     const r0 = Math.min(ra.r, rb.r), r1 = Math.max(ra.r, rb.r);
     const c0 = Math.min(ra.c, rb.c), c1 = Math.max(ra.c, rb.c);
@@ -406,6 +407,7 @@
       if (ids.has(state.M[rc.r][rc.c])) { td.classList.add('cs-cell--selected'); S.selected.add(td); }
     });
     updateOverlay();
+    onTableSelChange();
   };
 
   // Single Canva-style rectangle drawn over the union of the selected cells
@@ -491,8 +493,8 @@
     const tb = document.createElement('div');
     // Same class as the text-block bar → identical look + placement + docked
     // behaviour. The extra `cre-toolbar--table` marker lets the click-away guard
-    // recognise our bar. `is-visible` shows it (cre-toolbar is hidden by default).
-    tb.className = 'cre-toolbar cre-toolbar--table is-visible';
+    // recognise our bar. Toolbar starts hidden; shown only on text/cell selection.
+    tb.className = 'cre-toolbar cre-toolbar--table';
     tb.setAttribute('data-cs-chrome', '');
     const richHTML = (window.CustomRichEditor && window.CustomRichEditor.toolbarInnerHTML)
       ? window.CustomRichEditor.toolbarInnerHTML(window.FROALA_FONTS || null, null)
@@ -513,7 +515,8 @@
   // the same bar drives both. (data-cmd/-act/-sel/-color come from the rich
   // markup; data-op/-border are our appended table group.)
   const ALIGN_CMD = { justifyLeft: 'left', justifyCenter: 'center', justifyRight: 'right', justifyFull: 'justify' };
-  const onToolbarClick = (e) => {
+  const _withTbInteract = (fn) => (...args) => { if (S) S._toolbarInteracting = true; fn(...args); setTimeout(() => { if (S) S._toolbarInteracting = false; }, 100); };
+  const onToolbarClick = _withTbInteract((e) => {
     const opBtn = e.target.closest('[data-op]');
     if (opBtn) { e.preventDefault(); return runOp(opBtn.dataset.op); }
     const actBtn = e.target.closest('[data-act]');
@@ -529,8 +532,8 @@
       if (ALIGN_CMD[cmd]) return setCellStyle('textAlign', ALIGN_CMD[cmd]);
       return textCmd(cmd);
     }
-  };
-  const onToolbarChange = (e) => {
+  });
+  const onToolbarChange = _withTbInteract((e) => {
     const sel = e.target.closest('[data-sel]');
     if (!sel) return;
     const v = sel.value;
@@ -542,13 +545,13 @@
       case 'letterspacing': return v && setCellStyle('letterSpacing', v);
       case 'textcase': return v && applyCellCase(v);
     }
-  };
-  const onToolbarInput = (e) => {
+  });
+  const onToolbarInput = _withTbInteract((e) => {
     const t = e.target;
     if (t.matches('[data-color="fore"]')) return setCellStyle('color', t.value);
     if (t.matches('[data-color="back"]')) return setCellStyle('backgroundColor', t.value); // highlight → cell fill
     if (t.matches('[data-border]')) return setBorder(t.value, true);
-  };
+  });
 
   const runOp = (op) => {
     switch (op) {
@@ -781,6 +784,31 @@
     tb.style.left = `${left}px`;
   };
 
+  const showToolbar = () => {
+    if (!S || !S.toolbar) return;
+    S.toolbar.classList.add('is-visible');
+    positionToolbar();
+  };
+
+  const hideToolbar = () => {
+    if (!S || !S.toolbar) return;
+    S.toolbar.classList.remove('is-visible');
+  };
+
+  // Show toolbar when text is selected inside a cell OR when multiple cells are selected.
+  const onTableSelChange = () => {
+    if (!S) return;
+    const sel = window.getSelection();
+    const hasTextSel = sel && !sel.isCollapsed && S.table.contains(sel.anchorNode);
+    const hasMultiCell = S.selected && S.selected.size > 0;
+    if (hasTextSel || hasMultiCell) {
+      showToolbar();
+    } else if (!S._toolbarInteracting) {
+      const docked = (typeof window.isRichToolbarDocked === 'function') ? window.isRichToolbarDocked() : false;
+      if (!docked) hideToolbar();
+    }
+  };
+
   /* ------------------------------ cell wiring ------------------------------ */
 
   const wireCells = () => {
@@ -860,6 +888,7 @@
       else { S.selected.add(td); td.classList.add('cs-cell--selected'); }
       S.activeCell = td; S.anchorCell = td;
       updateOverlay();
+      onTableSelChange();
       return;
     }
     // Shift-click → rectangular range from the anchor cell.
@@ -989,17 +1018,19 @@
     document.addEventListener('pointerdown', S._down, true);
     document.addEventListener('keydown', S._key, true);
 
-    S._reflow = () => { positionToolbar(); updateOverlay(); };
+    S._reflow = () => { if (S.toolbar && S.toolbar.classList.contains('is-visible')) positionToolbar(); updateOverlay(); };
     window.addEventListener('scroll', S._reflow, true);
     window.addEventListener('resize', S._reflow);
 
     // Single bar at the top in docked mode: hide the rich-text placeholder while
     // our bar is up, and re-place ours if docked mode is toggled mid-edit.
     window.CustomRichEditor?.setExternalDockedActive?.(true);
-    S._mode = () => positionToolbar();
+    S._mode = () => { if (S.toolbar && S.toolbar.classList.contains('is-visible')) positionToolbar(); };
     document.addEventListener('canvas:rich-toolbar-mode', S._mode);
 
-    positionToolbar();
+    // Show toolbar only on text selection inside a cell.
+    S._selChange = () => onTableSelChange();
+    document.addEventListener('selectionchange', S._selChange);
   };
 
   const deactivate = () => {
@@ -1014,6 +1045,7 @@
     window.removeEventListener('scroll', S._reflow, true);
     window.removeEventListener('resize', S._reflow);
     if (S._mode) document.removeEventListener('canvas:rich-toolbar-mode', S._mode);
+    if (S._selChange) document.removeEventListener('selectionchange', S._selChange);
     if (toolbar) window.CustomRichEditor?.untrackDockedBar?.(toolbar);
     window.CustomRichEditor?.setExternalDockedActive?.(false);
     document.removeEventListener('pointerdown', S._down, true);

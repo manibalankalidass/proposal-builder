@@ -273,7 +273,7 @@
 
       // Bound handlers (so destroy can remove the exact same refs).
       this._onSelChange = () => this._syncFromSelection();
-      this._onFocus = () => this._showToolbar();
+      this._onFocus = () => { /* toolbar shows only on text selection, not focus */ };
       this._onBlur = () => this._maybeHideToolbar();
       this._onReflow = () => { if (this._toolbarVisible) this._positionToolbar(); };
       // Page Settings → "Inline text toolbar" toggle flips inline ↔ docked while
@@ -306,9 +306,8 @@
       liveEditors.add(this);
       DockedPlaceholder.sync(this.doc);
 
-      // Match Froala's behaviour: focus immediately on init.
+      // Focus immediately on init but don't show toolbar — it appears only on text selection.
       try { t.focus(); } catch (e) { /* */ }
-      this._showToolbar();
     }
 
     destroy() {
@@ -351,44 +350,45 @@
 
       tb.addEventListener('click', (e) => {
         const cmdBtn = e.target.closest('button[data-cmd]');
-        if (cmdBtn) { e.preventDefault(); this._runCommand(cmdBtn.dataset.cmd); return; }
+        if (cmdBtn) { e.preventDefault(); this._toolbarInteracting = true; this._runCommand(cmdBtn.dataset.cmd); this.win.setTimeout(() => { this._toolbarInteracting = false; }, 100); return; }
         const actBtn = e.target.closest('button[data-act]');
-        if (actBtn) { e.preventDefault(); this._runAction(actBtn.dataset.act); return; }
+        if (actBtn) { e.preventDefault(); this._toolbarInteracting = true; this._runAction(actBtn.dataset.act); this.win.setTimeout(() => { this._toolbarInteracting = false; }, 100); return; }
       });
 
       // Font family — keep the chosen value shown (no reset) so the dropdown
       // reflects the selected text's font.
-      tb.querySelector('[data-sel="font"]').addEventListener('change', (e) => {
+      const _withInteract = (fn) => (...args) => { this._toolbarInteracting = true; fn(...args); this.win.setTimeout(() => { this._toolbarInteracting = false; }, 100); };
+      tb.querySelector('[data-sel="font"]').addEventListener('change', _withInteract((e) => {
         if (e.target.value) this._wrapStyle({ fontFamily: e.target.value });
-      });
+      }));
       // Font size — dropdown (like font family). Any current/custom size is
       // injected as an option by _syncFontControls so it still displays.
-      tb.querySelector('[data-sel="size"]').addEventListener('change', (e) => {
+      tb.querySelector('[data-sel="size"]').addEventListener('change', _withInteract((e) => {
         const v = parseInt(e.target.value, 10);
         if (v > 0) this._wrapStyle({ fontSize: v + 'px' });
-      });
+      }));
       // Paragraph / heading format (H1–H6, Normal).
-      tb.querySelector('[data-sel="format"]').addEventListener('change', (e) => this._applyFormatBlock(e.target.value));
+      tb.querySelector('[data-sel="format"]').addEventListener('change', _withInteract((e) => this._applyFormatBlock(e.target.value)));
       // Line height.
-      tb.querySelector('[data-sel="lineheight"]').addEventListener('change', (e) => {
+      tb.querySelector('[data-sel="lineheight"]').addEventListener('change', _withInteract((e) => {
         if (e.target.value) this._setLineHeight(e.target.value);
-      });
+      }));
       // Letter spacing.
-      tb.querySelector('[data-sel="letterspacing"]').addEventListener('change', (e) => {
+      tb.querySelector('[data-sel="letterspacing"]').addEventListener('change', _withInteract((e) => {
         if (e.target.value) this._setLetterSpacing(e.target.value);
-      });
+      }));
       // Text case (CSS text-transform).
-      tb.querySelector('[data-sel="textcase"]').addEventListener('change', (e) => {
+      tb.querySelector('[data-sel="textcase"]').addEventListener('change', _withInteract((e) => {
         if (e.target.value) this._setTextCase(e.target.value);
-      });
-      tb.querySelector('[data-color="fore"]').addEventListener('input', (e) => {
+      }));
+      tb.querySelector('[data-color="fore"]').addEventListener('input', _withInteract((e) => {
         e.target.closest('.cre-color').style.setProperty('--cre-swatch', e.target.value);
         this._setForeColor(e.target.value);
-      });
-      tb.querySelector('[data-color="back"]').addEventListener('input', (e) => {
+      }));
+      tb.querySelector('[data-color="back"]').addEventListener('input', _withInteract((e) => {
         e.target.closest('.cre-color').style.setProperty('--cre-swatch', e.target.value);
         this._setBackColor(e.target.value);
-      });
+      }));
 
       this.doc.body.appendChild(tb);
       this._toolbar = tb;
@@ -478,8 +478,16 @@
       const sel = this.doc.getSelection();
       if (sel && sel.rangeCount && this._inEditor(sel.getRangeAt(0).commonAncestorContainer)) {
         this.lastRange = sel.getRangeAt(0).cloneRange();
-        // Refresh button active-states only — DON'T reposition (keeps the bar
-        // anchored to the block instead of chasing the caret).
+        const hasSelection = !sel.isCollapsed;
+        if (hasSelection) {
+          // Text is selected — show/reposition toolbar.
+          this._showToolbar();
+        } else if (!this._toolbarInteracting) {
+          // Caret only (no selection) and not a toolbar button click — hide.
+          // In docked mode the bar stays visible for the whole session.
+          const docked = (typeof this.win.isRichToolbarDocked === 'function') ? this.win.isRichToolbarDocked() : false;
+          if (!docked) this._hideToolbar();
+        }
         if (this._toolbarVisible) this._syncActiveStates();
       }
     }
