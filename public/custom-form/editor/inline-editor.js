@@ -353,12 +353,16 @@
           target.removeAttribute(attr.name);
         }
       });
-      // Strip Froala-injected inline sizing (min-height, height, padding etc.)
-      // that otherwise survives destroy and squashes the block on re-edit.
-      ['min-height', 'height', 'max-height', 'padding', 'padding-top', 'padding-bottom',
-        'padding-left', 'padding-right', 'margin', 'overflow', 'display'].forEach((prop) => {
-          target.style.removeProperty(prop);
-        });
+      // Strip Froala-injected inline sizing that survives destroy and squashes
+      // the block on re-edit. Button/label-tag blocks own their padding/display
+      // as real styles, so skip stripping those properties for them.
+      const isShrinkBlock = block.classList.contains('cs-button-block') ||
+        block.classList.contains('cs-label-block');
+      const stripProps = isShrinkBlock
+        ? ['min-height', 'height', 'max-height', 'margin', 'overflow']
+        : ['min-height', 'height', 'max-height', 'padding', 'padding-top', 'padding-bottom',
+            'padding-left', 'padding-right', 'margin', 'overflow'];
+      stripProps.forEach((prop) => { target.style.removeProperty(prop); });
     }
   };
 
@@ -899,6 +903,13 @@
       const extra = (parseFloat(csb.paddingTop) || 0) + (parseFloat(csb.paddingBottom) || 0)
         + (parseFloat(csb.borderTopWidth) || 0) + (parseFloat(csb.borderBottomWidth) || 0);
       MIN_H = Math.max(MIN_H, Math.ceil(editEl.scrollHeight + extra));
+    }
+
+    // For a TABLE block, never shrink the block height below the table's rendered
+    // height — the table has no overflow:hidden so it would spill out below.
+    if (blockType === 'table') {
+      const tableEl = block.querySelector('table.cs-table');
+      if (tableEl) MIN_H = Math.max(MIN_H, Math.ceil(tableEl.getBoundingClientRect().height));
     }
 
     if (dir.includes('e')) newW = Math.max(MIN_W, startW + dx);

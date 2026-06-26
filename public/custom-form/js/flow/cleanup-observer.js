@@ -15,6 +15,7 @@
   window.FlowCanvas = window.FlowCanvas || {};
 
   let running = false;
+  let suspended = false;
 
   const colHasContent = (col) => {
     return !!col.querySelector('.cs_block_s, .canvas-block');
@@ -70,7 +71,7 @@
   };
 
   const cleanupEmpty = (doc) => {
-    if (running) return false;
+    if (running || suspended) return false;
     running = true;
     let changed = false;
     try {
@@ -92,7 +93,11 @@
     return changed;
   };
 
-  const initCleanupObserver = (doc) => {
+  // canvas is the stable .custom-form-design element (whose innerHTML undo/redo
+  // swaps). We observe canvas rather than doc because undo replaces canvas.innerHTML
+  // which detaches doc, leaving a doc-level observer permanently blind.
+  const initCleanupObserver = (doc, canvas) => {
+    const observeRoot = canvas || doc;
     const observer = new MutationObserver((mutations) => {
       let blockRemoved = false;
       for (const m of mutations) {
@@ -107,14 +112,33 @@
         }
         if (blockRemoved) break;
       }
-      if (blockRemoved) cleanupEmpty(doc);
+      // Always clean from the stable observeRoot so undo doesn't give us a
+      // stale doc reference.
+      if (blockRemoved) cleanupEmpty(observeRoot);
     });
-    observer.observe(doc, { childList: true, subtree: true });
+    observer.observe(observeRoot, { childList: true, subtree: true });
     return observer;
+  };
+
+  // Run fn() with cleanup suppressed, then flush a cleanup pass after.
+  // Used by block-reorder so cleanupEmpty doesn't eat the vacated column
+  // between block.remove() and placeBlock().
+  // Accepts an optional `doc` to scope the deferred cleanup pass.
+  const withCleanupSuspended = (fn, doc) => {
+    suspended = true;
+    try { fn(); }
+    finally {
+      suspended = false;
+      // After re-enabling, run a deferred cleanup so any truly empty
+      // columns (e.g. block dragged into a new column) are still pruned.
+      const cleanupDoc = doc || document;
+      requestAnimationFrame(() => cleanupEmpty(cleanupDoc));
+    }
   };
 
   Object.assign(window.FlowCanvas, {
     cleanupEmpty,
     initCleanupObserver,
+    withCleanupSuspended,
   });
 })();

@@ -62,8 +62,11 @@
 
   window.FlowCanvas.initBlockReorder = function (canvas, doc) {
     ensureGripsOnAll(doc);
-    const observer = new MutationObserver(() => ensureGripsOnAll(doc));
-    observer.observe(doc, { childList: true, subtree: true });
+    // Observe canvas (the stable element whose innerHTML undo/redo swaps) rather
+    // than doc — undo replaces canvas.innerHTML which detaches doc, so a
+    // doc-level observer goes blind after the first undo.
+    const observer = new MutationObserver(() => ensureGripsOnAll(canvas));
+    observer.observe(canvas, { childList: true, subtree: true });
 
     const FC = window.FlowCanvas;
     let drag = null;   // { block, grip, pointerId }
@@ -91,7 +94,10 @@
     // ---- pointermove: compute drop target and show indicator ----
     canvas.addEventListener('pointermove', (event) => {
       if (!drag) return;
-      const result = FC.findDropTarget?.(doc, canvas, event.clientX, event.clientY);
+      // Resolve the live doc each move — canvas.innerHTML may have been replaced
+      // by undo, making the closure's `doc` a stale detached element.
+      const liveDocForMove = drag.block.closest('.cs_margin, .custom-form-design') || doc;
+      const result = FC.findDropTarget?.(liveDocForMove, canvas, event.clientX, event.clientY);
       if (result) {
         FC.showIndicator?.(result.indicator);
         canvas._pendingReorderTarget = result.target;
@@ -116,9 +122,17 @@
 
       if (!target) return;
 
-      // Detach from old parent, reinsert at new location.
-      block.remove();
-      FC.placeBlock?.(doc, block, target);
+      // Resolve the live page doc from the block being dragged — the closure's
+      // `doc` may be a stale reference after undo replaced canvas.innerHTML.
+      const liveDoc = block.closest('.cs_margin, .custom-form-design') || doc;
+
+      // Suspend cleanup so the vacated column is not pruned between
+      // block.remove() and placeBlock() — that timing window caused the
+      // block to disappear when the cleanup observer ran in between.
+      (FC.withCleanupSuspended || ((fn) => fn()))(() => {
+        block.remove();
+        FC.placeBlock?.(liveDoc, block, target);
+      }, canvas);
     };
 
     canvas.addEventListener('pointerup', finishDrag);

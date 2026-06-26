@@ -1203,7 +1203,7 @@
   // Per-doc feature wiring (cleanup observer, block reorder) — also run
   // these for any future docs added via FC.addPage().
   const wireDocFeatures = (docEl) => {
-    FC.initCleanupObserver?.(docEl);
+    FC.initCleanupObserver?.(docEl, canvas);
     FC.initBlockReorder?.(canvas, docEl);
   };
   wireDocFeatures(firstDoc);

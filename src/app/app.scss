@@ -675,6 +675,64 @@ button {
   gap: 4px;
 }
 
+.pdf-margins-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pdf-margins-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdf-margins-all-input {
+  width: 60px;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+  box-sizing: border-box;
+  text-align: center;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent, #6366f1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+}
+
+.pdf-margins-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+  &:hover {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    color: #4338ca;
+  }
+
+  &.active {
+    background: #eef2ff;
+    border-color: #6366f1;
+    color: #6366f1;
+  }
+}
+
 .pdf-settings-presets {
   display: flex;
   flex-direction: column;

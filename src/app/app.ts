@@ -252,6 +252,9 @@ export class App implements AfterViewInit {
   // 'page:count' / 'page:active' messages from the editor iframe.
   protected pageCount = 1;
   protected currentPage = 1;
+  protected marginsLinked = true;
+  protected marginsExpanded = false;
+  protected marginAll = 0;
   protected latestTwigCode: string = '';
   protected availableFields: { key: string; kind: string; expr: string }[] = [];
   // Loop-alias relative paths (e.g. 'item.price') for the active scope, fed as
@@ -1437,6 +1440,25 @@ export class App implements AfterViewInit {
 
   protected onMarginChange(): void {
     this.applyCanvasPageMargins();
+  }
+
+  protected onMarginAllChange(): void {
+    this.pdfSettings.marginTop = this.marginAll;
+    this.pdfSettings.marginRight = this.marginAll;
+    this.pdfSettings.marginBottom = this.marginAll;
+    this.pdfSettings.marginLeft = this.marginAll;
+    this.applyCanvasPageMargins();
+  }
+
+  protected onMarginIndividualChange(): void {
+    const vals = [this.pdfSettings.marginTop, this.pdfSettings.marginRight, this.pdfSettings.marginBottom, this.pdfSettings.marginLeft];
+    const allSame = vals.every(v => v === vals[0]);
+    if (allSame) this.marginAll = vals[0];
+    this.applyCanvasPageMargins();
+  }
+
+  protected toggleMarginsExpanded(): void {
+    this.marginsExpanded = !this.marginsExpanded;
   }
 
   // Width/height for each editor canvas size. Mirrors PageSizes in

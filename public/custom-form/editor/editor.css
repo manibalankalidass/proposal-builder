@@ -478,6 +478,15 @@
   text-align: left;
 }
 
+/* Button and label-tag blocks shrink-wrap their content.
+   Don't force full width or zero padding — they own these as real styles. */
+.cs-button-block .edit_me,
+.cs-label-block .edit_me {
+  width: auto;
+  padding: revert;
+  overflow: visible;
+}
+
 .edit_me:empty:before {
   content: attr(placeholder);
   color: #aaa;

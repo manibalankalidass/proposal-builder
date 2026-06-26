@@ -46,9 +46,9 @@
     inner.setAttribute('placeholder', 'Featured');
     inner.style.fontSize = '12px';
     inner.style.fontWeight = '600';
-    inner.style.display = 'inline-block';
+    // inner.style.display = 'inline-block';
     inner.style.padding = '4px 10px';
-    inner.style.borderRadius = '999px';
+    // inner.style.borderRadius = '999px';
     inner.style.background = '#eef0ff';
     inner.style.color = '#5c5cff';
     inner.textContent = 'Featured';
@@ -62,7 +62,6 @@
     inner.className = 'edit_me cs-button';
     inner.id = `dynamic_${hash()}`;
     inner.setAttribute('placeholder', 'Call to Action');
-    inner.style.display = 'inline-block';
     inner.style.padding = '10px 20px';
     inner.style.background = '#5c5cff';
     inner.style.color = '#fff';

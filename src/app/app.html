@@ -484,41 +484,63 @@
               </select>
             </div>
 
+            <!-- MARGINS -->
             <div class="pdf-settings-section">
-              <div class="pdf-settings-section__title">Margins (mm)</div>
-              <div class="pdf-settings-grid">
+              <div class="pdf-margins-header">
+                <div class="pdf-settings-section__title" style="margin-bottom:0">Margins (mm)</div>
+                <div class="pdf-margins-inline">
+                  <input class="pdf-margins-all-input" type="number" min="0" max="100"
+                    [(ngModel)]="marginAll"
+                    (change)="onMarginAllChange()" />
+                  <button type="button" class="pdf-margins-expand-btn"
+                    [class.active]="marginsExpanded"
+                    (click)="toggleMarginsExpanded()"
+                    title="Expand individual margins">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                      <line x1="4" y1="1" x2="4" y2="13" stroke="currentColor" stroke-width="1"/>
+                      <line x1="10" y1="1" x2="10" y2="13" stroke="currentColor" stroke-width="1"/>
+                      <line x1="1" y1="4" x2="13" y2="4" stroke="currentColor" stroke-width="1"/>
+                      <line x1="1" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              @if (marginsExpanded) {
+              <div class="pdf-settings-grid" style="margin-top:10px">
                 <div class="pdf-settings-field">
                   <label for="pdf-margin-top">Top</label>
                   <input id="pdf-margin-top" type="number" min="0" max="100" [(ngModel)]="pdfSettings.marginTop"
-                    (change)="onMarginChange()" />
+                    (change)="onMarginIndividualChange()" />
                 </div>
                 <div class="pdf-settings-field">
                   <label for="pdf-margin-right">Right</label>
                   <input id="pdf-margin-right" type="number" min="0" max="100" [(ngModel)]="pdfSettings.marginRight"
-                    (change)="onMarginChange()" />
+                    (change)="onMarginIndividualChange()" />
                 </div>
                 <div class="pdf-settings-field">
                   <label for="pdf-margin-bottom">Bottom</label>
                   <input id="pdf-margin-bottom" type="number" min="0" max="100" [(ngModel)]="pdfSettings.marginBottom"
-                    (change)="onMarginChange()" />
+                    (change)="onMarginIndividualChange()" />
                 </div>
                 <div class="pdf-settings-field">
                   <label for="pdf-margin-left">Left</label>
                   <input id="pdf-margin-left" type="number" min="0" max="100" [(ngModel)]="pdfSettings.marginLeft"
-                    (change)="onMarginChange()" />
+                    (change)="onMarginIndividualChange()" />
                 </div>
               </div>
+              }
             </div>
 
             <div class="pdf-settings-presets">
               <button type="button"
-                (click)="pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 0; onMarginChange()">Edge-to-edge
+                (click)="marginAll = 0; pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 0; onMarginChange()">Edge-to-edge
                 (0mm)</button>
               <button type="button"
-                (click)="pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 10; onMarginChange()">Browser
+                (click)="marginAll = 10; pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 10; onMarginChange()">Browser
                 default (10mm)</button>
               <button type="button"
-                (click)="pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 20; onMarginChange()">Document
+                (click)="marginAll = 20; pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 20; onMarginChange()">Document
                 (20mm)</button>
             </div>
 
