@@ -1214,12 +1214,13 @@
   // Per-doc feature wiring (cleanup observer, block reorder) — also run
   // these for any future docs added via FC.addPage().
   const wireDocFeatures = (docEl, isFirstDoc) => {
-    FC.initCleanupObserver?.(docEl, canvas);
-    // Each page has its own .custom-form-design canvas element — initBlockReorder
-    // must be called per-canvas so pointer listeners cover every page's canvas.
+    // Each page has its own .custom-form-design canvas element — both cleanup
+    // observer and block reorder must target that page's own canvas so mutations
+    // and pointer events are scoped correctly.
     const docCanvas = isFirstDoc
       ? canvas
       : (docEl.closest('.custom-form-design') || docEl.querySelector('.custom-form-design') || canvas);
+    FC.initCleanupObserver?.(docEl, docCanvas);
     FC.initBlockReorder?.(docCanvas, docEl);
   };
   wireDocFeatures(firstDoc, true);
