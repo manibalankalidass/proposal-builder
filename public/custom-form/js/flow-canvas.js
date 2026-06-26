@@ -257,7 +257,10 @@
       if (editingState.docEl === d && editingState.region === region) return;
       const target = d.querySelector(`:scope > .cs-page-${region} > .col-item`);
       if (target && target.innerHTML !== html) {
-        target.innerHTML = html;
+        // Clone into a fragment first to avoid a blank-frame blink.
+        const frag = document.createDocumentFragment();
+        Array.from(source.childNodes).forEach((n) => frag.appendChild(n.cloneNode(true)));
+        target.replaceChildren(frag);
         rewriteIds(target, d.dataset.page || 'x');
       }
     });
@@ -291,11 +294,15 @@
       // so we don't fight the user's cursor.
       let debounceTimer = null;
       const obs = new MutationObserver(() => {
-        if (regionSyncing) return;
+        // If a programmatic sync is in progress, cancel any pending timer so
+        // the mirror write doesn't re-trigger another sync after the flag resets.
+        if (regionSyncing) { if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; } return; }
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => syncRegion(region, docEl), 400);
       });
-      obs.observe(col, { childList: true, subtree: true, characterData: true, attributes: true });
+      // attributes: watch user-settable attributes but NOT id — rewriteIds stamps
+      // new ids on mirror pages which would re-trigger sync into an infinite loop.
+      obs.observe(col, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['style', 'class', 'data-style', 'contenteditable', 'data-repeat-chain', 'data-twig-if', 'data-cs-zoom', 'data-cs-pan-x', 'data-cs-pan-y', 'data-cs-hidden', 'data-cs-locked', 'custom-name', 'src', 'href', 'placeholder'] });
     });
   };
 
@@ -309,7 +316,11 @@
       const dst = docEl.querySelector(`:scope > .cs-page-${region} > .col-item`);
       if (src && dst) {
         regionSyncing = true;
-        dst.innerHTML = src.innerHTML;
+        // Clone children into a fragment first, then swap in one operation so
+        // the browser never renders an empty header/footer (no blank-frame blink).
+        const frag = document.createDocumentFragment();
+        Array.from(src.childNodes).forEach((n) => frag.appendChild(n.cloneNode(true)));
+        dst.replaceChildren(frag);
         rewriteIds(dst, docEl.dataset.page || 'x');
         requestAnimationFrame(() => { regionSyncing = false; });
       }
@@ -1202,15 +1213,20 @@
   FC.initImageZoom?.(canvas);
   // Per-doc feature wiring (cleanup observer, block reorder) — also run
   // these for any future docs added via FC.addPage().
-  const wireDocFeatures = (docEl) => {
+  const wireDocFeatures = (docEl, isFirstDoc) => {
     FC.initCleanupObserver?.(docEl, canvas);
-    FC.initBlockReorder?.(canvas, docEl);
+    // Each page has its own .custom-form-design canvas element — initBlockReorder
+    // must be called per-canvas so pointer listeners cover every page's canvas.
+    const docCanvas = isFirstDoc
+      ? canvas
+      : (docEl.closest('.custom-form-design') || docEl.querySelector('.custom-form-design') || canvas);
+    FC.initBlockReorder?.(docCanvas, docEl);
   };
-  wireDocFeatures(firstDoc);
+  wireDocFeatures(firstDoc, true);
   const _origAddPage = FC.addPage;
   FC.addPage = function (opts) {
     const newDoc = _origAddPage.call(FC, opts);
-    if (newDoc) wireDocFeatures(newDoc);
+    if (newDoc) wireDocFeatures(newDoc, false);
     return newDoc;
   };
   const _origAddCoverPage = FC.addCoverPage;

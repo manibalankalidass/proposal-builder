@@ -1245,6 +1245,10 @@
           const isBlock = node.classList && node.classList.contains('cs_block_s');
           const newBlock = isBlock ? node : (node.querySelector && node.querySelector('.cs_block_s'));
           if (newBlock && newBlock !== editingBlock && newBlock !== selectedBlock) {
+            // Blocks seeded into header/footer regions during page add are not
+            // user-initiated drops — skip them to avoid clearing block selection
+            // on existing pages whenever a new page is added with header/footer.
+            if (newBlock.closest('.cs-page-header, .cs-page-footer')) continue;
             clearAll();
             return;
           }

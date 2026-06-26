@@ -60,6 +60,8 @@
     return target?.closest?.('.cs-block-grip, .cs-block-badge') || null;
   };
 
+  window.FlowCanvas.ensureGripsOnAll = ensureGripsOnAll;
+
   window.FlowCanvas.initBlockReorder = function (canvas, doc) {
     ensureGripsOnAll(doc);
     // Observe canvas (the stable element whose innerHTML undo/redo swaps) rather
