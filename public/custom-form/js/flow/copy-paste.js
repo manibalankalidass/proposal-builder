@@ -160,8 +160,17 @@
 
     // No usable anchor: drop onto the ACTIVE page (the last page the user
     // touched), honouring cover pages (absolute) vs content pages (flow).
+    // When activePage is null (e.g. sidebar click), read the selection class
+    // directly from the DOM — cs_selected_border is on content .cs_page,
+    // cs_selected is on cover .cs_page — so blocks always land on the visible page.
     const board = boardOf(canvas);
-    const page = activePage && board.contains(activePage) ? activePage : null;
+    const selectedCsPage = board.querySelector('.cs_page.cs_selected_border, .cs_page.cs_selected');
+    const domPage = selectedCsPage
+      ? (selectedCsPage.matches('[data-cs-cover="1"]')
+          ? selectedCsPage
+          : (selectedCsPage.querySelector(':scope > .cs_margin') || selectedCsPage))
+      : null;
+    const page = (activePage && board.contains(activePage) ? activePage : null) || domPage;
     if (page && page.matches('[data-cs-cover="1"]')) {
       return { freeParent: page, target: { kind: 'in-free', parent: page } };
     }
@@ -432,9 +441,35 @@
 
   // Insert a component (click path) next to the current selection.
   window.FlowCanvas.insertComponentHtml = (html) => {
-    const canvas = getCanvasEl();
     const block = window.FlowCanvas.buildComponentBlock(html);
-    if (!canvas || !block) return false;
+    if (!block) return false;
+
+    // Find the active page's .cs_margin directly from the DOM selection class.
+    // Priority: cs_selected_border (content page) → cs_selected (cover) →
+    // activePage (last canvas pointerdown) → first page fallback.
+    const board = document.querySelector('.cs_paper');
+    const selCsPage = board && (
+      board.querySelector('.cs_page.cs_selected_border') ||
+      board.querySelector('.cs_page.cs_selected')
+    );
+    const targetMargin = selCsPage
+      ? selCsPage.querySelector(':scope > .cs_margin') || selCsPage
+      : (activePage && document.contains(activePage) ? activePage : null);
+
+    // If we have a definite target margin, bypass resolvePasteTarget entirely
+    // and append directly — no risk of page-1 fallback.
+    if (targetMargin && targetMargin.matches('.cs_margin')) {
+      window.FlowCanvas?.placeBlock?.(targetMargin, block,
+        { kind: 'between-rows', parent: targetMargin, beforeRow: null });
+      requestAnimationFrame(() => {
+        block.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        block.click();
+      });
+      return true;
+    }
+
+    // Cover page or no selection — fall through to normal placeAndSelect.
+    const canvas = getCanvasEl();
     const anchor = window.EditorManager?.getSelected?.();
     const useAnchor = (isFlowBlock(anchor, canvas) || isFlexibleChild(anchor, canvas)) ? anchor : null;
     return !!placeAndSelect(canvas, block, useAnchor);
