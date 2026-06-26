@@ -87,6 +87,26 @@
       doc.querySelectorAll('.cs_margin, .body-main-content, .section-container-content').forEach((container) => {
         changed = cleanupOneRoot(container) || changed;
       });
+      // Also clean empty columns directly inside header/footer regions.
+      // Header/footer have .col-items as direct children (no wrapping .row-item).
+      // The region itself must never be removed — only empty cols inside it.
+      doc.querySelectorAll('.cs-page-header, .cs-page-footer').forEach((region) => {
+        const cols = Array.from(region.querySelectorAll(':scope > .col-item'));
+        // Keep at least one col so the region always has a drop target.
+        if (cols.length <= 1) return;
+        let removedAny = false;
+        for (const col of cols) {
+          if (!colHasContent(col)) {
+            col.remove();
+            removedAny = true;
+            changed = true;
+          }
+        }
+        if (removedAny) {
+          window.FlowCanvas.rebuildDividers?.(region);
+          window.FlowCanvas.resetColFlex?.(region);
+        }
+      });
     } finally {
       running = false;
     }
