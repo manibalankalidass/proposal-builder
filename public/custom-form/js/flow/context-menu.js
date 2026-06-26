@@ -41,10 +41,10 @@
     else block.dataset.csLocked = '1';
   };
 
-  // Format painter. Copies the EFFECTIVE (computed) look — typography from the
-  // text element, box look from the block — and pastes it as concrete inline
-  // styles (export-safe). NOT position/size, so paste never moves the block.
-  const textEl = (b) => b.querySelector(':scope > .edit_me') || b.querySelector(':scope > .canvas-block__content') || b;
+  // Format painter — uses StyleManager so color/font reading matches exactly
+  // what the style panel reads (handles span-wrapped text from CustomRichEditor).
+  let styleClip = null;
+
   const TYPO_KEYS = ['color', 'fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
     'textAlign', 'lineHeight', 'letterSpacing', 'textTransform', 'textDecorationLine'];
   const BOX_KEYS = ['backgroundColor',
@@ -53,20 +53,38 @@
     'borderBottomWidth', 'borderBottomStyle', 'borderBottomColor',
     'borderLeftWidth', 'borderLeftStyle', 'borderLeftColor',
     'borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius',
-    'boxShadow', 'opacity'];
-  let styleClip = null;
+    'boxShadow', 'opacity', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'];
+  const textEl = (b) => b.querySelector(':scope > .edit_me') || b.querySelector(':scope > .canvas-block__content') || b;
+
   const copyStyle = (block) => {
-    const boxCs = getComputedStyle(block);
-    const typoCs = getComputedStyle(textEl(block));
-    styleClip = { typo: {}, box: {} };
-    TYPO_KEYS.forEach((k) => { styleClip.typo[k] = typoCs[k]; });
-    BOX_KEYS.forEach((k) => { styleClip.box[k] = boxCs[k]; });
+    const SM = window.StyleManager;
+    if (SM && SM.readBlockStyles) {
+      styleClip = SM.readBlockStyles(block);
+      delete styleClip.width;
+      delete styleClip.height;
+      console.log('[COPY-STYLE] styleClip:', JSON.stringify(styleClip));
+      return;
+    }
+    const src = textEl(block);
+    styleClip = { _raw: true, typo: {}, box: {} };
+    TYPO_KEYS.forEach((k) => { const v = src.style[k]; if (v) styleClip.typo[k] = v; });
+    BOX_KEYS.forEach((k) => { const v = block.style[k]; if (v) styleClip.box[k] = v; });
+    console.log('[COPY-STYLE] fallback styleClip:', JSON.stringify(styleClip));
   };
+
   const pasteStyle = (block) => {
+    console.log('[PASTE-STYLE] styleClip:', JSON.stringify(styleClip), '| block:', block?.id);
     if (!styleClip) return;
-    const dst = textEl(block);
-    Object.entries(styleClip.typo).forEach(([k, v]) => { if (v) dst.style[k] = v; });
-    Object.entries(styleClip.box).forEach(([k, v]) => { if (v) block.style[k] = v; });
+    const SM = window.StyleManager;
+    if (SM && SM.applyStyles && !styleClip._raw) {
+      SM.applyStyles(block, styleClip);
+    } else {
+      const dst = textEl(block);
+      Object.entries(styleClip.typo || {}).forEach(([k, v]) => { dst.style[k] = v; });
+      Object.entries(styleClip.box || {}).forEach(([k, v]) => { block.style[k] = v; });
+    }
+    console.log('[PASTE-STYLE] after paste, block.style.color:', block.style.color, '| edit_me.style.color:', textEl(block)?.style?.color);
+    window.FlowCanvas?.broadcastSelection?.();
   };
 
   /* -------------------------------- the menu -------------------------------- */

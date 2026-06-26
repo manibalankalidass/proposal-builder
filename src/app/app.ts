@@ -1676,10 +1676,10 @@ export class App implements AfterViewInit {
     const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
     if (!iframe || !iframe.contentDocument) return;
 
-    const canvas = iframe.contentDocument.querySelector('.custom-form-design');
-    if (!canvas) return;
+    const paper = iframe.contentDocument.querySelector('.cs_paper');
+    if (!paper) return;
 
-    const html = canvas.innerHTML;
+    const html = paper.innerHTML;
     const timestamp = Date.now();
     const id = `backup-${timestamp}`;
     const label = new Date(timestamp).toLocaleString();
@@ -1712,11 +1712,11 @@ export class App implements AfterViewInit {
       const doc = iframe.contentDocument;
       if (!doc) return '';
 
-      const canvas = doc.querySelector('.custom-form-design');
-      if (!canvas) return '';
+      // Scan all pages for blocks, not just the first .custom-form-design.
+      const paper = doc.querySelector('.cs_paper') || doc.querySelector('.custom-form-design');
+      if (!paper) return '';
 
-      // Create a simple text-based thumbnail from first few blocks
-      const blocks = Array.from(canvas.querySelectorAll('.cs_block_s')).slice(0, 3);
+      const blocks = Array.from(paper.querySelectorAll('.cs_block_s')).slice(0, 3);
       const blockTexts = blocks
         .map(b => (b as HTMLElement).innerText?.slice(0, 20) || '...')
         .filter(t => t.length > 0);
@@ -1734,10 +1734,10 @@ export class App implements AfterViewInit {
     const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
     if (!iframe || !iframe.contentDocument) return;
 
-    const canvas = iframe.contentDocument.querySelector('.custom-form-design');
-    if (!canvas) return;
+    const paper = iframe.contentDocument.querySelector('.cs_paper');
+    if (!paper) return;
 
-    canvas.innerHTML = backup.html;
+    paper.innerHTML = backup.html;
     this.selectedBackupId = backupId;
 
     // Notify canvas that content was restored
@@ -1913,9 +1913,13 @@ export class App implements AfterViewInit {
   private captureCanvas(): { html: string; thumbnail: string } | null {
     const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
     if (!iframe || !iframe.contentDocument) return null;
-    const canvas = iframe.contentDocument.querySelector('.custom-form-design');
-    if (!canvas) return null;
-    return { html: canvas.innerHTML, thumbnail: this.generateThumbnail(iframe) };
+    // Use getSelectedDrawablePage() to capture the currently selected page — works
+    // correctly even when a cover page shifts the cs_margin data-page numbering.
+    const win = iframe.contentWindow as (Window & { FlowCanvas?: { getSelectedDrawablePage?: () => Element | null } }) | null;
+    const docEl = win?.FlowCanvas?.getSelectedDrawablePage?.()
+      || iframe.contentDocument.querySelector('.cs_margin');
+    if (!docEl) return null;
+    return { html: docEl.innerHTML, thumbnail: this.generateThumbnail(iframe) };
   }
 
   // Toggle real-time comment mode in the canvas (collab.js lives in the iframe).
@@ -2035,7 +2039,7 @@ export class App implements AfterViewInit {
     this.saveAsOpen = false;
   }
 
-  // Load a saved template back into the canvas (mirrors restoreBackup).
+  // Load a saved template back into the canvas — pastes onto the selected page.
   protected loadSavedItem(id: string): void {
     const item = this.savedTemplates.find(i => i.id === id);
     if (!item) return;

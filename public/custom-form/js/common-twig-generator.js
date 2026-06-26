@@ -819,6 +819,11 @@
     return camelCase.replace(/([A-Z])/g, (g) => `-${g.toLowerCase()}`);
   };
 
+  // Expose so other modules (e.g. context-menu paste style) can refresh the
+  // Angular style panel after a programmatic style change.
+  window.FlowCanvas = window.FlowCanvas || {};
+  window.FlowCanvas.broadcastSelection = broadcastSelection;
+
   document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       startObserver();

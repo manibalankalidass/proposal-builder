@@ -48,6 +48,24 @@
   /**
    * Read all inline styles from a block and return structured object
    */
+  // Read the effective text color/font from an edit_me element.
+  // CustomRichEditor wraps text in <span style="color:..."> so edit_me.style.color
+  // is usually empty — fall back to the first styled span's inline style.
+  const readTextStyle = (inner, prop) => {
+    if (!inner) return '';
+    // Span styles take priority over edit_me inline style (spans are set by
+    // CustomRichEditor and are more specific than the block's default style).
+    const cssProp = prop.replace(/([A-Z])/g, '-$1').toLowerCase();
+    const spans = Array.from(inner.querySelectorAll(`[style*="${cssProp}"]`));
+    // Deepest match wins (last in DOM order = innermost nesting).
+    for (let i = spans.length - 1; i >= 0; i--) {
+      if (spans[i].style[prop]) return spans[i].style[prop];
+    }
+    // Fall back to edit_me's own inline style.
+    if (inner.style[prop]) return inner.style[prop];
+    return '';
+  };
+
   const readBlockStyles = (block) => {
     if (!block) return {};
 
@@ -56,13 +74,20 @@
     const innerStyle = inner ? inner.style : {};
 
     return {
-      // Background & Color
-      backgroundColor: rgbToHex(blockStyle.backgroundColor) || '',
-      textColor: rgbToHex(innerStyle.color || blockStyle.color) || '',
+      // Background & Color — background-color may live on a span (CustomRichEditor)
+      backgroundColor: rgbToHex(readTextStyle(inner, 'backgroundColor') || blockStyle.backgroundColor) || '',
+      textColor: rgbToHex(readTextStyle(inner, 'color') || blockStyle.color) || '',
 
-      // Typography
-      fontSize: innerStyle.fontSize || '',
-      fontWeight: innerStyle.fontWeight || '',
+      // Typography — all may live on nested spans
+      fontSize: readTextStyle(inner, 'fontSize') || innerStyle.fontSize || '',
+      fontWeight: readTextStyle(inner, 'fontWeight') || innerStyle.fontWeight || '',
+      fontFamily: readTextStyle(inner, 'fontFamily') || innerStyle.fontFamily || '',
+      fontStyle: readTextStyle(inner, 'fontStyle') || innerStyle.fontStyle || '',
+      textTransform: readTextStyle(inner, 'textTransform') || innerStyle.textTransform || '',
+      textDecorationLine: readTextStyle(inner, 'textDecorationLine') || innerStyle.textDecorationLine || '',
+      textAlign: readTextStyle(inner, 'textAlign') || innerStyle.textAlign || '',
+      lineHeight: readTextStyle(inner, 'lineHeight') || innerStyle.lineHeight || '',
+      letterSpacing: readTextStyle(inner, 'letterSpacing') || innerStyle.letterSpacing || '',
 
       // Border
       borderStyle: blockStyle.borderStyle || '',
@@ -111,16 +136,28 @@
       return;
     }
 
-    // Apply to inner element for text properties
-    if (prop === 'textColor' && inner) {
-      inner.style.color = value;
-      block.style.color = value; // fallback
-    } else if (prop === 'fontSize' && inner) {
-      inner.style.fontSize = value;
-    } else if (prop === 'fontWeight' && inner) {
-      inner.style.fontWeight = value;
+    // Text/span properties — apply to edit_me and update all existing inline spans.
+    const spanProps = {
+      textColor: 'color',
+      fontSize: 'fontSize',
+      fontWeight: 'fontWeight',
+      fontFamily: 'fontFamily',
+      fontStyle: 'fontStyle',
+      textTransform: 'textTransform',
+      textDecorationLine: 'textDecorationLine',
+      textAlign: 'textAlign',
+      lineHeight: 'lineHeight',
+      letterSpacing: 'letterSpacing',
+      backgroundColor: 'backgroundColor',
+    };
+    if (inner && spanProps[prop]) {
+      const csKey = spanProps[prop];
+      inner.style[csKey] = value;
+      if (prop === 'textColor') block.style.color = value;
+      if (prop === 'backgroundColor') block.style.backgroundColor = value;
+      inner.querySelectorAll('[style]').forEach((s) => { if (s.style[csKey]) s.style[csKey] = value; });
     } else {
-      // Apply to block for other properties
+      // Apply to block for layout/border/spacing properties.
       const cssProp = camelCaseToCssProp(prop);
       block.style.setProperty(cssProp, value, 'important');
     }

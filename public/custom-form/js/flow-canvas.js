@@ -871,12 +871,15 @@
       window.parent?.postMessage({ source: 'custom-form-twig', type: 'draft:restored', data: { savedAt: new Date().toISOString() } }, '*');
     }
     if (msg.type === 'savedtemplate:apply') {
-      // Apply a saved template HTML to the canvas (replaces existing content).
+      // Paste template content onto the currently selected page only — other pages untouched.
       try { window.EditorManager?.clearAll?.(); } catch (e) { /* */ }
-      const firstDocEl = paper.querySelector('.cs_margin');
-      if (firstDocEl) {
-        firstDocEl.innerHTML = msg.html;
-        window.FlowCanvas?.initEditors?.(firstDocEl);
+      // getSelectedDrawablePage() returns the .cs_margin for content pages (or the
+      // cover .cs_page itself). Fall back to the first .cs_margin if nothing selected.
+      const docEl = (window.FlowCanvas?.getSelectedDrawablePage?.())
+        || paper.querySelector('.cs_margin');
+      if (docEl) {
+        docEl.innerHTML = msg.html;
+        window.FlowCanvas?.initEditors?.(docEl);
       }
       window.parent?.postMessage({ source: 'custom-form-twig', type: 'draft:restored', data: { savedAt: new Date().toISOString() } }, '*');
     }
