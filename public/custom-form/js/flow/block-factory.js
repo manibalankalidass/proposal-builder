@@ -210,7 +210,7 @@
     'heading-two': () => blockCreator.createTitleBlock({ text: 'New Heading', className: 'add-heading-two', fontSize: '14px' }),
     'body-text':   () => blockCreator.createBodyTextBlock({ fontSize: '14px' }),
     'section-container': () => blockCreator.createSectionContainerBlock(),
-    'table-repeater':    () => blockCreator.createWhiteHeaderTableBlock(),
+    'table-repeater':    () => window.TableBlock?.createRepeaterBlock() || null,
     'image':       () => blockCreator.createSquareImageBlock(),
     'video':       () => blockCreator.createVideoBlock(),
 

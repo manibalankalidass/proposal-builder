@@ -156,6 +156,11 @@ export class App implements AfterViewInit {
   protected previewZoom = 0.5;
   protected previewSrcdoc: SafeHtml | null = null;
 
+  // Last valid caret/selection inside the editor iframe — saved on every
+  // selectionchange so chip clicks (which blur the iframe) can still insert
+  // into the correct contenteditable target.
+  private _savedIframeRange: { doc: Document; range: Range; container: Node } | null = null;
+
   // Reusable component library.
   private readonly COMPONENTS_KEY = 'brochureflow:components:v1';
   protected savedComponents: SavedComponent[] = [];
@@ -230,10 +235,13 @@ export class App implements AfterViewInit {
   };
   protected pdfSettings = {
     pageSize: 'A4' as typeof this.pageSizes[number],
-    marginTop: 0,
-    marginRight: 0,
-    marginBottom: 0,
-    marginLeft: 0,
+    // Page margins are in PIXELS (px), matching .cs_margin's CSS padding so
+    // the editor inset and the PDF inset are the same unit. Default 50px
+    // mirrors the .cs_margin { padding: 50px } default in custom-form.css.
+    marginTop: 50,
+    marginRight: 50,
+    marginBottom: 50,
+    marginLeft: 50,
     enableHeaderFooter: true,
     enableInlineInsert: true,
     inlineTextToolbar: true, // ON → rich-text toolbar floats above the block; OFF → docks to canvas top
@@ -254,7 +262,7 @@ export class App implements AfterViewInit {
   protected currentPage = 1;
   protected marginsLinked = true;
   protected marginsExpanded = false;
-  protected marginAll = 0;
+  protected marginAll = 50;
   protected latestTwigCode: string = '';
   protected availableFields: { key: string; kind: string; expr: string }[] = [];
   // Loop-alias relative paths (e.g. 'item.price') for the active scope, fed as
@@ -731,41 +739,79 @@ export class App implements AfterViewInit {
     this.insertTextAtCursor(expr);
   }
 
+  // Listen for selection changes inside the editor iframe and save the last
+  // valid caret position. Called once from ngAfterViewInit. Uses a MutationObserver
+  // to handle the case where the iframe hasn't loaded yet.
+  private watchIframeSelection(): void {
+    const attach = (iframe: HTMLIFrameElement) => {
+      const targetDoc = iframe.contentDocument ?? iframe.contentWindow?.document;
+      if (!targetDoc) return;
+      targetDoc.addEventListener('selectionchange', () => {
+        const sel = targetDoc.getSelection?.();
+        if (!sel || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
+        const container = range.commonAncestorContainer as HTMLElement;
+        // Only save selections that are inside a real editable target —
+        // NOT inside cs-inline-insert-line or other UI chrome.
+        const el = container.nodeType === Node.TEXT_NODE
+          ? container.parentElement
+          : container as HTMLElement;
+        if (!el) return;
+        if (el.closest('.cs-inline-insert-line') || el.closest('.cs-inline-insert-menu')) return;
+        if (!el.isContentEditable && !el.closest('[contenteditable="true"]')) return;
+        this._savedIframeRange = { doc: targetDoc, range: range.cloneRange(), container };
+      });
+    };
+
+    // Try immediately (iframe may already be loaded).
+    const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
+    if (iframe) {
+      iframe.addEventListener('load', () => attach(iframe));
+      // Also try now in case load already fired.
+      if (iframe.contentDocument?.readyState === 'complete') attach(iframe);
+    }
+  }
+
   private insertTextAtCursor(text: string): void {
     const iframe = document.querySelector('iframe.canvas-frame__iframe') as HTMLIFrameElement | null;
     if (!iframe) return;
 
-    iframe.focus();
-
     const targetDoc = iframe.contentDocument ?? iframe.contentWindow?.document;
     if (!targetDoc) return;
 
-    const selection = targetDoc.getSelection?.();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
+    // Prefer the saved range (captured before chip click blurred the iframe).
+    if (this._savedIframeRange && this._savedIframeRange.doc === targetDoc) {
+      const { range } = this._savedIframeRange;
+      // Restore the saved selection so execCommand / insertNode lands correctly.
+      const sel = targetDoc.getSelection?.();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      range.deleteContents();
       range.insertNode(targetDoc.createTextNode(text));
       range.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(range);
+      if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+      // Update saved range to the new position.
+      this._savedIframeRange = { ...this._savedIframeRange, range: range.cloneRange() };
       return;
     }
 
-    const activeEditable = targetDoc.activeElement as HTMLElement | null;
-    if (activeEditable && activeEditable.isContentEditable) {
-      activeEditable.focus();
-      const newSelection = targetDoc.getSelection?.();
-      if (newSelection) {
-        const range = targetDoc.createRange();
-        range.selectNodeContents(activeEditable);
+    // Fallback: use current live selection if it's in a valid editable.
+    const selection = targetDoc.getSelection?.();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const el = (range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+        ? range.commonAncestorContainer.parentElement
+        : range.commonAncestorContainer) as HTMLElement | null;
+      const inInsertLine = el?.closest('.cs-inline-insert-line') || el?.closest('.cs-inline-insert-menu');
+      if (!inInsertLine) {
+        range.deleteContents();
+        range.insertNode(targetDoc.createTextNode(text));
         range.collapse(false);
-        newSelection.removeAllRanges();
-        newSelection.addRange(range);
-
-        const rangeForInsert = newSelection.getRangeAt(0);
-        rangeForInsert.insertNode(targetDoc.createTextNode(text));
-        rangeForInsert.collapse(false);
-        newSelection.removeAllRanges();
-        newSelection.addRange(rangeForInsert);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return;
       }
     }
   }
@@ -1410,10 +1456,15 @@ export class App implements AfterViewInit {
       this.registerBindingData();
       this.exposeBindingGetter();
       this.applyCanvasPageSize(this.pdfSettings.pageSize);
+      // Push the default page margins into the canvas on load so the panel
+      // value and the rendered .cs_margin padding start in sync (the input
+      // is the source of truth, not the CSS default).
+      this.applyCanvasPageMargins();
       this.loadBackupHistory();
       this.loadSavedItems();
       this.loadBrandKit();
       this.startAutoBackup();
+      this.watchIframeSelection();
 
       // Ctrl/Cmd + wheel over the canvas zooms (like design tools).
       const stage = document.querySelector('.canvas-stage');
@@ -1440,6 +1491,23 @@ export class App implements AfterViewInit {
 
   protected onMarginChange(): void {
     this.applyCanvasPageMargins();
+  }
+
+  // Apply a uniform margin preset (all four sides) and sync the "all" input.
+  protected setMarginPreset(px: number): void {
+    this.marginAll = px;
+    this.pdfSettings.marginTop = px;
+    this.pdfSettings.marginRight = px;
+    this.pdfSettings.marginBottom = px;
+    this.pdfSettings.marginLeft = px;
+    this.applyCanvasPageMargins();
+  }
+
+  // A preset is "active" only when every side already equals it, so a custom
+  // / non-uniform value highlights no preset.
+  protected isMarginPreset(px: number): boolean {
+    const s = this.pdfSettings;
+    return s.marginTop === px && s.marginRight === px && s.marginBottom === px && s.marginLeft === px;
   }
 
   protected onMarginAllChange(): void {
@@ -2341,50 +2409,11 @@ export class App implements AfterViewInit {
 
     if (!iframe) return;
 
-    // Focus the iframe to ensure we have proper cursor context
-    iframe.focus();
-
     const editorManager = iframe.contentWindow && (iframe.contentWindow as any).EditorManager;
     if (editorManager?.insertTextAtCursor) {
+      // insertTextAtCursor returns false when no block is in edit mode — do nothing in that case
       editorManager.insertTextAtCursor(placeholder);
       return;
-    }
-
-    const targetDoc = iframe.contentDocument ?? iframe.contentWindow?.document;
-    if (!targetDoc) return;
-
-    // Try to insert at current selection in iframe
-    const selection = targetDoc.getSelection?.();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-      range.insertNode(targetDoc.createTextNode(placeholder));
-      range.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(range);
-      return;
-    }
-
-    // Fallback: find the active editable element in iframe
-    const activeEditable = targetDoc.activeElement as HTMLElement | null;
-    if (activeEditable && activeEditable.isContentEditable) {
-      activeEditable.focus();
-      // Place cursor at the end of the element
-      const newSelection = targetDoc.getSelection?.();
-      if (newSelection) {
-        const range = targetDoc.createRange();
-        range.selectNodeContents(activeEditable);
-        range.collapse(false);
-        newSelection.removeAllRanges();
-        newSelection.addRange(range);
-
-        const rangeForInsert = newSelection.getRangeAt(0);
-        rangeForInsert.deleteContents();
-        rangeForInsert.insertNode(targetDoc.createTextNode(placeholder));
-        rangeForInsert.collapse(false);
-        newSelection.removeAllRanges();
-        newSelection.addRange(rangeForInsert);
-      }
     }
   }
 

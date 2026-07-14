@@ -506,7 +506,7 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
+  width: 78%;
   min-height: 32px;
   padding: 0;
   text-align: left;
@@ -756,6 +756,20 @@ button {
   background: #eef2ff;
   border-color: #c7d2fe;
   color: #4338ca;
+}
+
+/* The currently-applied preset (all four margins equal its value). */
+.pdf-settings-presets button.active {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+  font-weight: 600;
+}
+
+.pdf-settings-presets button.active:hover {
+  background: #4338ca;
+  border-color: #4338ca;
+  color: #fff;
 }
 
 .data-binding-panel {

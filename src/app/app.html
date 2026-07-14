@@ -487,7 +487,7 @@
             <!-- MARGINS -->
             <div class="pdf-settings-section">
               <div class="pdf-margins-header">
-                <div class="pdf-settings-section__title" style="margin-bottom:0">Margins (mm)</div>
+                <div class="pdf-settings-section__title" style="margin-bottom:0">Margins (px)</div>
                 <div class="pdf-margins-inline">
                   <input class="pdf-margins-all-input" type="number" min="0" max="100"
                     [(ngModel)]="marginAll"
@@ -533,15 +533,15 @@
             </div>
 
             <div class="pdf-settings-presets">
-              <button type="button"
-                (click)="marginAll = 0; pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 0; onMarginChange()">Edge-to-edge
-                (0mm)</button>
-              <button type="button"
-                (click)="marginAll = 10; pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 10; onMarginChange()">Browser
-                default (10mm)</button>
-              <button type="button"
-                (click)="marginAll = 20; pdfSettings.marginTop = pdfSettings.marginRight = pdfSettings.marginBottom = pdfSettings.marginLeft = 20; onMarginChange()">Document
-                (20mm)</button>
+              <button type="button" [class.active]="isMarginPreset(0)"
+                (click)="setMarginPreset(0)">Edge-to-edge
+                (0px)</button>
+              <button type="button" [class.active]="isMarginPreset(25)"
+                (click)="setMarginPreset(25)">Compact
+                (25px)</button>
+              <button type="button" [class.active]="isMarginPreset(50)"
+                (click)="setMarginPreset(50)">Default
+                (50px)</button>
             </div>
 
             <div class="pdf-settings-section">

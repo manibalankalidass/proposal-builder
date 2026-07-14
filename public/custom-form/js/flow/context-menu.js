@@ -141,10 +141,8 @@
     document.addEventListener('contextmenu', (e) => {
       const block = e.target.closest && e.target.closest('.cs_block_s');
       if (!block) { closeMenu(); return; }                 // empty area → native menu
-      // Table blocks own their own context menu (table-block.js) outside Froala
-      // mode — bail here so both menus don't open at once on the same right-click.
-      const inFroala = (typeof window.isFroalaEditor === 'function') && window.isFroalaEditor();
-      if (block.dataset.blockType === 'table' && !inFroala) { closeMenu(); return; }
+      // Table blocks: no right-click popup.
+      if (block.dataset.blockType === 'table' || block.dataset.blockType === 'table-repeater') { closeMenu(); return; }
       // While editing text, defer to the browser's native menu.
       if (window.EditorManager && window.EditorManager.getEditing && window.EditorManager.getEditing() === block) return;
       e.preventDefault();

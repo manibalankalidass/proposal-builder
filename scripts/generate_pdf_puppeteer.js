@@ -69,7 +69,11 @@ const PRINT_OVERRIDES_CSS = `
     min-height: var(--cs-page-min-height, 1123px) !important;
     height: auto !important;
     margin: 0 auto !important;
-    padding: 0 !important;
+    /* NOTE: padding is intentionally NOT reset here. The editor's page
+       inset (the "MARGINS (MM)" control / default --cs-page-padding) lives
+       as padding on .cs_margin, and we want that SAME inset in the PDF.
+       restructureDocsForPrint() captures it and re-applies it to the
+       rebuilt content table, so the printed page matches the editor. */
     border: 0 !important;
     box-shadow: none !important;
   }
@@ -159,6 +163,19 @@ const VIEWPORTS = {
 // and the resulting single-doc PDFs are merged.
 function restructureDocsForPrint() {
   document.querySelectorAll('.cs_margin').forEach(doc => {
+    // Capture the editor's page inset (the "MARGINS (MM)" control sets this
+    // as padding on .cs_margin; the default is --cs-page-padding). We re-apply
+    // it to the rebuilt content table below so the PDF page inset matches what
+    // the user sees in the editor instead of printing edge-to-edge.
+    const docComp = window.getComputedStyle(doc);
+    const padTop = docComp.paddingTop || '0px';
+    const padRight = docComp.paddingRight || '0px';
+    const padBottom = docComp.paddingBottom || '0px';
+    const padLeft = docComp.paddingLeft || '0px';
+    // The element's own padding is folded into the table cells below, so zero
+    // it on the element to avoid double-insetting.
+    doc.style.padding = '0';
+
     const header = doc.querySelector(':scope > .cs-page-header');
     const footer = doc.querySelector(':scope > .cs-page-footer');
 
@@ -191,10 +208,17 @@ function restructureDocsForPrint() {
     table.style.borderSpacing = '0';
     table.style.borderCollapse = 'collapse';
 
+    // The thead/tfoot spacers repeat on EVERY printed page, so folding the
+    // page's top/bottom inset into them gives a consistent page margin on
+    // every sheet (combined with the fixed header/footer height when present).
+    const pxOf = (v) => { const n = Number.parseFloat(v); return Number.isFinite(n) ? n : 0; };
+    const padT = pxOf(padTop);
+    const padB = pxOf(padBottom);
+
     const thead = document.createElement('thead');
     const theadTr = document.createElement('tr');
     const theadTd = document.createElement('td');
-    theadTd.style.height = headerHeight + 'px';
+    theadTd.style.height = (headerHeight + padT) + 'px';
     theadTd.style.padding = '0';
     theadTd.style.border = 'none';
     theadTr.appendChild(theadTd);
@@ -203,7 +227,7 @@ function restructureDocsForPrint() {
     const tfoot = document.createElement('tfoot');
     const tfootTr = document.createElement('tr');
     const tfootTd = document.createElement('td');
-    tfootTd.style.height = footerHeight + 'px';
+    tfootTd.style.height = (footerHeight + padB) + 'px';
     tfootTd.style.padding = '0';
     tfootTd.style.border = 'none';
     tfootTr.appendChild(tfootTd);
@@ -222,13 +246,22 @@ function restructureDocsForPrint() {
       mainBg = comp.backgroundColor;
     }
 
+    // Page horizontal inset, added to every content cell so the body is
+    // inset from the sheet edges by the same amount as in the editor. Uses
+    // calc() so any existing per-cell padding (eg. body-main-content) is
+    // preserved and the page inset stacks on top of it.
+    const addX = (base, extra) => {
+      if (!extra || extra === '0px') return base || '0px';
+      if (!base || base === '0px') return extra;
+      return `calc(${base} + ${extra})`;
+    };
     const wrapNode = (node, pt = '0px', pr = '0px', pb = '0px', pl = '0px', bg = '') => {
       const tr = document.createElement('tr');
       const td = document.createElement('td');
       td.style.paddingTop = pt;
-      td.style.paddingRight = pr;
+      td.style.paddingRight = addX(pr, padRight);
       td.style.paddingBottom = pb;
-      td.style.paddingLeft = pl;
+      td.style.paddingLeft = addX(pl, padLeft);
       td.style.border = 'none';
       if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
         td.style.backgroundColor = bg;
@@ -276,6 +309,93 @@ function restructureDocsForPrint() {
     table.style.zIndex = '1';
     doc.appendChild(table);
     if (footer) doc.appendChild(footer);
+  });
+}
+
+// Runs INSIDE the page. Blocks inside a .cs-flexible-content are absolutely
+// positioned with the exact pixel geometry they had in the editor, and the
+// container carries a fixed pixel height. When a merge tag renders longer than
+// its editor placeholder, the block grows (or silently clips, if it has a
+// fixed inline height) while the blocks below it and the container itself stay
+// frozen — content overlaps and the flexible box never gets taller.
+//
+// The twig generator stamps each child's design-time geometry as
+// data-cs-design-top / data-cs-design-h. Using that, per container
+// (innermost first, so nested flexible boxes grow before their parent is
+// measured):
+//   1. release fixed heights that clip rendered content,
+//   2. push each block down by the accumulated growth of the blocks that sat
+//      above it at design time in the same column,
+//   3. grow the container so the lowest block fits.
+function expandFlexibleContainersToFit() {
+  // Reverse document order ⇒ descendants before ancestors.
+  const contents = Array.from(document.querySelectorAll('.cs-flexible-content')).reverse();
+  contents.forEach((content) => {
+    const children = Array.from(content.children).filter((el) => el instanceof HTMLElement);
+    if (!children.length) return;
+
+    // 1) A fixed inline height clips grown content silently — release it so
+    // the block shows everything, keeping the design height as a floor.
+    children.forEach((el) => {
+      [el, ...el.querySelectorAll('[style*="height"]')].forEach((n) => {
+        if (n.scrollHeight > n.clientHeight + 1) {
+          if (n.style.height) {
+            n.style.minHeight = n.style.height;
+            n.style.height = 'auto';
+          }
+          n.style.maxHeight = 'none';
+        }
+      });
+    });
+
+    // 2) Re-flow: shift each block down by the growth of the blocks that were
+    // fully above it at design time and horizontally overlap it. Intentional
+    // design-time overlaps (e.g. text over a shape) are untouched because the
+    // shift is the growth DELTA, not a generic de-overlap.
+    const items = children.map((el) => {
+      const dTop = Number.parseFloat(el.dataset.csDesignTop);
+      const dH = Number.parseFloat(el.dataset.csDesignH);
+      return {
+        el,
+        designTop: Number.isFinite(dTop) ? dTop : el.offsetTop,
+        designH: Number.isFinite(dH) ? dH : el.offsetHeight,
+        left: el.offsetLeft,
+        right: el.offsetLeft + el.offsetWidth,
+        growth: 0,
+        shift: 0,
+      };
+    }).sort((a, b) => a.designTop - b.designTop || a.left - b.left);
+
+    items.forEach((it) => {
+      it.growth = Math.max(0, it.el.offsetHeight - it.designH);
+    });
+
+    items.forEach((it, i) => {
+      for (let j = 0; j < i; j++) {
+        const above = items[j];
+        const sharesColumn = it.left < above.right && above.left < it.right;
+        const wasAbove = above.designTop + above.designH <= it.designTop + 1;
+        if (sharesColumn && wasAbove) {
+          it.shift = Math.max(it.shift, above.shift + above.growth);
+        }
+      }
+      if (it.shift > 0) it.el.style.top = `${it.designTop + it.shift}px`;
+    });
+
+    // 3) Grow the container so the lowest block fits, and release the block
+    // wrapper's own fixed height so the grown container isn't clipped.
+    const padBottom = Number.parseFloat(getComputedStyle(content).paddingBottom) || 0;
+    const maxBottom = Math.max(...items.map((it) => it.designTop + it.shift + it.el.offsetHeight));
+    const needed = Math.ceil(maxBottom + padBottom);
+    if (needed > content.clientHeight) {
+      content.style.height = `${needed}px`;
+      content.style.minHeight = `${needed}px`;
+      const wrapper = content.closest('.cs_block_s');
+      if (wrapper && wrapper.style.height) {
+        wrapper.style.height = 'auto';
+        wrapper.style.minHeight = `${needed}px`;
+      }
+    }
   });
 }
 
@@ -331,6 +451,24 @@ async function renderCanvasPdf(browser, fileUrl, viewport, pdfOpts, keepIndex, o
           width: ${viewport.width}px !important;
           max-width: ${viewport.width}px !important;
         }
+        /* The page-background shape layer is absolute inset:0 inside
+           .cs_margin, so when content overflows one sheet the layer
+           stretches across the whole grown height (bottom bands land
+           mid-sheet, top shapes blow up). position:fixed makes Chromium
+           repaint it at the same spot on EVERY printed sheet — the same
+           mechanism as the fixed page header/footer — and the explicit
+           width/height pin it to exactly one sheet. Safe because each
+           canvas is printed in isolation, so only its own layer repeats. */
+        .cs-page-shape-bg {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: auto !important;
+          bottom: auto !important;
+          width: ${viewport.width}px !important;
+          height: ${viewport.height}px !important;
+          z-index: 0 !important;
+        }
         ${keepIndex !== null ? '.custom-form-design { break-before: auto !important; page-break-before: auto !important; }' : ''}
       `,
     });
@@ -343,6 +481,12 @@ async function renderCanvasPdf(browser, fileUrl, viewport, pdfOpts, keepIndex, o
 
     // Wait for web fonts to be ready so text metrics are final.
     await page.evaluate(() => document.fonts && document.fonts.ready);
+
+    // Re-flow flexible containers whose rendered content grew past the
+    // design-time geometry (merge tags longer than their editor placeholder):
+    // grown blocks push the blocks below them down and the container height
+    // expands to fit, instead of overlapping at a frozen height.
+    await page.evaluate(expandFlexibleContainersToFit);
 
     await page.pdf({
       path: outPath,

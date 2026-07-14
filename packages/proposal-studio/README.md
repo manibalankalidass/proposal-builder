@@ -36,7 +36,7 @@ version, React, Vue, …), and you can mount **multiple editors** on one page.
 
 **Try it instantly — no install, no sign-up:**
 
-👉 **[proposal-studio live demo](https://proposal-builder-mani.vercel.app/)**
+👉 **[proposal-studio live demo](https://cs-pdf-builder.vercel.app/)**
 
 The demo runs the full editor in the browser. You can drag blocks, edit rich text,
 resize images, draw shapes, use zoom shortcuts, and measure distances between

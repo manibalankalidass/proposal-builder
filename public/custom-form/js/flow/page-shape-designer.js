@@ -203,11 +203,279 @@
   const activateBlock = () => {
     requestAnimationFrame(() => {
       if (!block || !modal) return;
+      // Clear old propsEl from host before activating — prevents duplicates when
+      // deactivate() was called (e.g. via captureBlock) and a new session creates
+      // a fresh propsEl that would otherwise stack on top of the old one.
+      const propsHost = modal.querySelector('[data-props-host]');
+      if (propsHost) propsHost.innerHTML = '';
       window.PenShape.activate(block);
       window.PenShape.setLayersPanel?.(modal.querySelector('[data-layers-list]'));
-      window.PenShape.setPropsPanel?.(modal.querySelector('[data-props-host]'));
+      window.PenShape.setPropsPanel?.(propsHost);
       layoutStage();
     });
+  };
+
+  /* ----------------------------- design templates --------------------------- */
+
+  // Pre-built page background designs. Each entry has:
+  //   label   — short display name
+  //   thumb   — inline SVG string (small preview, viewBox="0 0 60 85")
+  //   paths   — penPath JSON (window.PenShape state format) to load
+  //   style   — optional per-path fill colour overrides applied after load
+
+  // All coordinates are in 0–1000 viewBox space (pen engine VB=1000).
+  // Bezier: outX/outY = handle leaving a node; inX/inY = handle arriving at a node.
+  // SVG cubic: C(prev.outX prev.outY)(curr.inX curr.inY)(curr.x curr.y)
+
+  // VB=1000 space. outX/outY = handle leaving node (C1), inX/inY = handle arriving (C2).
+  const DESIGN_TEMPLATES = [
+    
+    {
+      // Red letterhead — large arc top + footer bar
+      label: 'Red Letterhead',
+      thumb: `<svg viewBox="0 0 60 85" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="85" fill="#fff"/><path d="M0,0 L60,0 L60,28 C45,44 15,38 0,45 Z" fill="#e53935"/><path d="M0,0 L60,0 L60,18 C45,30 15,24 0,30 Z" fill="#fff" opacity=".3"/><rect x="0" y="80" width="60" height="5" fill="#e53935"/></svg>`,
+      paths: [
+        { anchors: [
+            { x: 0,    y: 0 },
+            { x: 1000, y: 0 },
+            { x: 1000, y: 280, outX: 1000, outY: 440 },
+            { x: 0,    y: 450, inX: 480,   inY: 450 },
+          ], closed: true, name: 'Top arc',
+          style: { fillType: 'solid', fill: '#e53935', opacity: 1 } },
+        { anchors: [
+            { x: 0,    y: 0 },
+            { x: 1000, y: 0 },
+            { x: 1000, y: 180, outX: 1000, outY: 300 },
+            { x: 0,    y: 300, inX: 480,   inY: 300 },
+          ], closed: true, name: 'Highlight',
+          style: { fillType: 'solid', fill: '#ffffff', opacity: 0.28 } },
+        { anchors: [
+            { x: 0, y: 940 }, { x: 1000, y: 940 },
+            { x: 1000, y: 1000 }, { x: 0, y: 1000 },
+          ], closed: true, name: 'Footer bar',
+          style: { fillType: 'solid', fill: '#e53935', opacity: 1 } },
+      ],
+    },
+    {
+      // Dark corporate: header bar + red left accent + bottom-left wedge
+      label: 'Dark Corporate',
+      thumb: `<svg viewBox="0 0 60 85" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="85" fill="#fff"/><rect x="0" y="0" width="60" height="14" fill="#1a1a2e"/><rect x="0" y="0" width="14" height="26" fill="#c62828"/><path d="M0,85 L26,85 L0,60 Z" fill="#1a1a2e"/></svg>`,
+      paths: [
+        { anchors: [{ x: 0, y: 0 }, { x: 1000, y: 0 }, { x: 1000, y: 140 }, { x: 0, y: 140 }],
+          closed: true, name: 'Header bar',
+          style: { fillType: 'solid', fill: '#1a1a2e', opacity: 1 } },
+        { anchors: [{ x: 0, y: 0 }, { x: 140, y: 0 }, { x: 140, y: 260 }, { x: 0, y: 260 }],
+          closed: true, name: 'Red accent',
+          style: { fillType: 'solid', fill: '#c62828', opacity: 1 } },
+        { anchors: [{ x: 0, y: 1000 }, { x: 260, y: 1000 }, { x: 0, y: 700 }],
+          closed: true, name: 'Bottom wedge',
+          style: { fillType: 'solid', fill: '#1a1a2e', opacity: 1 } },
+      ],
+    },
+    
+    {
+      // Large teal arc covering left portion of page (C-shape open right)
+      label: 'Teal Arc Side',
+      thumb: `<svg viewBox="0 0 60 85" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="85" fill="#fff"/><path d="M0,0 L60,0 C60,0 12,17 12,42 C12,68 60,85 60,85 L0,85 Z" fill="#00695c"/><path d="M0,0 L42,0 C42,0 0,18 0,42 C0,67 42,85 42,85 L0,85 Z" fill="#004d40" opacity=".5"/></svg>`,
+      paths: [
+        { anchors: [
+            { x: 0,    y: 0 },
+            { x: 1000, y: 0,    outX: 1000, outY: 0 },
+            { x: 200,  y: 500,  inX: 200,   inY: 141, outX: 200, outY: 858 },
+            { x: 1000, y: 1000, inX: 1000,  inY: 1000 },
+            { x: 0,    y: 1000 },
+          ], closed: true, name: 'Teal outer',
+          style: { fillType: 'solid', fill: '#00695c', opacity: 1 } },
+        { anchors: [
+            { x: 0,    y: 0 },
+            { x: 700,  y: 0,    outX: 700,  outY: 0 },
+            { x: 0,    y: 500,  inX: 0,     inY: 127, outX: 0, outY: 873 },
+            { x: 700,  y: 1000, inX: 700,   inY: 1000 },
+            { x: 0,    y: 1000 },
+          ], closed: true, name: 'Teal inner',
+          style: { fillType: 'solid', fill: '#004d40', opacity: 0.5 } },
+      ],
+    },
+    {
+      // Right-side crimson wave sweeping from right edge
+      label: 'Right Wave',
+      thumb: `<svg viewBox="0 0 60 85" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="85" fill="#fff"/><path d="M60,0 L60,85 C40,85 20,65 30,42 C40,20 20,5 60,0 Z" fill="#c62828"/><path d="M60,0 L60,85 C50,85 34,68 40,42 C47,18 36,3 60,0 Z" fill="#e53935" opacity=".5"/></svg>`,
+      paths: [
+        { anchors: [
+            { x: 1000, y: 0 },
+            { x: 1000, y: 1000 },
+            { x: 400,  y: 1000, inX: 800,  inY: 1000, outX: 200, outY: 1000 },
+            { x: 300,  y: 500,  inX: 200,  inY: 750,  outX: 400,  outY: 250 },
+            { x: 600,  y: 0,    inX: 400,  inY: 50 },
+          ], closed: true, name: 'Right wave outer',
+          style: { fillType: 'solid', fill: '#c62828', opacity: 1 } },
+        { anchors: [
+            { x: 1000, y: 0 },
+            { x: 1000, y: 1000 },
+            { x: 580,  y: 1000, inX: 850,  inY: 1000, outX: 380, outY: 1000 },
+            { x: 480,  y: 500,  inX: 360,  inY: 730,  outX: 580, outY: 270 },
+            { x: 720,  y: 0,    inX: 560,  inY: 40 },
+          ], closed: true, name: 'Right wave inner',
+          style: { fillType: 'solid', fill: '#e53935', opacity: 0.5 } },
+      ],
+    },
+    {
+      // Flat header + footer bars
+      label: 'Header+Footer',
+      thumb: `<svg viewBox="0 0 60 85" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="85" fill="#fff"/><rect x="0" y="0" width="60" height="13" fill="#1a237e"/><rect x="0" y="74" width="60" height="11" fill="#1a237e"/></svg>`,
+      paths: [
+        { anchors: [{ x: 0, y: 0 }, { x: 1000, y: 0 }, { x: 1000, y: 130 }, { x: 0, y: 130 }],
+          closed: true, name: 'Header',
+          style: { fillType: 'solid', fill: '#1a237e', opacity: 1 } },
+        { anchors: [{ x: 0, y: 870 }, { x: 1000, y: 870 }, { x: 1000, y: 1000 }, { x: 0, y: 1000 }],
+          closed: true, name: 'Footer',
+          style: { fillType: 'solid', fill: '#1a237e', opacity: 1 } },
+      ],
+    },
+    
+  ];
+
+  /* ----------------------- custom saved designs (localStorage) --------------- */
+
+  const SAVED_KEY = 'cs-page-shape:saved-designs';
+
+  const loadSavedDesigns = () => {
+    try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch (e) { return []; }
+  };
+
+  const persistSavedDesigns = (list) => {
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(list)); } catch (e) { /* */ }
+  };
+
+  // Capture the current drawing and save it to localStorage with a user-supplied name.
+  const saveCurrentDesign = () => {
+    if (!block) return;
+    const design = captureBlock();
+    if (!design || !design.penPath) {
+      alert('Nothing to save — draw a shape first.');
+      return;
+    }
+    // Re-activate after captureBlock deactivated the pen session.
+    try {
+      const propsHost = modal?.querySelector('[data-props-host]');
+      if (propsHost) propsHost.innerHTML = '';
+      window.PenShape.activate(block);
+      window.PenShape.setLayersPanel?.(modal?.querySelector('[data-layers-list]'));
+      window.PenShape.setPropsPanel?.(propsHost);
+    } catch (e) { /* */ }
+
+    const name = (prompt('Name this design:', 'My Design') || '').trim();
+    if (!name) return;
+
+    const state = JSON.parse(design.penPath || '{}');
+    // Generate a thumbnail SVG from the pen paths using their recorded fill styles.
+    const thumbPaths = (state.paths || []).map((p) => {
+      if (!p.anchors || p.anchors.length < 2) return '';
+      const fill = p.style?.fill || '#248567';
+      const opacity = p.style?.opacity != null ? p.style.opacity : 1;
+      let d = `M ${p.anchors[0].x * 60 / 1000},${p.anchors[0].y * 85 / 1000}`;
+      for (let i = 1; i < p.anchors.length; i++) {
+        const prev = p.anchors[i - 1];
+        const curr = p.anchors[i];
+        const c1x = ((prev.outX != null ? prev.outX : prev.x) * 60 / 1000).toFixed(2);
+        const c1y = ((prev.outY != null ? prev.outY : prev.y) * 85 / 1000).toFixed(2);
+        const c2x = ((curr.inX  != null ? curr.inX  : curr.x) * 60 / 1000).toFixed(2);
+        const c2y = ((curr.inY  != null ? curr.inY  : curr.y) * 85 / 1000).toFixed(2);
+        const ex  = (curr.x * 60 / 1000).toFixed(2);
+        const ey  = (curr.y * 85 / 1000).toFixed(2);
+        d += ` C ${c1x},${c1y} ${c2x},${c2y} ${ex},${ey}`;
+      }
+      if (p.closed) d += ' Z';
+      return `<path d="${d}" fill="${fill}" opacity="${opacity}"/>`;
+    }).join('');
+    const thumb = `<svg viewBox="0 0 60 85" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="85" fill="#fff"/>${thumbPaths}</svg>`;
+
+    const list = loadSavedDesigns();
+    list.push({ label: name, thumb, penPath: design.penPath, penStyle: design.penStyle || '', savedAt: Date.now() });
+    persistSavedDesigns(list);
+
+    // Refresh the saved section in the open templates panel.
+    refreshSavedGrid();
+  };
+
+  // Delete one saved design by index.
+  const deleteSavedDesign = (idx) => {
+    const list = loadSavedDesigns();
+    list.splice(idx, 1);
+    persistSavedDesigns(list);
+    refreshSavedGrid();
+  };
+
+  // Rebuild only the saved-designs grid inside the open templates panel.
+  const refreshSavedGrid = () => {
+    if (!modal) return;
+    const grid = modal.querySelector('[data-saved-tpl-grid]');
+    if (!grid) return;
+    const empty = modal.querySelector('[data-saved-tpl-empty]');
+    const list = loadSavedDesigns();
+    if (empty) empty.style.display = list.length ? 'none' : '';
+    grid.innerHTML = '';
+    list.forEach((tpl, i) => {
+      const btn = hostDoc.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cs-page-shape-tpl__item';
+      btn.dataset.savedTplIndex = String(i);
+      btn.title = tpl.label;
+      btn.innerHTML = `<span class="cs-page-shape-tpl__thumb">${tpl.thumb}</span>
+        <span class="cs-page-shape-tpl__name">${tpl.label}</span>
+        <span class="cs-page-shape-tpl__del" data-del-saved="${i}" title="Delete">✕</span>`;
+      grid.appendChild(btn);
+    });
+  };
+
+  // Load a design template into the active pen block, replacing any existing paths.
+  const loadTemplate = (tpl) => {
+    if (!block) return;
+    // Build a fresh penPath state from the template paths.
+    const state = {
+      paths: tpl.paths.map((p, i) => ({
+        anchors: p.anchors.map((a) => Object.assign({}, a)),
+        closed: p.closed !== false,
+        name: p.name || `Path ${i + 1}`,
+        style: Object.assign({ fillType: 'solid', fill: '#248567', opacity: 1 }, p.style || {}),
+      })),
+    };
+    try {
+      // Move propsEl back to toolbar BEFORE deactivate, so the host container is
+      // empty when the new session appends its fresh propsEl (prevents duplicates).
+      window.PenShape.setPropsPanel?.(null);
+      window.PenShape.deactivate?.();
+      block.dataset.penPath = JSON.stringify(state);
+      block.dataset.penStyle = '';
+      window.PenShape.renderShape(block);
+      window.PenShape.activate(block);
+      window.PenShape.setLayersPanel?.(modal?.querySelector('[data-layers-list]'));
+      window.PenShape.setPropsPanel?.(modal?.querySelector('[data-props-host]'));
+    } catch (e) { /* */ }
+  };
+
+  // Populate the prebuilt + saved grids already inside the modal's layers aside.
+  const populateTemplateGrids = () => {
+    if (!modal) return;
+
+    // Prebuilt grid.
+    const grid = modal.querySelector('[data-tpl-grid]');
+    if (grid) {
+      grid.innerHTML = '';
+      DESIGN_TEMPLATES.forEach((tpl, i) => {
+        const btn = hostDoc.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cs-page-shape-tpl__item';
+        btn.dataset.tplIndex = String(i);
+        btn.title = tpl.label;
+        btn.innerHTML = `<span class="cs-page-shape-tpl__thumb">${tpl.thumb}</span>
+          <span class="cs-page-shape-tpl__name">${tpl.label}</span>`;
+        grid.appendChild(btn);
+      });
+    }
+
+    // Saved grid (also used by refreshSavedGrid).
+    refreshSavedGrid();
   };
 
   /* --------------------------------- modal ---------------------------------- */
@@ -228,6 +496,7 @@
             <select data-page-select></select>
           </label>
           <div class="cs-page-shape-modal__actions">
+            <button type="button" data-act="save-design" class="cs-page-shape-btn cs-page-shape-btn--ghost" title="Save current drawing as a reusable template">Save Design</button>
             <button type="button" data-act="clear" class="cs-page-shape-btn cs-page-shape-btn--ghost">Clear</button>
             <button type="button" data-act="cancel" class="cs-page-shape-btn cs-page-shape-btn--ghost">Cancel</button>
             <button type="button" data-act="save" class="cs-page-shape-btn cs-page-shape-btn--primary">Save &amp; Apply</button>
@@ -235,13 +504,33 @@
         </header>
         <div class="cs-page-shape-modal__body">
           <aside class="cs-page-shape-layers">
-            <div class="cs-page-shape-layers__title">Layers</div>
-            <div class="cs-page-shape-layers__list" data-layers-list></div>
-            <div class="cs-page-shape-layers__actions">
-              <button type="button" data-layers-act="merge" title="Merge selected layers">Merge</button>
-              <button type="button" data-layers-act="lock" title="Lock / unlock selected">Lock</button>
+            <div class="cs-page-shape-left-tabs">
+              <button type="button" class="cs-page-shape-left-tab is-active" data-left-tab="layers">Layers</button>
+              <button type="button" class="cs-page-shape-left-tab" data-left-tab="templates">Templates</button>
             </div>
-            <div class="cs-page-shape-layers__hint">Ctrl/Cmd-click to multi-select · drag to reorder (top = front)</div>
+
+            <div class="cs-page-shape-left-pane" data-left-pane="layers">
+              <div class="cs-page-shape-layers__list" data-layers-list></div>
+              <div class="cs-page-shape-layers__actions">
+                <button type="button" data-layers-act="merge" title="Merge selected layers">Merge</button>
+                <button type="button" data-layers-act="lock" title="Lock / unlock selected">Lock</button>
+              </div>
+              <div class="cs-page-shape-layers__hint">Ctrl/Cmd-click to multi-select · drag to reorder (top = front)</div>
+            </div>
+
+            <div class="cs-page-shape-left-pane" data-left-pane="templates" style="display:none">
+              <div class="cs-page-shape-tpl-tabs">
+                <button type="button" class="cs-page-shape-tpl-tab is-active" data-tpl-tab="prebuilt">Prebuilt</button>
+                <button type="button" class="cs-page-shape-tpl-tab" data-tpl-tab="saved">Saved</button>
+              </div>
+              <div class="cs-page-shape-tpl-pane" data-tpl-pane="prebuilt">
+                <div class="cs-page-shape-tpl__grid" data-tpl-grid></div>
+              </div>
+              <div class="cs-page-shape-tpl-pane" data-tpl-pane="saved" style="display:none">
+                <div class="cs-page-shape-tpl__grid" data-saved-tpl-grid></div>
+                <div class="cs-page-shape-tpl__empty" data-saved-tpl-empty style="display:none">No saved designs yet.<br>Draw a shape and click <b>Save Design</b>.</div>
+              </div>
+            </div>
           </aside>
           <div class="cs-page-shape-stagewrap">
             <div class="cs-page-shape-stage"></div>
@@ -341,7 +630,7 @@
   // Fit the page (dims) inside the available modal body area, preserving aspect.
   // Sized against the HOST window (full app), since the modal lives there.
   const fitStageSize = (dims) => {
-    const maxW = Math.max(200, hostWin.innerWidth - 460);  // leave room for both side panels
+    const maxW = Math.max(200, hostWin.innerWidth - 660);  // leave room for layers+templates+shapes panels
     const maxH = Math.max(200, hostWin.innerHeight - 180);
     const scale = Math.min(maxW / dims.w, maxH / dims.h, 1);
     return { w: Math.round(dims.w * scale), h: Math.round(dims.h * scale) };
@@ -358,7 +647,7 @@
   };
 
   const setZoom = (z) => {
-    zoom = Math.max(0.25, Math.min(6, z));
+    zoom = Math.max(0.25, Math.min(10, z));
     layoutStage();
   };
 
@@ -476,6 +765,10 @@
     const dims = getPageDims();
     modal = buildModal(dims);
     hostDoc.body.appendChild(modal);
+
+    // Populate the template grids already embedded in the layers aside.
+    populateTemplateGrids();
+
     populatePageSelect();
 
     // Restore "Apply to all pages" preference from last session.
@@ -597,6 +890,69 @@
     });
 
     modal.addEventListener('click', (e) => {
+      // Left-panel main tab switch: Layers ↔ Templates.
+      const leftTab = e.target.closest('[data-left-tab]');
+      if (leftTab) {
+        const key = leftTab.dataset.leftTab;
+        modal.querySelectorAll('[data-left-tab]').forEach((t) => t.classList.toggle('is-active', t.dataset.leftTab === key));
+        modal.querySelectorAll('[data-left-pane]').forEach((p) => { p.style.display = p.dataset.leftPane === key ? '' : 'none'; });
+        return;
+      }
+
+      // Templates sub-tab switch: Prebuilt ↔ Saved.
+      const tplTab = e.target.closest('[data-tpl-tab]');
+      if (tplTab) {
+        const key = tplTab.dataset.tplTab;
+        modal.querySelectorAll('[data-tpl-tab]').forEach((t) => t.classList.toggle('is-active', t.dataset.tplTab === key));
+        modal.querySelectorAll('[data-tpl-pane]').forEach((p) => { p.style.display = p.dataset.tplPane === key ? '' : 'none'; });
+        return;
+      }
+
+      // Delete a saved design (the ✕ button inside a saved tile).
+      const delBtn = e.target.closest('[data-del-saved]');
+      if (delBtn) {
+        e.stopPropagation();
+        const idx = Number(delBtn.dataset.delSaved);
+        const list = loadSavedDesigns();
+        const name = list[idx]?.label || 'this design';
+        if (confirm(`Delete "${name}"?`)) deleteSavedDesign(idx);
+        return;
+      }
+
+      // Load a saved (user-created) template.
+      const savedBtn = e.target.closest('[data-saved-tpl-index]');
+      if (savedBtn) {
+        const idx = Number(savedBtn.dataset.savedTplIndex);
+        const list = loadSavedDesigns();
+        const tpl = list[idx];
+        if (tpl) {
+          modal.querySelectorAll('[data-tpl-index],[data-saved-tpl-index]').forEach((b) => b.classList.remove('is-active'));
+          savedBtn.classList.add('is-active');
+          try {
+            window.PenShape.setPropsPanel?.(null);
+            window.PenShape.deactivate?.();
+            block.dataset.penPath = tpl.penPath;
+            block.dataset.penStyle = tpl.penStyle || '';
+            window.PenShape.renderShape(block);
+            window.PenShape.activate(block);
+            window.PenShape.setLayersPanel?.(modal?.querySelector('[data-layers-list]'));
+            window.PenShape.setPropsPanel?.(modal?.querySelector('[data-props-host]'));
+          } catch (err) { /* */ }
+        }
+        return;
+      }
+
+      const tplBtn = e.target.closest('[data-tpl-index]');
+      if (tplBtn) {
+        const idx = Number(tplBtn.dataset.tplIndex);
+        const tpl = DESIGN_TEMPLATES[idx];
+        if (tpl) {
+          modal.querySelectorAll('[data-tpl-index],[data-saved-tpl-index]').forEach((b) => b.classList.remove('is-active'));
+          tplBtn.classList.add('is-active');
+          loadTemplate(tpl);
+        }
+        return;
+      }
       const preset = e.target.closest('[data-preset]')?.dataset.preset;
       if (preset) {
         try {
@@ -637,6 +993,7 @@
       const act = e.target.closest('[data-act]')?.dataset.act;
       if (act === 'cancel') return close();
       if (act === 'save') return save();
+      if (act === 'save-design') return saveCurrentDesign();
       if (act === 'clear') { try { window.PenShape?.clearAllPaths?.(); } catch (err) { /* */ } return; }
       if (e.target.classList.contains('cs-page-shape-modal__backdrop')) return close();
     });

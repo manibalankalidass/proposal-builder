@@ -208,6 +208,19 @@
 
     const fields = displaySample ? buildFieldsForScope(displaySample, innermost.alias) : [];
 
+    // Map steps (eg. labourTimeDetails.date → { "07/05/2026": [...] }) iterate
+    // `key, value` pairs. The KEY (the date string) is itself a value the user
+    // wants to show — typically the date header row. buildFieldsForScope only
+    // walks the inner item's fields, so the key alias would otherwise be
+    // unbindable and users fall back to a wrong hardcoded path. Surface each
+    // map step's keyAlias as its own `{{ dateValue }}` chip, outermost first so
+    // it reads above the item fields.
+    chain.forEach((step) => {
+      if (step.kind === 'map' && step.keyAlias) {
+        fields.unshift({ key: step.keyAlias, kind: 'value', expr: `{{ ${step.keyAlias} }}` });
+      }
+    });
+
     const key = `${innermost.path}::${innermost.alias}::${fields.length}::${chain.length}`;
     if (key === lastSentKey) return;
     lastSentKey = key;
@@ -387,7 +400,7 @@
           if (isMapOfArrays(value)) {
             const sampleKey = Object.keys(value)[0];
             const innerArr = value[sampleKey];
-            const keyAlias = defaultAliasFor(key + 'Key', depth + 1);
+            const keyAlias = defaultAliasFor(key + 'Value', depth + 1);
             const valueAlias = defaultAliasFor(key, depth + 1) + 's';
             const innerSample = sampleItem(innerArr);
             const innerAlias = defaultAliasFor(key + 'Item', depth + 2);

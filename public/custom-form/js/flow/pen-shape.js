@@ -167,17 +167,12 @@
     defs.querySelectorAll('[data-pen-def]').forEach((e) => e.remove());
     svg.querySelectorAll('.cs-pen-fill').forEach((e) => e.remove());
 
-    state.paths.forEach((p, i) => {
-      if (p.hidden) return;
-      const d = ringsOf(p).map((r) => buildSubD(r.anchors, r.closed)).filter(Boolean).join(' ');
-      if (!d) return;
-      const style = pathStyleOf(p, blockStyle);
-      const pathEl = ns('path', { class: 'cs-pen-fill', 'data-pi': String(i) });
-
+    const renderPathEl = (d, style, dataI, subI) => {
+      const pathEl = ns('path', { class: 'cs-pen-fill', 'data-pi': String(dataI) });
+      const gradKey = subI != null ? `${dataI}_${subI}` : String(dataI);
       let fill = style.fill || DEFAULT_FILL;
-      if (style.fillType === 'gradient') { const id = `grad_${uid}_${i}`; defs.appendChild(buildGradient(id, style)); fill = `url(#${id})`; }
-      else if (style.fillType === 'image' && style.imageSrc) { const id = `pat_${uid}_${i}`; defs.appendChild(buildPattern(id, style)); fill = `url(#${id})`; }
-
+      if (style.fillType === 'gradient') { const id = `grad_${uid}_${gradKey}`; defs.appendChild(buildGradient(id, style)); fill = `url(#${id})`; }
+      else if (style.fillType === 'image' && style.imageSrc) { const id = `pat_${uid}_${gradKey}`; defs.appendChild(buildPattern(id, style)); fill = `url(#${id})`; }
       pathEl.setAttribute('d', d);
       pathEl.setAttribute('fill', fill);
       pathEl.setAttribute('fill-opacity', style.fillOpacity ?? 1);
@@ -188,9 +183,28 @@
         pathEl.setAttribute('stroke-linejoin', 'round');
       }
       if (style.rotate) pathEl.setAttribute('transform', `rotate(${style.rotate} ${CX} ${CY})`);
-      // Blend mode for layered translucent shapes (inline style → survives export).
       if (style.blend && style.blend !== 'normal') pathEl.style.mixBlendMode = style.blend;
       svg.appendChild(pathEl);
+    };
+
+    state.paths.forEach((p, i) => {
+      if (p.hidden) return;
+      const rings = ringsOf(p);
+      // Merged path: each ring may carry its own style — render as separate elements.
+      const hasPerRingStyle = p.rings && p.rings.length && p.rings.some((r) => r.style);
+      if (hasPerRingStyle) {
+        rings.forEach((r, ri) => {
+          const d = buildSubD(r.anchors, r.closed);
+          if (!d) return;
+          const rStyle = pathStyleOf(r.style ? { style: r.style } : p, blockStyle);
+          renderPathEl(d, rStyle, i, ri);
+        });
+      } else {
+        const d = rings.map((r) => buildSubD(r.anchors, r.closed)).filter(Boolean).join(' ');
+        if (!d) return;
+        const style = pathStyleOf(p, blockStyle);
+        renderPathEl(d, style, i, null);
+      }
     });
   };
 
@@ -493,7 +507,7 @@
       // Empty space → start a BRAND-NEW shape (its own style copy).
       snapshot();
       const fp = alignSnap(snapV(vb.x), snapV(vb.y), null);
-      const path = { anchors: [{ x: clampVb(fp.x), y: clampVb(fp.y) }], closed: false, name: nextPathName(), style: Object.assign({}, readStyle(S.block)) };
+      const path = { anchors: [{ x: clampVb(fp.x), y: clampVb(fp.y) }], closed: false, name: nextPathName(), style: Object.assign({}, readStyle(S.block), { rotate: 0 }) };
       S.state.paths.push(path); S.activePath = S.state.paths.length - 1;
       S.sel = { p: S.activePath, i: 0 };
       S.drag = { kind: 'new', p: S.activePath, i: 0 };
@@ -569,6 +583,7 @@
       const path = S.state.paths[d.p];
       const scaled = d.orig.map((r) => ({
         closed: r.closed,
+        ...(r.style ? { style: r.style } : {}),
         anchors: r.anchors.map((o) => {
           const na = { x: cx + (o.x - cx) * sx, y: cy + (o.y - cy) * sy };
           if (o.inX != null) { na.inX = cx + (o.inX - cx) * sx; na.inY = cy + (o.inY - cy) * sy; }
@@ -587,6 +602,7 @@
       const path = S.state.paths[d.p];
       const moved = d.orig.map((r) => ({
         closed: r.closed,
+        ...(r.style ? { style: r.style } : {}),
         anchors: r.anchors.map((o) => {
           const np = { x: o.x + dx, y: o.y + dy };
           if (o.inX != null) { np.inX = o.inX + dx; np.inY = o.inY + dy; }
@@ -678,6 +694,12 @@
     ov.setAttribute('width', r.width); ov.setAttribute('height', r.height);
     ov.setAttribute('viewBox', `0 0 ${r.width} ${r.height}`);
     ov.replaceChildren();
+    // Sync toggle-curve button active state to reflect selected point's curve status.
+    const tcBtn = S.toolbar?.querySelector('[data-pen="toggle-curve"]');
+    if (tcBtn) {
+      const selP = S.sel && S.state.paths[S.sel.p]?.anchors[S.sel.i];
+      tcBtn.classList.toggle('is-active', !!(selP && (selP.outX != null || selP.inX != null)));
+    }
     if (S.resizeMode) return; // box-resize mode: anchors hidden, handles drive
     const paths = S.state.paths;
     const ap = paths[S.activePath];
@@ -700,8 +722,8 @@
       const last = ap.anchors[ap.anchors.length - 1], p1 = vbToPx(last.x, last.y), p2 = vbToPx(S.cursor.x, S.cursor.y);
       ov.appendChild(ns('line', { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, class: 'cs-pen-rubber' }));
     }
-    // handles for the selected anchor
-    if (showMarks && S.sel && paths[S.sel.p]?.anchors[S.sel.i]) {
+    // handles for the selected anchor (skip if the path is hidden)
+    if (showMarks && S.sel && paths[S.sel.p]?.anchors[S.sel.i] && !paths[S.sel.p]?.hidden) {
       const p = paths[S.sel.p].anchors[S.sel.i], apx = vbToPx(p.x, p.y);
       [[p.inX, p.inY], [p.outX, p.outY]].forEach(([hx, hy]) => {
         if (hx == null) return;
@@ -714,7 +736,7 @@
     // paths are dimmed so it's clear which clip-path the toolbar edits.
     if (showMarks) paths.forEach((path, pi) => {
       const active = pi === S.activePath;
-      if (path.hidden && !active) return; // hidden layers show no anchors
+      if (path.hidden) return; // hidden layers show no anchors
       const deg = (path.style && path.style.rotate) || 0;
       path.anchors.forEach((p, i) => {
         const pp = vbToPxR(p.x, p.y, deg), size = active ? 8 : 6;
@@ -925,11 +947,11 @@
       fitAnchorsToBox(path.anchors, Math.min(VB, opts.w), Math.min(VB, opts.h));
     }
     path.name = nextPathName();
-    path.style = Object.assign({}, readStyle(S.block));
+    path.style = Object.assign({}, readStyle(S.block), { rotate: 0 });
     S.state.paths.push(path);
     S.activePath = S.state.paths.length - 1;
     S.mode = 'edit'; S.sel = null; S.selected?.clear();
-    S.rotate = (path.style.rotate) || 0;
+    S.rotate = 0;
     S.applyStyleValues?.();
     commit();
   };
@@ -1013,6 +1035,32 @@
       next.push({ x: cur.x, y: cur.y, outX: cur.x + tx * k, outY: cur.y + ty * k, inX: cur.x - tx * k, inY: cur.y - ty * k });
     }
     path.anchors = next;
+  };
+
+  // Toggle curve ↔ corner on the currently selected point.
+  // If the point already has handles → remove them (make it a corner).
+  // If it has no handles → compute smooth handles from its neighbours.
+  const toggleCurvePoint = () => {
+    if (!S || !S.sel) return;
+    const path = S.state.paths[S.sel.p];
+    const p = path && path.anchors[S.sel.i];
+    if (!p) return;
+    snapshot();
+    if (p.outX != null || p.inX != null) {
+      // Already curved → convert to corner (strip handles).
+      delete p.outX; delete p.outY; delete p.inX; delete p.inY;
+    } else {
+      // Corner → make smooth using neighbour tangent (same as smoothAnchors).
+      const a = path.anchors, n = a.length, i = S.sel.i;
+      const prev = a[(i - 1 + n) % n], nx = a[(i + 1) % n];
+      if (prev && nx) {
+        const k = 0.16;
+        const tx = nx.x - prev.x, ty = nx.y - prev.y;
+        p.outX = p.x + tx * k; p.outY = p.y + ty * k;
+        p.inX  = p.x - tx * k; p.inY  = p.y - ty * k;
+      }
+    }
+    commit();
   };
 
   // Smooth / round corners on the ACTIVE sub-path. Repeatable.
@@ -1159,15 +1207,36 @@
   // A mini SVG preview of a single sub-path (Photoshop-style layer thumbnail).
   const pathThumb = (p, st, uid) => {
     const svg = ns('svg', { viewBox: `0 0 ${VB} ${VB}`, class: 'cs-pen-layer-thumb__svg', preserveAspectRatio: 'xMidYMid meet' });
-    const d = ringsOf(p).map((r) => buildSubD(r.anchors, r.closed)).filter(Boolean).join(' ');
-    if (d) {
-      const pe = ns('path', { d, 'fill-opacity': st.fillOpacity ?? 1 });
-      if (st.fillType === 'gradient') {
-        const defs = ns('defs', {}); const id = `lt_${uid}`; defs.appendChild(buildGradient(id, st)); svg.appendChild(defs);
-        pe.setAttribute('fill', `url(#${id})`);
-      } else { pe.setAttribute('fill', st.fillType === 'image' ? '#9aa0ff' : (st.fill || DEFAULT_FILL)); }
-      if (st.rotate) pe.setAttribute('transform', `rotate(${st.rotate} ${CX} ${CY})`);
-      svg.appendChild(pe);
+    const rings = ringsOf(p);
+    const hasPerRingStyle = p.rings && p.rings.length && p.rings.some((r) => r.style);
+    const blockStyle = S ? readStyle(S.block) : st;
+    if (hasPerRingStyle) {
+      // Merged path: render each ring with its own color in the thumbnail.
+      const defs = ns('defs', {});
+      rings.forEach((r, ri) => {
+        const d = buildSubD(r.anchors, r.closed);
+        if (!d) return;
+        const rSt = r.style ? pathStyleOf({ style: r.style }, blockStyle) : st;
+        const pe = ns('path', { d, 'fill-opacity': rSt.fillOpacity ?? 1 });
+        if (rSt.fillType === 'gradient') {
+          const id = `lt_${uid}_${ri}`; defs.appendChild(buildGradient(id, rSt));
+          pe.setAttribute('fill', `url(#${id})`);
+        } else { pe.setAttribute('fill', rSt.fillType === 'image' ? '#9aa0ff' : (rSt.fill || DEFAULT_FILL)); }
+        if (rSt.rotate) pe.setAttribute('transform', `rotate(${rSt.rotate} ${CX} ${CY})`);
+        svg.appendChild(pe);
+      });
+      if (defs.childNodes.length) svg.insertBefore(defs, svg.firstChild);
+    } else {
+      const d = rings.map((r) => buildSubD(r.anchors, r.closed)).filter(Boolean).join(' ');
+      if (d) {
+        const pe = ns('path', { d, 'fill-opacity': st.fillOpacity ?? 1 });
+        if (st.fillType === 'gradient') {
+          const defs = ns('defs', {}); const id = `lt_${uid}`; defs.appendChild(buildGradient(id, st)); svg.appendChild(defs);
+          pe.setAttribute('fill', `url(#${id})`);
+        } else { pe.setAttribute('fill', st.fillType === 'image' ? '#9aa0ff' : (st.fill || DEFAULT_FILL)); }
+        if (st.rotate) pe.setAttribute('transform', `rotate(${st.rotate} ${CX} ${CY})`);
+        svg.appendChild(pe);
+      }
     }
     return svg;
   };
@@ -1209,15 +1278,36 @@
       row.draggable = !p.locked;
       row.dataset.pi = String(i);
 
-      // const eye = document.createElement('button');
-      // eye.type = 'button'; eye.className = 'cs-pen-layer-row__eye'; eye.title = 'Show / hide';
-      // eye.textContent = p.hidden ? '🚫' : '👁';
-      // eye.addEventListener('click', (e) => { e.stopPropagation(); snapshot(); p.hidden = !p.hidden; commit(); });
+      const eye = document.createElement('button');
+      eye.type = 'button'; eye.className = 'cs-pen-layer-row__eye'; eye.title = 'Show / hide';
+      eye.textContent = p.hidden ? '🚫' : '👁';
+      eye.addEventListener('click', (e) => {
+        e.stopPropagation(); snapshot();
+        // If this path is part of a multi-selection, toggle hide on all selected paths.
+        const inMulti = S.selected && S.selected.size > 0 && (S.selected.has(i) || i === S.activePath);
+        if (inMulti) {
+          const idxs = selectedIndices();
+          const hideAll = idxs.some((idx) => !S.state.paths[idx].hidden);
+          idxs.forEach((idx) => { S.state.paths[idx].hidden = hideAll; });
+        } else {
+          p.hidden = !p.hidden;
+        }
+        commit();
+      });
 
       const lock = document.createElement('button');
       lock.type = 'button'; lock.className = 'cs-pen-layer-row__eye'; lock.title = p.locked ? 'Unlock' : 'Lock';
       lock.textContent = p.locked ? '🔒' : '🔓';
-      lock.addEventListener('click', (e) => { e.stopPropagation(); snapshot(); p.locked = !p.locked; commit(); });
+      lock.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // If this path is part of a multi-selection, use toggleLockSelected for all.
+        const inMulti = S.selected && S.selected.size > 0 && (S.selected.has(i) || i === S.activePath);
+        if (inMulti) {
+          toggleLockSelected();
+        } else {
+          snapshot(); p.locked = !p.locked; commit();
+        }
+      });
 
       const thumbWrap = document.createElement('span');
       thumbWrap.className = 'cs-pen-layer-row__thumb';
@@ -1276,8 +1366,7 @@
       del.type = 'button'; del.className = 'cs-pen-layer-row__act'; del.title = 'Delete'; del.textContent = '🗑';
       del.addEventListener('click', (e) => { e.stopPropagation(); selectPath(i); deleteActivePath(); syncToolbar(); });
 
-      //incase if you need one more block append please add lock variable before showing hide/show icon 
-      row.append(lock, thumbWrap, name, up, down, ren, dup, del);
+      row.append(eye, lock, thumbWrap, name, up, down, ren, dup, del);
       row.addEventListener('click', (e) => {
         S.mode = 'edit';
         if (e.ctrlKey || e.metaKey) {
@@ -1335,23 +1424,29 @@
     return set.filter((i) => i >= 0 && i < S.state.paths.length).sort((a, b) => a - b);
   };
 
-  // Flatten the selected layers into ONE layer (Photoshop "merge"). The merged
-  // layer keeps the bottom-most selected layer's style/name; its geometry holds
-  // every original ring (so it renders identically) but is no longer
-  // anchor-editable — it can still be styled / moved / reordered as one unit.
+  // Flatten the selected layers into ONE layer (Photoshop "merge"). Each original
+  // path's geometry and style are stored together per-ring so every ring keeps
+  // its own fill color after merge.
   const mergeSelected = () => {
     if (!S) return;
     const idxs = selectedIndices();
     if (idxs.length < 2) return;
     snapshot();
     const paths = S.state.paths;
+    const blockStyle = readStyle(S.block);
     const rings = [];
-    idxs.forEach((i) => ringsOf(paths[i]).forEach((r) => rings.push(clone(r))));
+    // Each ring carries its own style so renderShape can paint it correctly.
+    idxs.forEach((i) => {
+      const pathStyle = clone(paths[i].style || blockStyle);
+      ringsOf(paths[i]).forEach((r) => {
+        rings.push(clone({ ...r, style: r.style || pathStyle }));
+      });
+    });
     const host = paths[idxs[0]];
     const merged = {
       name: `${host.name || 'Shape'} (merged)`,
       closed: true, anchors: [], rings,
-      style: clone(host.style || readStyle(S.block)),
+      style: clone(host.style || blockStyle),
     };
     for (let k = idxs.length - 1; k >= 0; k--) paths.splice(idxs[k], 1);
     paths.splice(idxs[0], 0, merged);
@@ -1399,6 +1494,7 @@
       <button type="button" data-pen="preset-header"    title="Header bar">▀</button>
       <button type="button" data-pen="preset-footer"    title="Footer bar">▄</button>
       <span class="cs-pen-sep"></span>
+      <button type="button" data-pen="toggle-curve" title="Toggle curve ↔ corner on selected point">⌒</button>
       <button type="button" data-pen="delete" title="Delete point (Del)">⛔</button>
       <button type="button" data-pen="undo"   title="Undo (Ctrl+Z)">↶</button>
       <button type="button" data-pen="redo"   title="Redo (Ctrl+Shift+Z)">↷</button>
@@ -1427,7 +1523,7 @@
             <span class="cs-pen-grad-stops" data-pen-stops></span>
             <button type="button" data-pen="stop-add" title="Add colour stop">＋</button>
             <button type="button" data-pen="stop-del" title="Remove colour stop">－</button>
-            <label class="cs-pen-num" title="Angle">∠<input type="number" min="0" max="360" step="15" data-pen="grad-angle"></label>
+            <label class="cs-pen-num" title="Angle">∠<input type="number" min="0" max="360" step="2" data-pen="grad-angle"></label>
           </span>
           <span class="cs-pen-fill-image">
             <button type="button" data-pen="image" title="Choose image">🖼 Image</button>
@@ -1510,6 +1606,7 @@
       else if (cmd === 'scale') { setResizeMode(false); S.bboxScaleMode = !S.bboxScaleMode; S.mode = 'edit'; }
       else if (cmd === 'resize') setResizeMode(!S.resizeMode);
       else if (cmd === 'snap') S.snap = !S.snap;
+      else if (cmd === 'toggle-curve') toggleCurvePoint();
       else if (cmd === 'smooth') smoothAll();
       else if (cmd === 'clear') clearAllPaths();
       else if (cmd === 'dup') duplicateActivePath();
@@ -1610,6 +1707,12 @@
     else if (S.bboxScaleMode) S.toolbar.querySelector('[data-pen="scale"]')?.classList.add('is-active');
     else S.toolbar.querySelector(`[data-pen="${S.mode}"]`)?.classList.add('is-active');
     if (S.snap) S.toolbar.querySelector('[data-pen="snap"]')?.classList.add('is-active');
+    // Highlight the toggle-curve button when the selected point already has handles.
+    const tcBtn = S.toolbar.querySelector('[data-pen="toggle-curve"]');
+    if (tcBtn) {
+      const selP = S.sel && S.state.paths[S.sel.p]?.anchors[S.sel.i];
+      tcBtn.classList.toggle('is-active', !!(selP && (selP.outX != null || selP.inX != null)));
+    }
     // Keep the style controls + rotation in sync with whatever sub-path is now
     // active (e.g. after undo/redo/delete changed activePath).
     S.rotate = getActiveStyle().rotate || 0;

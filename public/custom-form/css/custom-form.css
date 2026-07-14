@@ -868,7 +868,7 @@ body {
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
-  /* padding: 50px */
+  padding: 50px
 }
 
 /* Page background shape layer (.cs-page-shape-bg, injected by the Page Shape
@@ -1414,7 +1414,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transform: translate(0%, -50%);
+  transform: translate(-50%, -50%);
   border: 1px solid #dfe5df;
   border-radius: 999px;
   background: #f7fbf8;

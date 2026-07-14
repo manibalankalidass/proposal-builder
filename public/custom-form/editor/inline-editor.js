@@ -182,6 +182,10 @@
     // Never start an editor on them (that would hijack a cell's text editor).
     if (block.dataset.blockType === 'sync-list' || block.dataset.blockType === 'sync-list-col') return;
 
+    // Table and Table Repeater blocks are driven entirely by table-block.js —
+    // the table engine sets up contenteditable on cells and owns the toolbar.
+    if (block.dataset.blockType === 'table' || block.dataset.blockType === 'table-repeater') return;
+
     const target = findEditTarget(block);
     if (!target) return;
 
@@ -359,9 +363,9 @@
       const isShrinkBlock = block.classList.contains('cs-button-block') ||
         block.classList.contains('cs-label-block');
       const stripProps = isShrinkBlock
-        ? ['min-height', 'height', 'max-height', 'margin', 'overflow']
+        ? ['min-height', 'height', 'max-height', 'margin-top', 'margin-bottom', 'overflow']
         : ['min-height', 'height', 'max-height', 'padding', 'padding-top', 'padding-bottom',
-            'padding-left', 'padding-right', 'margin', 'overflow'];
+            'padding-left', 'padding-right', 'margin-top', 'margin-bottom', 'overflow'];
       stripProps.forEach((prop) => { target.style.removeProperty(prop); });
     }
   };
@@ -398,6 +402,7 @@
       editingBlock = null;
     }
     selectedBlock = null;
+    lastSelectionRange = null;
     // Only flag fresh-select for clearAlls triggered by user input (not for
     // internal calls from enterSelected/enterEditing).
     if (!internal) forceFreshSelect = true;
@@ -752,6 +757,14 @@
     // rightward/downward; refitGroupToChildren on mouseup handles any top/left
     // overflow by repositioning the group and adjusting all children.
     const parentIsGroup = parent.classList?.contains('cs-group-block');
+    // A flexible container holds absolute children, but (unlike a group) its
+    // content box does NOT grow to wrap them — so its height stays at the
+    // current min-height. That left maxTop = parentHeight - blockHeight ≈ 0
+    // when the box was only as tall as one block, pinning a duplicated block
+    // at the top and allowing horizontal movement only. Treat it like a group:
+    // allow dragging downward and live-expand the box (below) so there's
+    // always vertical room.
+    const parentIsFlexible = parent.classList?.contains('cs-flexible-content');
     let minLeft, maxLeft, minTop, maxTop;
     if (parentIsGroup) {
       const cover = parent.closest('[data-cs-cover="1"]');
@@ -765,6 +778,12 @@
       } else {
         ({ minLeft, maxLeft, minTop, maxTop } = getFlexibleMoveBounds(parent, block));
       }
+    } else if (parentIsFlexible) {
+      // Horizontal stays clamped to the box width; vertical is free to grow
+      // (the box live-expands downward below, refit on mouseup tidies it).
+      ({ minLeft, maxLeft } = getFlexibleMoveBounds(parent, block));
+      minTop = 0;
+      maxTop = Infinity;
     } else {
       ({ minLeft, maxLeft, minTop, maxTop } = getFlexibleMoveBounds(parent, block));
     }
@@ -793,6 +812,13 @@
       const neededH = top + block.offsetHeight;
       if (neededW > parent.clientWidth) parent.style.width = `${neededW}px`;
       if (neededH > parent.clientHeight) parent.style.height = `${neededH}px`;
+    } else if (parentIsFlexible) {
+      // Grow the flexible content box downward so the block can be dropped
+      // below the previous content height (its absolute children don't
+      // contribute to the box height on their own). syncFlexibleContentBounds
+      // on mouseup reconciles the final height.
+      const neededH = top + block.offsetHeight;
+      if (neededH > parent.clientHeight) parent.style.minHeight = `${neededH}px`;
     }
 
     // Live X/Y readout in the title badge for free-move blocks.
@@ -815,6 +841,21 @@
       // Free block on a cover page was dragged — if it lands over a group, reparent it.
       const cover = moved.closest?.('[data-cs-cover="1"]');
       if (cover) tryReparentIntoGroup(moved, cover);
+    }
+    // A child moved inside a flexible box → grow the box so it wraps the
+    // lowest child (the box's absolute children don't size it on their own,
+    // so without this the box would clip a block dragged below its old height).
+    const flexBox = moved?.parentElement?.matches?.('.cs-flexible-content')
+      ? moved.parentElement.closest('.cs-flexible-block')
+      : null;
+    if (didDrag && flexBox) {
+      let lowest = 0;
+      flexBox.querySelectorAll(':scope > .cs-flexible-content > .cs_block_s').forEach((c) => {
+        lowest = Math.max(lowest, (parseFloat(c.style.top) || 0) + c.offsetHeight);
+      });
+      const content = flexBox.querySelector(':scope > .cs-flexible-content');
+      const floor = window.CanvasConfig?.flexible?.minHeight ?? 20;
+      if (content) content.style.minHeight = `${Math.max(floor, Math.round(lowest))}px`;
     }
     // Decay the drag flag after a split second so future regular clicks are guaranteed clean
     setTimeout(() => { wasDragged = false; }, 100);
@@ -905,10 +946,9 @@
       MIN_H = Math.max(MIN_H, Math.ceil(editEl.scrollHeight + extra));
     }
 
-    // For a TABLE block, never shrink the block height below the table's rendered
-    // height — the table has no overflow:hidden so it would spill out below.
-    if (blockType === 'table') {
-      const tableEl = block.querySelector('table.cs-table');
+    // For TABLE and TABLE-REPEATER blocks, never shrink below the rendered table height.
+    if (blockType === 'table' || blockType === 'table-repeater') {
+      const tableEl = block.querySelector('table.cs-table') || block.querySelector('table');
       if (tableEl) MIN_H = Math.max(MIN_H, Math.ceil(tableEl.getBoundingClientRect().height));
     }
 
@@ -1287,18 +1327,24 @@
 
   let lastSelectionRange = null;
   const updateSelectionRange = () => {
+    if (!editingBlock) return;
     const sel = document.getSelection();
     if (sel && sel.rangeCount > 0) {
-      lastSelectionRange = sel.getRangeAt(0).cloneRange();
+      const range = sel.getRangeAt(0);
+      if (editingBlock.contains(range.commonAncestorContainer)) {
+        lastSelectionRange = range.cloneRange();
+      }
     }
   };
 
   document.addEventListener('selectionchange', updateSelectionRange);
 
   const insertTextAtCursor = (text) => {
+    if (!editingBlock) return false;
     const doc = document;
     const selection = doc.getSelection();
     let range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    if (range && !editingBlock.contains(range.commonAncestorContainer)) range = null;
     if (!range && lastSelectionRange) {
       range = lastSelectionRange.cloneRange();
     }

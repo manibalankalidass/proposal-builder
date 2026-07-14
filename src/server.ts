@@ -189,16 +189,17 @@ app.post('/api/save-twig-puppeteer', async (req, res) => {
 
     await runCommand('php', [renderScript, phpPath, dataPath], htmlPath);
 
-    // Pass page settings to the puppeteer script via env vars. Default to
-    // 0mm margins so the editor's cs_margin padding is the single source of
-    // page inset (no double-padding in the PDF).
+    // Pass ONLY the page size to the puppeteer script. Chrome's print margins
+    // stay at 0 (the script's default) — the editor's page inset lives as
+    // PIXEL padding on .cs_margin (the "Margins (px)" panel), which the
+    // puppeteer script folds into the content table. The panel value must NOT
+    // be forwarded as a Chrome margin: it's a px number, but Chrome margins are
+    // mm, so passing e.g. 50 would apply a 50mm (~189px) print margin ON TOP of
+    // the 50px padding — producing a huge top gap and clipping content on the
+    // right. Keeping Chrome margins at 0 makes the px padding the single inset.
     const env = {
       ...process.env,
       PDF_PAGE_SIZE: String(pdfSettings?.pageSize ?? 'A4'),
-      PDF_MARGIN_TOP: String(pdfSettings?.marginTop ?? 0),
-      PDF_MARGIN_RIGHT: String(pdfSettings?.marginRight ?? 0),
-      PDF_MARGIN_BOTTOM: String(pdfSettings?.marginBottom ?? 0),
-      PDF_MARGIN_LEFT: String(pdfSettings?.marginLeft ?? 0),
     };
     await runCommand('node', [puppeteerScript, htmlPath, pdfPath], undefined, env);
 

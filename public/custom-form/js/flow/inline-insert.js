@@ -53,7 +53,7 @@
 
   const isInteractiveChrome = (target) => (
     !!target?.closest?.(
-      '.cs-block-grip, .cs-line-divider, [data-cs-chrome], .fr-toolbar, .fr-popup, .fr-modal, .fr-tooltip'
+      '.cs-block-grip, .cs-line-divider, [data-cs-chrome], .fr-toolbar, .fr-popup, .fr-modal, .fr-tooltip, .section-binding-info'
     )
   );
 
@@ -143,17 +143,19 @@
     if (target.kind === 'between-rows') {
       const root = isContentRoot(target.parent) ? target.parent : doc;
       const rootRect = root.getBoundingClientRect();
+      const rootStyle = window.getComputedStyle(root);
+      const padTop = parseFloat(rootStyle.paddingTop) || 0;
+      const padLeft = parseFloat(rootStyle.paddingLeft) || 0;
+      const padRight = parseFloat(rootStyle.paddingRight) || 0;
       const rows = rowChildrenOfRoot(root).filter((row) => {
         return !row.matches('.cs-page-header, .cs-page-footer');
       });
 
       let lineY;
       if (!rows.length) {
-        // Empty page: the very first insert always pins to the page top,
-        // regardless of where the pointer is (so a hover in the centre still
-        // drops the first block at the top). Once a block exists this branch
-        // is skipped and the line follows the pointer / sits between rows.
-        lineY = rootRect.top + 14;
+        // Empty page: pin the line to the start of the content area (after
+        // top padding) so it aligns with where the first block will actually land.
+        lineY = rootRect.top + padTop;
       } else if (target.beforeRow) {
         lineY = target.beforeRow.getBoundingClientRect().top;
       } else {
@@ -161,8 +163,8 @@
       }
 
       return {
-        left: rootRect.left,
-        right: rootRect.right,
+        left: rootRect.left + padLeft,
+        right: rootRect.right - padRight,
         y: lineY,
       };
     }
@@ -280,7 +282,7 @@
         lineEl.style.height = '';
         lineEl.style.width = `${Math.max(32, geometry.right - geometry.left)}px`;
 
-        plusEl.style.left = `${(geometry.plusX ?? geometry.left) - 14}px`;
+        plusEl.style.left = `${geometry.plusX ?? geometry.left}px`;
         plusEl.style.top = `${geometry.y}px`;
       }
     };

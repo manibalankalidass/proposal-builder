@@ -139,7 +139,7 @@
   // the section's height grows with content (no more absolute positioning
   // that left tables hanging outside the section's box).
   // ---------------------------------------------------------------------------
-  const findDropTarget = (doc, canvas, clientX, clientY, blockType) => {
+  const resolveDropTarget = (doc, canvas, clientX, clientY, blockType) => {
     const section = findSectionUnderCursor(canvas, clientX, clientY);
     let root = section || doc;
     let isHeaderFooter = false;
@@ -187,7 +187,11 @@
       const isFlexible = isFreeCanvas(root);
       let indicator = null;
       if (!isFlexible) {
-        indicator = { type: 'horizontal', top: rootRect.top + 4, left: rootRect.left, right: rootRect.right };
+        const rootCs = getComputedStyle(root);
+        const rootPadT = parseFloat(rootCs.paddingTop) || 0;
+        const rootPadL = parseFloat(rootCs.paddingLeft) || 0;
+        const rootPadR = parseFloat(rootCs.paddingRight) || 0;
+        indicator = { type: 'horizontal', top: rootRect.top + rootPadT + 4, left: rootRect.left + rootPadL, right: rootRect.right - rootPadR };
       } else {
         // Show flexible container bounds as a subtle highlight
         indicator = {
@@ -303,6 +307,26 @@
       target: { kind: 'between-rows', beforeRow: null, parent: root },
       indicator: indicator
     };
+  };
+
+  // Wrapper: when the cursor is inside a section container, decorate the
+  // indicator with the section's bounds so the whole drop area is highlighted
+  // (same visual as flexible containers), on top of the exact-position line.
+  const findDropTarget = (doc, canvas, clientX, clientY, blockType) => {
+    const result = resolveDropTarget(doc, canvas, clientX, clientY, blockType);
+    if (!result || !result.indicator || result.indicator.flexibleBounds) return result;
+
+    const section = findSectionUnderCursor(canvas, clientX, clientY);
+    if (section && section.classList.contains('section-container-content')) {
+      const rect = section.getBoundingClientRect();
+      result.indicator.flexibleBounds = {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height
+      };
+    }
+    return result;
   };
 
   // ---------------------------------------------------------------------------

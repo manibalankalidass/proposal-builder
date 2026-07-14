@@ -820,7 +820,10 @@
       const margins = msg.margins || {};
       const { top, right, bottom, left } = margins;
       paper.querySelectorAll('.cs_margin').forEach(docEl => {
-        docEl.style.padding = `${top || 0}mm ${right || 0}mm ${bottom || 0}mm ${left || 0}mm`;
+        // Page margins are in PIXELS — they map 1:1 to .cs_margin's padding so
+        // the editor inset matches the PDF inset (the puppeteer pipeline reads
+        // this same padding). Keep this in px to match the panel's unit.
+        docEl.style.padding = `${top || 0}px ${right || 0}px ${bottom || 0}px ${left || 0}px`;
       });
       setTimeout(updateOverflowMarks, 50);
     }
@@ -1047,16 +1050,6 @@
     return block;
   };
 
-  const maybeOpenBindingModal = (payload, block) => {
-    if (!payload?.blockType || !block) return;
-    const REPEATER_TYPES = window.FormBlockRegistry?.repeaterTypes() ||
-      ['section-container', 'table-repeater', 'list-repeater'];
-    if (REPEATER_TYPES.includes(payload.blockType) &&
-      typeof window.showSectionBindingModal === 'function') {
-      window.showSectionBindingModal(block);
-    }
-  };
-
   const insertPayloadAtTarget = ({ payload, activeDoc, target, clientX, clientY }) => {
     if (!payload?.blockType || !activeDoc || !target) return null;
 
@@ -1086,8 +1079,10 @@
       return block;
     }
 
+    // Repeater blocks (section-container / table-repeater) drop with defaults —
+    // no binding modal on drop. Binding is configured on demand from the right
+    // panel, which posts `open-binding-modal-for-block` (custom-form.js).
     FC.placeBlock?.(activeDoc, block, target, clientX, clientY, effectiveType);
-    maybeOpenBindingModal(payload, block);
     return block;
   };
 

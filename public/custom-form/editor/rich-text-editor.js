@@ -571,15 +571,13 @@
         const blk = this._closestBlock();
         const tag = (blk && blk !== this.target) ? blk.tagName.toLowerCase() : '';
         let val = /^h[1-6]$/.test(tag) ? tag : '';
-        // Headings are applied as inline size+weight, so reflect the level by
-        // matching the computed (bold) size back to a preset.
+        // Headings are applied as inline size+weight, but the level is reflected
+        // by SIZE alone — bold is an independent toggle, so removing bold from a
+        // heading must NOT drop the dropdown back to "Normal".
         if (!val) {
           const px = Math.round(parseFloat(cs.fontSize));
-          const bold = (parseInt(cs.fontWeight, 10) || 400) >= 600;
-          if (bold) {
-            for (const [lvl, spec] of Object.entries(HEADING_SPEC)) {
-              if (Math.round(parseFloat(spec.fontSize)) === px) { val = lvl; break; }
-            }
+          for (const [lvl, spec] of Object.entries(HEADING_SPEC)) {
+            if (Math.round(parseFloat(spec.fontSize)) === px) { val = lvl; break; }
           }
         }
         fmtSel.value = val;
@@ -667,8 +665,13 @@
       const el = this._closestBlock();
       const cur = parseFloat(this.win.getComputedStyle(el).marginLeft) || 0;
       const next = Math.max(0, cur + dir * STEP);
-      if (next <= 0) el.style.removeProperty('margin-left');
-      else el.style.marginLeft = next + 'px';
+      if (next <= 0) {
+        el.style.removeProperty('margin-left');
+        el.style.removeProperty('margin-right');
+      } else {
+        el.style.marginLeft = next + 'px';
+        el.style.marginRight = next + 'px';
+      }
       this._afterChange();
     }
 

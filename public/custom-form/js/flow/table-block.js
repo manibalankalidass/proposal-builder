@@ -81,6 +81,25 @@
     return block;
   };
 
+  // Table Repeater block — same structure as static Table but with
+  // data-block-type="table-repeater" so the data-binding panel still works.
+  const createRepeaterBlock = (rows = 4, cols = 4) => {
+    const block = document.createElement('div');
+    block.className = 'cs_block_s cs-table-block';
+    block.setAttribute('data', 'Table');
+    block.setAttribute('custom-name', 'Table Repeater');
+    block.dataset.blockType = 'table-repeater';
+    block.id = `block_${hash()}`;
+
+    const table = buildTableEl(rows, cols);
+    // Mark header row cells
+    const firstRow = table.querySelector('tbody tr');
+    if (firstRow) Array.from(firstRow.cells).forEach((td) => td.classList.add('cs-cell--head'));
+
+    block.appendChild(table);
+    return block;
+  };
+
   /* ------------------------- matrix read / render -------------------------- */
 
   // Build an ID-matrix M[r][c] -> cellId, plus a cells{} map of cell data.
@@ -630,16 +649,43 @@
     try { cs = window.getComputedStyle(styleEl); } catch (e) { /* */ }
     if (!cs) return;
 
-    // Format (heading) dropdown — match by fontSize+bold, same logic as rich-text-editor.
+    // Toggle-button active states (bold / italic / underline / strike /
+    // sub / super). The shared text toolbar in CustomRichEditor does this via
+    // _syncActiveStates(); the table bar reused that markup but never synced
+    // these, so e.g. selecting bold table text left the B button un-highlighted
+    // while the dropdowns updated. queryCommandState reflects the live
+    // contenteditable selection inside the cell.
+    const CMD_STATE = ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript'];
+    CMD_STATE.forEach((cmd) => {
+      const btn = tb.querySelector(`[data-cmd="${cmd}"]`);
+      if (!btn) return;
+      let on = false;
+      try { on = document.queryCommandState(cmd); } catch (e) { /* */ }
+      // Fallback for bold when applied as inline font-weight (headings/cells
+      // set font-weight:700 rather than wrapping in <b>, which queryCommandState
+      // misses): treat weight >= 600 as bold.
+      if (cmd === 'bold' && !on) on = (parseInt(cs.fontWeight, 10) || 400) >= 600;
+      btn.classList.toggle('is-active', on);
+    });
+
+    // Alignment buttons reflect the cell's computed text-align.
+    const align = (cs.textAlign || 'left').replace('start', 'left').replace('end', 'right');
+    const ALIGN_BTN = { justifyLeft: 'left', justifyCenter: 'center', justifyRight: 'right', justifyFull: 'justify' };
+    Object.entries(ALIGN_BTN).forEach(([cmd, val]) => {
+      const btn = tb.querySelector(`[data-cmd="${cmd}"]`);
+      if (btn) btn.classList.toggle('is-active', align === val);
+    });
+
+    // Format (heading) dropdown — match by fontSize ALONE. Heading level and
+    // bold are independent: a cell sized like H3 stays "H3" in the dropdown
+    // even after the user removes bold (previously the detection required
+    // bold, so un-bolding a heading wrongly flipped the dropdown to "Normal").
     const fmtSel = tb.querySelector('[data-sel="format"]');
     if (fmtSel) {
       const px = Math.round(parseFloat(cs.fontSize));
-      const bold = (parseInt(cs.fontWeight, 10) || 400) >= 600;
       let val = '';
-      if (bold) {
-        for (const [lvl, pxStr] of Object.entries(HEADING_PX)) {
-          if (Math.round(parseFloat(pxStr)) === px) { val = lvl; break; }
-        }
+      for (const [lvl, pxStr] of Object.entries(HEADING_PX)) {
+        if (Math.round(parseFloat(pxStr)) === px) { val = lvl; break; }
       }
       fmtSel.value = val;
     }
@@ -721,8 +767,14 @@
     if (cmdBtn) {
       e.preventDefault();
       const cmd = cmdBtn.dataset.cmd;
-      if (ALIGN_CMD[cmd]) return setCellStyle('textAlign', ALIGN_CMD[cmd]);
-      return textCmd(cmd);
+      if (ALIGN_CMD[cmd]) setCellStyle('textAlign', ALIGN_CMD[cmd]);
+      else textCmd(cmd);
+      // Re-sync the toolbar immediately so the pressed button reflects its new
+      // state right away. The selection doesn't change on a toggle, so the
+      // selectionchange listener won't fire on its own — without this the B/I/U
+      // highlight only updated after clicking away and back.
+      if (S && S.activeCell) syncToolbarToCell(S.activeCell);
+      return;
     }
   });
   const onToolbarChange = _withTbInteract((e) => {
@@ -1040,6 +1092,7 @@
 
   const emitChange = () => {
     try { S.block.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { /* */ }
+    if (S?._cellInput) S._cellInput();
   };
 
   // Put the caret at the end of a cell (used by Tab navigation).
@@ -1191,11 +1244,51 @@
   // (the static Table block is a new-mode-only feature). See canvas-config.js.
   const froalaMode = () => (typeof window.isFroalaEditor === 'function') && window.isFroalaEditor();
 
+  // Upgrade a legacy table-repeater block (old Froala-style plain <table> with
+  // <th>/<td> but no cs-cell/cs-table classes) so the engine can drive it.
+  const upgradeLegacyTable = (block) => {
+    let table = block.querySelector('table');
+    if (!table) return null;
+    if (!table.classList.contains('cs-table')) {
+      table.classList.add('cs-table');
+      if (!table.id) table.id = `dynamic_${hash()}`;
+      // Stamp cs-cell on every cell; treat <th> as header cells.
+      Array.from(table.rows).forEach((tr) => {
+        Array.from(tr.cells).forEach((td) => {
+          td.classList.add('cs-cell');
+          if (td.tagName === 'TH' || tr.parentElement?.tagName === 'THEAD') td.classList.add('cs-cell--head');
+        });
+      });
+      // Ensure a colgroup exists.
+      if (!table.querySelector('colgroup')) {
+        const cols = table.rows[0] ? table.rows[0].cells.length : 4;
+        const cg = document.createElement('colgroup');
+        for (let i = 0; i < cols; i++) {
+          const col = document.createElement('col');
+          col.style.width = `${(100 / cols).toFixed(4)}%`;
+          cg.appendChild(col);
+        }
+        table.insertBefore(cg, table.firstChild);
+      }
+      // Flatten thead/tbody into a single tbody so the matrix engine works.
+      const thead = table.querySelector('thead');
+      if (thead) {
+        const tbody = table.querySelector('tbody') || document.createElement('tbody');
+        if (!table.querySelector('tbody')) table.appendChild(tbody);
+        Array.from(thead.rows).forEach((tr) => tbody.insertBefore(tr, tbody.firstChild));
+        thead.remove();
+      }
+    }
+    return table;
+  };
+
   const activate = (block) => {
     if (froalaMode()) return;
     if (S && S.block === block) return;
     if (S) deactivate();
-    const table = block.querySelector('table.cs-table');
+    let table = block.querySelector('table.cs-table');
+    // If no cs-table found (legacy table-repeater block), upgrade it in-place.
+    if (!table && block.dataset.blockType === 'table-repeater') table = upgradeLegacyTable(block);
     if (!table) return;
     S = { block, table, selected: new Set(), activeCell: null, anchorCell: null, dragStart: null };
     S.toolbar = buildToolbar();
@@ -1208,6 +1301,18 @@
     table.addEventListener('mousemove', S._mm);
     table.addEventListener('keydown', onTableKey);
     table.addEventListener('paste', onPaste);
+
+    // When cell content grows (typing, Enter, paste), expand the block height
+    // to wrap the table — mirrors how text blocks auto-grow via height:auto.
+    S._cellInput = () => {
+      const tableH = table.offsetHeight;
+      const blockH = block.offsetHeight;
+      if (tableH > blockH) {
+        block.style.height = `${tableH}px`;
+        block.style.minHeight = `${tableH}px`;
+      }
+    };
+    table.addEventListener('input', S._cellInput);
 
     // Deselect when the user presses outside the table (and not on our toolbar
     // / context menu), or hits Escape. Belt-and-suspenders over inline-editor.
@@ -1266,6 +1371,7 @@
     table.removeEventListener('mousemove', S._mm);
     table.removeEventListener('keydown', onTableKey);
     table.removeEventListener('paste', onPaste);
+    if (S._cellInput) table.removeEventListener('input', S._cellInput);
     window.removeEventListener('scroll', S._reflow, true);
     window.removeEventListener('resize', S._reflow);
     if (S._mode) document.removeEventListener('canvas:rich-toolbar-mode', S._mode);
@@ -1284,23 +1390,25 @@
 
   /* --------------------------------- init ---------------------------------- */
 
+  const TABLE_TYPES = new Set(['table', 'table-repeater']);
+
   const init = () => {
     const surface = document.querySelector('.custom-form-design') || document.body;
     const obs = new MutationObserver((muts) => {
       for (const m of muts) {
         if (m.attributeName !== 'class') continue;
         const el = m.target;
-        if (!el.classList || el.dataset.blockType !== 'table') continue;
+        if (!el.classList || !TABLE_TYPES.has(el.dataset.blockType)) continue;
         if (el.classList.contains('cs-editing')) activate(el);
         else if (S && S.block === el) deactivate();
       }
     });
     obs.observe(surface, { attributes: true, attributeFilter: ['class'], subtree: true });
 
-    // Right-click anywhere on a table block → our context menu (table only).
+    // Right-click anywhere on a table or table-repeater block → our context menu.
     document.addEventListener('contextmenu', (e) => {
       if (froalaMode()) return;
-      const block = e.target.closest && e.target.closest('.cs_block_s[data-block-type="table"]');
+      const block = e.target.closest && e.target.closest('.cs_block_s[data-block-type="table"], .cs_block_s[data-block-type="table-repeater"]');
       if (!block) { hideContextMenu(); return; }
       e.preventDefault();
       if (!S || S.block !== block) {
@@ -1313,7 +1421,7 @@
     });
   };
 
-  Object.assign(window.TableBlock, { createBlock, activate, deactivate, normalizeCells });
+  Object.assign(window.TableBlock, { createBlock, createRepeaterBlock, activate, deactivate, normalizeCells });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

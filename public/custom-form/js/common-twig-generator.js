@@ -57,8 +57,30 @@
     return clone;
   };
 
+  // Stamp design-time geometry on flexible-container children. Blocks inside
+  // a .cs-flexible-content are absolutely positioned with fixed px tops and a
+  // fixed container height, so when a merge tag renders longer than its editor
+  // placeholder the grown block overlaps its neighbours and the container never
+  // gets taller. The PDF printer (scripts/generate_pdf_puppeteer.js,
+  // expandFlexibleContainersToFit) uses these attributes to compute how much
+  // each block grew, push the blocks below it down, and expand the container.
+  // NOTE: data-cs-design-* is not in the MutationObserver attributeFilter, so
+  // stamping here does not retrigger generation.
+  const stampFlexibleDesignGeometry = (canvas) => {
+    canvas.querySelectorAll('.cs-flexible-content').forEach((content) => {
+      content.dataset.csDesignH = String(Math.round(content.getBoundingClientRect().height));
+      Array.from(content.children).forEach((child) => {
+        if (!(child instanceof HTMLElement)) return;
+        child.dataset.csDesignTop = String(child.offsetTop);
+        child.dataset.csDesignH = String(child.offsetHeight);
+      });
+    });
+  };
+
   const generateForCanvas = (canvas) => {
     if (!canvas) return '';
+
+    stampFlexibleDesignGeometry(canvas);
 
     const allBlocks = Array.from(canvas.querySelectorAll(BLOCK_SELECTOR));
 
@@ -181,19 +203,25 @@
         }
       }
 
+      // Open/close tags for one chain step (a map loop emits "key, val").
+      const forOpen = (step) => (step.kind === 'map' && step.keyAlias)
+        ? `{% for ${step.keyAlias}, ${step.alias} in ${step.path} %}`
+        : `{% for ${step.alias} in ${step.path} %}`;
+
       // Build the {% for %} stack from a chain (multi-level) or the
       // single repeatPath/-alias pair. Returns the wrapped body, or the
-      // body unchanged if there's no loop.
-      const wrapInLoops = (body) => {
+      // body unchanged if there's no loop. `depth` (only meaningful with a
+      // chain) limits how many OUTER chain steps to wrap — used so a row
+      // that only references an outer alias (eg. the date header that uses
+      // `dateKey`) is wrapped by the outer loop alone and does NOT get
+      // pulled inside the inner `{% for row in dates %}` loop, which would
+      // make it repeat once per inner row.
+      const wrapInLoops = (body, depth) => {
         if (Array.isArray(chain) && chain.length > 0) {
+          const upto = (typeof depth === 'number') ? Math.min(depth, chain.length) : chain.length;
           let out = body;
-          for (let i = chain.length - 1; i >= 0; i--) {
-            const step = chain[i];
-            if (step.kind === 'map' && step.keyAlias) {
-              out = `{% for ${step.keyAlias}, ${step.alias} in ${step.path} %}\n${out}\n{% endfor %}`;
-            } else {
-              out = `{% for ${step.alias} in ${step.path} %}\n${out}\n{% endfor %}`;
-            }
+          for (let i = upto - 1; i >= 0; i--) {
+            out = `${forOpen(chain[i])}\n${out}\n{% endfor %}`;
           }
           return out;
         }
@@ -202,6 +230,60 @@
           return `{% for ${alias} in ${repeatPath} %}\n${body}\n{% endfor %}`;
         }
         return body;
+      };
+
+      // The deepest chain level a row references (1-based). A row that
+      // mentions the inner `row` alias needs all loops; one that only
+      // mentions the outer `dateKey` needs just the outer loop. Returns 0
+      // when the row references no alias (static). Single-level loops
+      // (no chain) always return 1.
+      const rowDepth = (tr) => {
+        if (!(Array.isArray(chain) && chain.length > 0)) return 1;
+        let deepest = 0;
+        chain.forEach((step, i) => {
+          const aliases = [step.alias, step.keyAlias].filter(Boolean);
+          if (aliases.some((a) => new RegExp(`\\b${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(tr)) || /loop\./.test(tr)) {
+            deepest = Math.max(deepest, i + 1);
+          }
+        });
+        return deepest;
+      };
+
+      // Wrap a run of consecutive dynamic rows that share the same OUTER
+      // loops but differ in depth, producing correct nesting: shallower
+      // rows sit beside (not inside) the deeper rows' inner loops. Rows are
+      // grouped so each inner-loop only wraps the rows that actually need
+      // it. eg. [dateKey-row(depth1), data-row(depth2)] becomes
+      //   {% for dateKey.. %} <dateKey row> {% for row.. %} <data row> {% endfor %} {% endfor %}
+      const wrapDynamicRun = (rows) => {
+        if (!(Array.isArray(chain) && chain.length > 0)) return wrapInLoops(rows.join(''));
+        // Recursively build the nest level by level. At `level`, emit the
+        // loop for chain[level] wrapping everything, then within it walk the
+        // rows: those whose depth == level+1 render directly here; runs of
+        // deeper rows recurse into the next level's loop.
+        const build = (rowList, level) => {
+          if (!rowList.length) return '';
+          let out = '';
+          let i = 0;
+          while (i < rowList.length) {
+            const d = rowDepth(rowList[i].tr);
+            if (d <= level + 1) {
+              out += rowList[i].tr;
+              i++;
+            } else {
+              const run = [];
+              while (i < rowList.length && rowDepth(rowList[i].tr) > level + 1) {
+                run.push(rowList[i]); i++;
+              }
+              const inner = build(run, level + 1);
+              out += `${forOpen(chain[level + 1])}\n${inner}\n{% endfor %}`;
+            }
+          }
+          return out;
+        };
+        const tagged = rows.map((tr) => ({ tr, depth: rowDepth(tr) }));
+        const inner = build(tagged, 0);
+        return `${forOpen(chain[0])}\n${inner}\n{% endfor %}`;
       };
 
       const hasLoop = (Array.isArray(chain) && chain.length > 0) || !!repeatPath;
@@ -224,14 +306,37 @@
       // markup contains one row per iteration, not one block-with-no-row
       // per iteration which would put multiple blocks under the same
       // col and trip duplicate IDs).
-      const tbodyMatch = hasLoop ? rawHTML.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i) : null;
-      const theadMatch = hasLoop ? rawHTML.match(/<thead[^>]*>([\s\S]*?)<\/thead>/i) : null;
+      // The tbody-split optimisation below only makes sense when the
+      // loop-carrying block IS the table itself (a Table Repeater). When the
+      // repeat-path lives on an OUTER container (Section / Flexible) that
+      // merely WRAPS a table block, the whole table is one "card" and must
+      // repeat as a unit — splitting its rows here would loop only the rows
+      // that happen to mention the alias and leave the header / static rows
+      // (eg. "Visit", "Job description") rendering once. Detect a nested
+      // child block: if this block contains another .cs_block_s the <tbody>
+      // we'd match belongs to that child, so defer to the whole-block wrap.
+      const wrapsChildBlock = !!block.querySelector(BLOCK_SELECTOR);
+      const tbodyMatch = hasLoop && !wrapsChildBlock ? rawHTML.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i) : null;
+      const theadMatch = hasLoop && !wrapsChildBlock ? rawHTML.match(/<thead[^>]*>([\s\S]*?)<\/thead>/i) : null;
       const aliasList = Array.isArray(chain) && chain.length
         ? chain.map((s) => s.alias).concat(chain.filter((s) => s.keyAlias).map((s) => s.keyAlias))
         : (repeatAlias ? [repeatAlias] : []);
       const theadInner = theadMatch ? theadMatch[1] : '';
       const theadIsDynamic = theadInner.includes('loop.') ||
         aliasList.some((a) => a && new RegExp(`\\b${a}\\b`).test(theadInner));
+
+      // A <tbody> row is a "header row" when every cell in it carries the
+      // `cs-cell--head` marker. The Static Table / Table Repeater block keeps
+      // its column header inside <tbody> (it has no <thead>) and marks those
+      // cells with cs-cell--head — so this is the tbody equivalent of <thead>.
+      // Such rows are the COLUMN header ("Type of labour | Start time | …")
+      // and must render ONCE, never repeat per row, even if they happen to
+      // contain alias-looking text. We pin them outside the {% for %}.
+      const isHeaderRow = (tr) => {
+        const cells = tr.match(/<t[dh][\s\S]*?<\/t[dh]>/gi) || [];
+        if (!cells.length) return false;
+        return cells.every((c) => /class="[^"]*\bcs-cell--head\b[^"]*"/i.test(c));
+      };
 
       let wrappedAtBlockLevel = false;
       if (tbodyMatch && !theadIsDynamic) {
@@ -242,19 +347,21 @@
         // the {% for %} so they render once. We split on </tr> and
         // group consecutive dynamic rows together, then wrap each
         // dynamic group with the loop while leaving static rows as-is.
+        // Header rows (all cells cs-cell--head) are ALWAYS treated as
+        // static so the column header never repeats per data row.
         const trMatches = tbodyInner.match(/<tr[\s\S]*?<\/tr>/gi) || [];
         if (trMatches.length > 1 && aliasList.length) {
           const aliasRe = new RegExp(`\\b(?:${aliasList.map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b|loop\\.`);
           let assembled = '';
-          let buffer = '';
+          let buffer = []; // run of consecutive dynamic rows
           const flushBuffer = () => {
-            if (!buffer) return;
-            assembled += wrapInLoops(buffer);
-            buffer = '';
+            if (!buffer.length) return;
+            assembled += wrapDynamicRun(buffer);
+            buffer = [];
           };
           for (const tr of trMatches) {
-            if (aliasRe.test(tr)) {
-              buffer += tr;
+            if (!isHeaderRow(tr) && aliasRe.test(tr)) {
+              buffer.push(tr);
             } else {
               flushBuffer();
               assembled += tr;
@@ -263,8 +370,28 @@
           flushBuffer();
           twig = rawHTML.replace(tbodyMatch[0], `<tbody>${assembled}</tbody>`);
         } else {
-          const wrappedTbody = wrapInLoops(tbodyInner);
-          twig = rawHTML.replace(tbodyMatch[0], `<tbody>${wrappedTbody}</tbody>`);
+          // Single dynamic group (or no aliases to test): still keep any
+          // leading/trailing header rows outside the loop and wrap only
+          // the data rows in between.
+          const allTrs = tbodyInner.match(/<tr[\s\S]*?<\/tr>/gi) || [];
+          if (allTrs.length && allTrs.some(isHeaderRow)) {
+            let assembled = '';
+            let buffer = [];
+            const flushBuffer = () => {
+              if (!buffer.length) return;
+              assembled += wrapDynamicRun(buffer);
+              buffer = [];
+            };
+            for (const tr of allTrs) {
+              if (isHeaderRow(tr)) { flushBuffer(); assembled += tr; }
+              else buffer.push(tr);
+            }
+            flushBuffer();
+            twig = rawHTML.replace(tbodyMatch[0], `<tbody>${assembled}</tbody>`);
+          } else {
+            const wrappedTbody = wrapInLoops(tbodyInner);
+            twig = rawHTML.replace(tbodyMatch[0], `<tbody>${wrappedTbody}</tbody>`);
+          }
         }
         wrappedAtBlockLevel = true;
       }

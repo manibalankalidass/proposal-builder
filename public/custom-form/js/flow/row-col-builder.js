@@ -193,18 +193,31 @@
           // the block's top-left corner (not its centre, which pulled a wide
           // default block ~half-its-width to the left). Account for the parent's
           // border so the math matches the absolute-positioning origin (the
-          // padding edge), then clamp so the whole block stays inside the page.
+          // padding edge), then clamp so the whole block stays inside the page,
+          // respecting the configured page padding so blocks never land on the edge.
           const parentRect = parent.getBoundingClientRect();
           const cs = getComputedStyle(parent);
           const borderL = parseFloat(cs.borderLeftWidth) || 0;
           const borderT = parseFloat(cs.borderTopWidth) || 0;
+
+          // Use CanvasConfig page padding for cover pages; CSS computed padding
+          // for flexible-content sections (which may have their own padding).
+          const isCoverPage = parent.dataset?.csCover === '1';
+          const pageCfg = window.CanvasConfig?.page || {};
+          const padL = isCoverPage ? (pageCfg.paddingLeft  || 0) : (parseFloat(cs.paddingLeft)   || 0);
+          const padT = isCoverPage ? (pageCfg.paddingTop   || 0) : (parseFloat(cs.paddingTop)    || 0);
+          const padR = isCoverPage ? (pageCfg.paddingRight || 0) : (parseFloat(cs.paddingRight)  || 0);
+          const padB = isCoverPage ? (pageCfg.paddingBottom|| 0) : (parseFloat(cs.paddingBottom) || 0);
+
           const bw = block.offsetWidth || 0;
           const bh = block.offsetHeight || 0;
-          let left = clientX - parentRect.left - borderL;
-          let top = clientY - parentRect.top - borderT;
+          let left = clientX - parentRect.left - borderL - padL;
+          let top = clientY - parentRect.top - borderT - padT;
 
-          left = Math.max(0, Math.min(left, Math.max(0, parent.clientWidth - bw)));
-          top = Math.max(0, Math.min(top, Math.max(0, parent.clientHeight - bh)));
+          const innerW = parent.clientWidth - padL - padR;
+          const innerH = parent.clientHeight - padT - padB;
+          left = Math.max(0, Math.min(left, Math.max(0, innerW - bw)));
+          top = Math.max(0, Math.min(top, Math.max(0, innerH - bh)));
 
           block.style.left = `${left}px`;
           block.style.top = `${top}px`;
