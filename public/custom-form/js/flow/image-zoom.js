@@ -20,7 +20,7 @@
 
   const MIN_ZOOM = 1;     // 1x = the default object-fit: cover framing
   const MAX_ZOOM = 5;     // hard cap so users can't lose the image entirely
-  const ZOOM_STEP = 0.0015; // wheel delta → multiplicative zoom sensitivity
+  const ZOOM_STEP = 0.0005; // wheel delta → multiplicative zoom sensitivity
 
   const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
@@ -71,6 +71,31 @@
   window.FlowCanvas.refreshImageZoom = function (container) {
     const img = container?.querySelector?.('img');
     if (img) applyState(img, container, readState(img));
+  };
+
+  // Image/video blocks pin their media box to a fixed inline height at creation
+  // (100px) so an uploaded picture can never dictate the block's size. The flip
+  // side: anything that changes the BLOCK's height (resize handles, style-panel
+  // height) must re-pin the media box to the new inner height, or the picture
+  // stays at its old size inside the resized block. Call this after any
+  // block-level height change on an image/video block; no-op for other blocks.
+  window.FlowCanvas.syncMediaToBlock = function (block) {
+    if (!block?.classList) return;
+    const media = block.classList.contains('cs-image-block')
+      ? block.querySelector(':scope > .image-container')
+      : block.classList.contains('cs-video-block')
+        ? block.querySelector(':scope > .img-btn, :scope > iframe')
+        : null;
+    if (!media) return;
+    const cs = getComputedStyle(block);
+    const extra = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0)
+      + (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+    const h = Math.round(block.getBoundingClientRect().height - extra);
+    if (h > 0) {
+      media.style.setProperty('height', `${h}px`, 'important');
+      const container = media.classList.contains('image-container') ? media : null;
+      if (container) window.FlowCanvas.refreshImageZoom?.(container);
+    }
   };
 
   window.FlowCanvas.initImageZoom = function (canvas) {

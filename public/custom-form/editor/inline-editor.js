@@ -1026,6 +1026,11 @@
     // Drop the max-width cap so the block actually grows
     block.style.maxWidth = 'none';
 
+    // Image/video media is pinned to a fixed inline height at creation — a
+    // vertical resize must drive that pinned height too, otherwise the picture
+    // stays at its old size inside the resized box.
+    if (pinHeight) window.FlowCanvas?.syncMediaToBlock?.(block);
+
     // Live W/H readout in the title badge for free-form blocks.
     if (isFreeForm) {
       showMetric(block, `W: ${Math.round(newW)}  H: ${Math.round(newH)}`);

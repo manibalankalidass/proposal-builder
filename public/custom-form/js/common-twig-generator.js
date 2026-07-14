@@ -917,6 +917,8 @@
           } else {
             const cssProp = prop === 'backgroundColor' ? 'background-color' : camelCaseToCssProp(prop);
             block.style.setProperty(cssProp, value, 'important');
+            // Image/video media pins its own inline height — follow the block.
+            if (prop === 'height') window.FlowCanvas?.syncMediaToBlock?.(block);
           }
         }
 

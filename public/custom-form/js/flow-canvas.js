@@ -974,8 +974,12 @@
       // Default: Apply to outer block
       block.style[msg.prop] = msg.value;
       // When height is set manually, clear min-height so the user can freely
-      // shrink the block below whatever the previous min was.
-      if (msg.prop === 'height') block.style.minHeight = '';
+      // shrink the block below whatever the previous min was. Image/video
+      // media pins its own inline height — re-pin it to the new block height.
+      if (msg.prop === 'height') {
+        block.style.minHeight = '';
+        FC.syncMediaToBlock?.(block);
+      }
     }
   });
 
@@ -1274,6 +1278,23 @@
           const imageContainer = imgBtn.closest('.image-container');
 
           if (imageContainer) {
+            // An upload must NEVER change the block's footprint — the picture
+            // adapts to the box (object-fit), not the box to the picture.
+            // Pin the container's height at its current rendered value if the
+            // inline pin was lost (legacy/wiped blocks would otherwise grow to
+            // the image's natural height), and freeze the width of free-move
+            // blocks (width:max-content otherwise collapses to a sliver on a
+            // tall portrait image).
+            const block = imageContainer.closest('.cs_block_s');
+            if (!imageContainer.style.height) {
+              const h = Math.round(imageContainer.getBoundingClientRect().height);
+              if (h > 0) imageContainer.style.setProperty('height', `${h}px`, 'important');
+            }
+            if (block && !block.style.width && getComputedStyle(block).position === 'absolute') {
+              const w = Math.round(block.getBoundingClientRect().width);
+              if (w > 0) block.style.width = `${w}px`;
+            }
+
             // Remove the existing button and img if present
             imgBtn.remove();
             const existingImg = imageContainer.querySelector('img');

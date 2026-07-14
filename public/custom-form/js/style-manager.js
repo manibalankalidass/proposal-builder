@@ -132,7 +132,11 @@
     if (value === '' || value === null || value === undefined) {
       const cssProp = camelCaseToCssProp(prop);
       block.style.removeProperty(cssProp);
-      if (inner) inner.style.removeProperty(cssProp);
+      // The image-container's inline height/aspect-ratio is the pin that stops
+      // an uploaded picture from dictating the block's size — never wipe it.
+      const isMediaSizePin = inner?.classList?.contains('image-container') &&
+        (cssProp === 'height' || cssProp === 'width' || cssProp === 'aspect-ratio');
+      if (inner && !isMediaSizePin) inner.style.removeProperty(cssProp);
       return;
     }
 
@@ -160,6 +164,8 @@
       // Apply to block for layout/border/spacing properties.
       const cssProp = camelCaseToCssProp(prop);
       block.style.setProperty(cssProp, value, 'important');
+      // Image/video media pins its own inline height — follow the block.
+      if (cssProp === 'height') window.FlowCanvas?.syncMediaToBlock?.(block);
     }
   };
 
@@ -194,10 +200,21 @@
       clearStyle(block, prop);
     });
 
-    // Also clear the inner element if it exists
+    // Also clear the inner element if it exists. For an image container,
+    // preserve its inline height/aspect-ratio pin across the wipe — losing it
+    // lets an uploaded picture's natural size dictate the block's height.
     const inner = block.querySelector('.edit_me, .section-container-content, .cs-flexible-content, .image-container');
     if (inner) {
+      const isImageBox = inner.classList.contains('image-container');
+      const kept = isImageBox
+        ? ['height', 'aspect-ratio', 'width'].map((p) => ({
+            prop: p,
+            value: inner.style.getPropertyValue(p),
+            priority: inner.style.getPropertyPriority(p),
+          })).filter((d) => d.value)
+        : [];
       inner.style.cssText = '';
+      kept.forEach((d) => inner.style.setProperty(d.prop, d.value, d.priority));
     }
   };
 
